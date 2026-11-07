@@ -144,6 +144,12 @@ def sessions_revoke(request):
         row = cursor.fetchone()
         if not row:
             return JsonResponse({'success': False, 'message': 'Session not found.'}, status=404)
+        # Staff with the 'sessions' permission must not be able to sign out a Super Admin.
+        from apps.admin_panel.auth import is_super_admin
+        owner_id = (UserSession.objects.filter(pk=session_id).values_list('admin_id', flat=True).first()
+                    or _admin_id_fallback_map([session_id]).get(session_id))
+        if owner_id and is_super_admin(owner_id) and not is_super_admin(admin_id):
+            return JsonResponse({'success': False, 'message': 'Only a Super Admin can revoke a Super Admin session.'}, status=403)
         if current_token and row[1] == current_token:
             is_current = True
         cursor.execute("DELETE FROM user_session_data WHERE session_id = %s", [session_id])

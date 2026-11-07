@@ -85,7 +85,7 @@ def participants_index(request):
 
     Admin-only: it returns every contestant's name, email and phone number.
     """
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    from apps.admin_panel.auth import _get_admin_from_session
     if not _get_admin_from_session(request):
         return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
     participants = Participant.objects.all().order_by('-id')

@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static photo_tags %}
+{% load static photo_tags admin_tags %}
 {% block title %}Registration Pending — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}Agent Management › Registration Pending{% endblock %}
 
@@ -418,15 +418,7 @@
 </div>
 {% if page_obj.has_other_pages %}
 <nav class="mt-3" aria-label="Pending registrations pagination">
-  <ul class="pagination justify-content-center">
-    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="{% querystring page=page_obj.previous_page_number %}">&laquo;</a></li>{% endif %}
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}<li class="page-item active"><span class="page-link">{{ num }}</span></li>
-      {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}<li class="page-item"><a class="page-link" href="{% querystring page=num %}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="{% querystring page=page_obj.next_page_number %}">&raquo;</a></li>{% endif %}
-  </ul>
+  {% admin_pagination page_obj %}
 </nav>
 {% endif %}
 

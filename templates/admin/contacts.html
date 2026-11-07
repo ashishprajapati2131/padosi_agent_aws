@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static admin_tags %}
 
 {% block title %}Contact Submissions — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Leads &amp; Inquiries &rsaquo; Contact Inbox{% endblock %}
@@ -168,33 +168,7 @@
     {% if submissions.has_other_pages %}
     <div class="card-footer bg-white d-flex justify-content-center p-3 border-top">
         <nav>
-            <ul class="pagination mb-0">
-                {% if submissions.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ submissions.previous_page_number }}&search={{ search }}&status={{ status_filter }}">&laquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                {% endif %}
-
-                {% for num in submissions.paginator.page_range %}
-                    {% if submissions.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% elif num > submissions.number|add:'-3' and num < submissions.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}&search={{ search }}&status={{ status_filter }}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if submissions.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ submissions.next_page_number }}&search={{ search }}&status={{ status_filter }}">&raquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                {% endif %}
-            </ul>
+            {% admin_pagination submissions %}
         </nav>
     </div>
 

@@ -84,7 +84,8 @@ def _match_threat(input_str: str, url_str: str, is_admin_route: bool):
 
 def _send_alert_email(ip, type_matched, url_str, location, isp, hacker_name, hacker_email,
                       is_auto_blocked, ban_reason, user_agent, input_str):
-    if not settings.BREVO_API_KEY or not settings.SECURITY_ALERT_EMAIL:
+    alert_to = settings.SECURITY_ALERT_EMAIL or settings.MAIL_FROM_ADDRESS
+    if not settings.BREVO_API_KEY or not alert_to:
         return
     e = html.escape
     threat_html = f"""
@@ -111,7 +112,7 @@ def _send_alert_email(ip, type_matched, url_str, location, isp, hacker_name, hac
 
     brevo_payload = {
         "sender": {"name": "Security Grid", "email": settings.BREVO_FROM_EMAIL or "noreply@padosiagent.com"},
-        "to": [{"email": settings.SECURITY_ALERT_EMAIL, "name": "Security Admin"}],
+        "to": [{"email": alert_to, "name": "Security Admin"}],
         "subject": "⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent",
         "htmlContent": threat_html
     }

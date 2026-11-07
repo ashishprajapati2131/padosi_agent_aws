@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block title %}{{ insurance.fullname }} — Insurance Company — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}Insurance Details{% endblock %}
@@ -99,27 +100,7 @@
     {% if agents.has_other_pages %}
     <div class="card-footer bg-white">
         <div class="card-footer bg-white border-top py-3">
-            <ul class="pagination pagination-sm mb-0">
-                {% if agents.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ agents.previous_page_number }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">Previous</a></li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">Previous</span></li>
-                {% endif %}
-
-                {% for i in agents.paginator.page_range %}
-                    {% if agents.number == i %}
-                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-                    {% elif i > agents.number|add:'-3' and i < agents.number|add:'3' %}
-                        <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">{{ i }}</a></li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if agents.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ agents.next_page_number }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">Next</a></li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">Next</span></li>
-                {% endif %}
-            </ul>
+            {% admin_pagination agents %}
         </div>
     </div>
     {% endif %}

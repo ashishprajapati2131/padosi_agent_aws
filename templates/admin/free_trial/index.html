@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load json_tags admin_tags %}
 {% block title %}Free Trial Management{% endblock %}
 
 {% block content %}
@@ -284,27 +285,7 @@
       </div>
       {% if history.has_other_pages %}
       <div class="d-flex justify-content-end mt-3">
-        <ul class="pagination pagination-sm mb-0">
-          {% if history.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ history.previous_page_number }}">&laquo;</a></li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-          {% endif %}
-          
-          {% for i in history.paginator.page_range %}
-            {% if history.number == i %}
-              <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-            {% else %}
-              <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
-            {% endif %}
-          {% endfor %}
-          
-          {% if history.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ history.next_page_number }}">&raquo;</a></li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-          {% endif %}
-        </ul>
+        {% admin_pagination history %}
       </div>
       {% endif %}
     </div>
@@ -671,7 +652,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ── Monthly Chart ────────────────────────────────────────────────────────────
-var monthlyData = {{ monthly_stats|safe }};
+var monthlyData = {{ monthly_stats|safe_json }};
 var ctx = document.getElementById('monthlyChart');
 if (ctx && monthlyData.length > 0) {
   new Chart(ctx, {

@@ -1772,8 +1772,7 @@ def render_edit_profile(request, agent, is_admin_view=False):
     admin_permissions = []
 
     if is_admin_view:
-        from apps.admin_panel.views.dashboard import _get_admin_from_session
-
+        from apps.admin_panel.auth import _get_admin_from_session
         admin_session_id = _get_admin_from_session(request)
         if admin_session_id:
             from apps.admin_panel.models.admin_auth import Admin
@@ -3921,8 +3920,7 @@ def agent_og_image(request, agent_id=None, slug=None):
     # may use it, otherwise it is a free CPU-exhaustion lever on a public URL.
     nocache = request.GET.get("nocache") == "1"
     if nocache:
-        from apps.admin_panel.views.dashboard import _get_admin_from_session
-
+        from apps.admin_panel.auth import _get_admin_from_session
         owns = request.user.is_authenticated and agent.user_id == request.user.pk
         if not owns and not _get_admin_from_session(request):
             nocache = False

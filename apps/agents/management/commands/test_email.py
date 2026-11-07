@@ -10,7 +10,7 @@ Usage:
     python manage.py test_email --type welcome
 
 Options:
-    --to      Recipient email address (default: ashisprajapati2131@gmail.com)
+    --to      Recipient email address (required)
     --type    Email type to test: test | otp | welcome (default: test)
 """
 
@@ -25,8 +25,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--to",
             type=str,
-            default="ashisprajapati2131@gmail.com",
-            help="Recipient email address (default: ashisprajapati2131@gmail.com)",
+            required=True,
+            help="Recipient email address (required; no personal default in code)",
         )
         parser.add_argument(
             "--type",

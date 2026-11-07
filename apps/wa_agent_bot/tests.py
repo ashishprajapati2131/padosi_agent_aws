@@ -673,7 +673,7 @@ class BotSecurityTests(unittest.TestCase):
             self.assertFalse(views._verify_webhook_signature(bad))
 
     @patch(
-        "apps.admin_panel.views.dashboard._get_admin_from_session", return_value=None
+        "apps.admin_panel.auth._get_admin_from_session", return_value=None
     )
     def test_simulator_requires_admin(self, _mock_admin):
         from apps.wa_agent_bot import simulator_views

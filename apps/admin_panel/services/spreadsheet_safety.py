@@ -41,3 +41,28 @@ def safe_csv_writer(fileobj, *args, **kwargs):
     """csv.writer whose rows are formula-neutralised."""
     import csv
     return _SafeWriter(csv.writer(fileobj, *args, **kwargs))
+
+
+class _Echo:
+    """File-like object whose write() returns the line, for streaming csv output."""
+
+    def write(self, value):
+        return value
+
+
+def streaming_csv_response(filename, header, rows):
+    """Formula-safe CSV streamed row by row (no whole file in memory), UTF-8 with BOM for Excel."""
+    from django.http import StreamingHttpResponse
+
+    writer = safe_csv_writer(_Echo())
+
+    def lines():
+        yield '﻿'
+        yield writer.writerow(header)
+        for row in rows:
+            yield writer.writerow(row)
+
+    response = StreamingHttpResponse(lines(), content_type='text/csv; charset=UTF-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Cache-Control'] = 'no-store'
+    return response

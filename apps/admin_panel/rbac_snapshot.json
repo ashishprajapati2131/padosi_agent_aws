@@ -1,0 +1,1836 @@
+{
+ "admin/": {
+  "access": "public",
+  "name": "admin_login"
+ },
+ "admin/account-deletion-requests/": {
+  "access": [
+   "blacklisted_agents"
+  ],
+  "name": "admin_deletion_requests"
+ },
+ "admin/account-deletion/activate/": {
+  "access": [
+   "blacklisted_agents"
+  ],
+  "name": "admin_activate_account"
+ },
+ "admin/account-deletion/reject/": {
+  "access": [
+   "blacklisted_agents"
+  ],
+  "name": "admin_reject_deletion_request"
+ },
+ "admin/account-deletion/terminate/": {
+  "access": [
+   "blacklisted_agents"
+  ],
+  "name": "admin_terminate_account"
+ },
+ "admin/admins/": {
+  "access": "super_only",
+  "name": "admin_admins_index"
+ },
+ "admin/admins/<int:id>/delete/": {
+  "access": "super_only",
+  "name": "admin_admins_delete"
+ },
+ "admin/admins/<int:id>/edit/": {
+  "access": "super_only",
+  "name": "admin_admins_edit"
+ },
+ "admin/admins/<int:id>/update/": {
+  "access": "super_only",
+  "name": "admin_admins_update"
+ },
+ "admin/admins/create/": {
+  "access": "super_only",
+  "name": "admin_admins_create"
+ },
+ "admin/admins/store/": {
+  "access": "super_only",
+  "name": "admin_admins_store"
+ },
+ "admin/advanced/activity-logs/": {
+  "access": [
+   "analytics"
+  ],
+  "name": "advanced_activity_logs"
+ },
+ "admin/advanced/activity-logs/delete/": {
+  "access": "super_only",
+  "name": "advanced_activity_logs_delete"
+ },
+ "admin/advanced/analytics/": {
+  "access": [
+   "analytics"
+  ],
+  "name": "advanced_analytics"
+ },
+ "admin/advanced/error-logs/": {
+  "access": [
+   "error_logs"
+  ],
+  "name": "admin_error_logs_index"
+ },
+ "admin/advanced/error-logs/<int:id>/": {
+  "access": [
+   "error_logs"
+  ],
+  "name": "admin_error_logs_show"
+ },
+ "admin/advanced/error-logs/delete/": {
+  "access": "super_only",
+  "name": "admin_error_logs_delete"
+ },
+ "admin/agent-card-themes/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_themes"
+ },
+ "admin/agent-card-themes/<slug:theme_id>/export/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_export"
+ },
+ "admin/agent-card-themes/activate/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_activate"
+ },
+ "admin/agent-card-themes/delete/": {
+  "access": "super_only",
+  "name": "admin_agent_card_theme_delete"
+ },
+ "admin/agent-card-themes/flag/": {
+  "access": [
+   "feature_flags",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_flag"
+ },
+ "admin/agent-card-themes/import/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_import"
+ },
+ "admin/agent-card-themes/preset/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_preset"
+ },
+ "admin/agent-card-themes/preview/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_preview"
+ },
+ "admin/agent-card-themes/save/": {
+  "access": [
+   "content",
+   "site_settings"
+  ],
+  "name": "admin_agent_card_theme_save"
+ },
+ "admin/agent/notifications/": {
+  "access": [
+   "notifications"
+  ],
+  "name": "agent_notify"
+ },
+ "admin/agent/notifications/broadcast/": {
+  "access": [
+   "notifications"
+  ],
+  "name": "agent_notify_broadcast"
+ },
+ "admin/agent/notifications/send/": {
+  "access": [
+   "notifications"
+  ],
+  "name": "agent_notify_send"
+ },
+ "admin/agents/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents"
+ },
+ "admin/agents/<int:id>/edit-logs/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_get_edit_logs"
+ },
+ "admin/agents/<int:id>/edit-profile/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_edit_profile"
+ },
+ "admin/agents/<int:id>/edit-profile/update/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_full_update_profile"
+ },
+ "admin/agents/<int:id>/manage/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_manage"
+ },
+ "admin/agents/amfi-verify/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_amfi_verify"
+ },
+ "admin/agents/bulk-action/": {
+  "access": [
+   "agents",
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "admin_agents_bulk_action"
+ },
+ "admin/agents/get/<int:id>/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_get_agent_json"
+ },
+ "admin/agents/irdai-verify/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_irdai_verify"
+ },
+ "admin/agents/manage/<int:id>/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_manage_alt"
+ },
+ "admin/agents/pending/": {
+  "access": [
+   "pending_registrations"
+  ],
+  "name": "admin_agents_pending"
+ },
+ "admin/agents/save-notes/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_save_notes"
+ },
+ "admin/agents/toggle-review-approval/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_toggle_review_approval"
+ },
+ "admin/agents/toggle-status/": {
+  "access": [
+   "agents",
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "admin_agents_toggle_status"
+ },
+ "admin/agents/update-achievement-limit/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_achievement_limit"
+ },
+ "admin/agents/update-badge/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_badge"
+ },
+ "admin/agents/update-irdai-license/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_irdai_license"
+ },
+ "admin/agents/update-plan/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_plan"
+ },
+ "admin/agents/update-profile/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_profile"
+ },
+ "admin/agents/update-visibility/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_update_visibility"
+ },
+ "admin/agents/verify-pending-payment/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_verify_pending_payment"
+ },
+ "admin/ajax/blacklist/approve/": {
+  "access": [
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "ajax_blacklist_approve"
+ },
+ "admin/ajax/blacklist/confirm/": {
+  "access": [
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "ajax_blacklist_confirm"
+ },
+ "admin/ajax/blacklist/remove/": {
+  "access": [
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "ajax_blacklist_remove"
+ },
+ "admin/app-version/": {
+  "access": [
+   "app_version"
+  ],
+  "name": "admin_app_version"
+ },
+ "admin/app-version/save/": {
+  "access": [
+   "app_version"
+  ],
+  "name": "admin_app_version_save"
+ },
+ "admin/approvals/": {
+  "access": [
+   "approvals_awaiting_verification",
+   "approvals_missing_licenses"
+  ],
+  "name": "admin_agents_approvals"
+ },
+ "admin/blacklisted-agents/": {
+  "access": [
+   "blacklisted_agents"
+  ],
+  "name": "admin_blacklisted_agents"
+ },
+ "admin/broadcast/": {
+  "access": [
+   "notifications"
+  ],
+  "name": "broadcast_index"
+ },
+ "admin/broadcast/send/": {
+  "access": [
+   "notifications"
+  ],
+  "name": "broadcast_send"
+ },
+ "admin/championship/": {
+  "access": "super_only",
+  "name": "admin_championship_dashboard"
+ },
+ "admin/championship/claims/": {
+  "access": "super_only",
+  "name": "admin_championship_claims"
+ },
+ "admin/championship/claims/<int:claim_id>/update/": {
+  "access": "super_only",
+  "name": "admin_championship_claim_update"
+ },
+ "admin/championship/fraud/": {
+  "access": "super_only",
+  "name": "admin_championship_fraud"
+ },
+ "admin/championship/fraud/<int:flag_id>/resolve/": {
+  "access": "super_only",
+  "name": "admin_championship_resolve_fraud"
+ },
+ "admin/championship/leaderboard/": {
+  "access": "super_only",
+  "name": "admin_championship_leaderboard"
+ },
+ "admin/championship/leaderboard/freeze/": {
+  "access": "super_only",
+  "name": "admin_championship_freeze_leaderboard"
+ },
+ "admin/championship/referral-tree/": {
+  "access": "super_only",
+  "name": "admin_championship_referral_tree"
+ },
+ "admin/championship/rewards/manage/": {
+  "access": "super_only",
+  "name": "admin_championship_manage_reward"
+ },
+ "admin/championship/settings/update/": {
+  "access": "super_only",
+  "name": "admin_championship_update_settings"
+ },
+ "admin/coming-soon/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_index"
+ },
+ "admin/coming-soon/feature/<int:id>/delete/": {
+  "access": "super_only",
+  "name": "admin_coming_soon_feature_delete"
+ },
+ "admin/coming-soon/feature/<int:id>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_feature_toggle"
+ },
+ "admin/coming-soon/feature/reorder/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_feature_reorder"
+ },
+ "admin/coming-soon/feature/save/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_feature_save"
+ },
+ "admin/coming-soon/feature/seed/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_feature_seed"
+ },
+ "admin/coming-soon/google-review/save/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_google_review_config_save"
+ },
+ "admin/coming-soon/google-review/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_google_review_toggle"
+ },
+ "admin/coming-soon/save/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_coming_soon_save"
+ },
+ "admin/contacts/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_index"
+ },
+ "admin/contacts/<int:submission_id>/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_show"
+ },
+ "admin/contacts/assign/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_assign"
+ },
+ "admin/contacts/delete/": {
+  "access": "super_only",
+  "name": "admin_contacts_delete"
+ },
+ "admin/contacts/priority/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_set_priority"
+ },
+ "admin/contacts/reply/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_reply"
+ },
+ "admin/contacts/update-status/": {
+  "access": [
+   "contacts"
+  ],
+  "name": "admin_contacts_update_status"
+ },
+ "admin/content/about/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_about"
+ },
+ "admin/content/about/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_about_update"
+ },
+ "admin/content/banners/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_banners"
+ },
+ "admin/content/banners/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_banners_update"
+ },
+ "admin/content/calculators/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculators"
+ },
+ "admin/content/calculators/<int:pk>/category/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculators_category"
+ },
+ "admin/content/calculators/<int:pk>/edit/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculators_edit"
+ },
+ "admin/content/calculators/<int:pk>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculators_toggle"
+ },
+ "admin/content/calculators/categories/<int:pk>/delete/": {
+  "access": "super_only",
+  "name": "admin_content_calculator_categories_delete"
+ },
+ "admin/content/calculators/categories/<int:pk>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculator_categories_toggle"
+ },
+ "admin/content/calculators/categories/save/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_calculator_categories_save"
+ },
+ "admin/content/contact/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_contact"
+ },
+ "admin/content/contact/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_contact_update"
+ },
+ "admin/content/faqs/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_faqs"
+ },
+ "admin/content/faqs/<int:faq_id>/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_faqs_update"
+ },
+ "admin/content/faqs/settings/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_faqs_settings_update"
+ },
+ "admin/content/faqs/store/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_faqs_store"
+ },
+ "admin/content/faqs/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_faqs_toggle"
+ },
+ "admin/content/invite-studio/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_invite_studio"
+ },
+ "admin/content/invite-studio/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_invite_studio_update"
+ },
+ "admin/content/plans/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans"
+ },
+ "admin/content/plans/exclusive/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_exclusive_plans_update"
+ },
+ "admin/content/plans/manage-agent/<str:plan_slug>/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_manage_agent"
+ },
+ "admin/content/plans/manage-agent/<str:plan_slug>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_manage_agent_toggle"
+ },
+ "admin/content/plans/update-features/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_update_features"
+ },
+ "admin/content/plans/update-qr-service/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_update_qr_service"
+ },
+ "admin/content/plans/update-review-growth/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_update_review_growth"
+ },
+ "admin/content/plans/update-unlock-rules/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_update_unlock_rules"
+ },
+ "admin/content/plans/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_plans_update"
+ },
+ "admin/content/registration-cards/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_registration_cards"
+ },
+ "admin/content/registration-cards/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_content_registration_cards_update"
+ },
+ "admin/content/visiting-card-studio/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_studio"
+ },
+ "admin/content/visiting-card-studio/agent/<int:agent_id>/detail/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_agent_detail"
+ },
+ "admin/content/visiting-card-studio/agent/<int:agent_id>/save/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_agent_save"
+ },
+ "admin/content/visiting-card-studio/agent/<int:agent_id>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_agent_toggle"
+ },
+ "admin/content/visiting-card-studio/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_studio_update"
+ },
+ "admin/dashboard/": {
+  "access": [
+   "dashboard"
+  ],
+  "name": "admin_dashboard"
+ },
+ "admin/delete/": {
+  "access": "super_only",
+  "name": "admin_agents_delete"
+ },
+ "admin/distributors/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributors"
+ },
+ "admin/distributors/<int:distributor_id>/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributor_detail"
+ },
+ "admin/distributors/create/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributors_create"
+ },
+ "admin/distributors/reset-password/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributor_reset_password"
+ },
+ "admin/distributors/store/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributors_store"
+ },
+ "admin/distributors/sub/reset-password/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_subdistributor_reset_password"
+ },
+ "admin/distributors/toggle-status/": {
+  "access": [
+   "distributors"
+  ],
+  "name": "admin_distributor_toggle_status"
+ },
+ "admin/event-referral/": {
+  "access": "super_only",
+  "name": "admin_event_referral_dashboard"
+ },
+ "admin/event-referral/participants/<int:participant_id>/block/": {
+  "access": "super_only",
+  "name": "admin_event_referral_block"
+ },
+ "admin/event-referral/participants/<int:participant_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_event_referral_delete"
+ },
+ "admin/event-referral/participants/<int:participant_id>/extend/": {
+  "access": "super_only",
+  "name": "admin_event_referral_extend"
+ },
+ "admin/event-referral/participants/<int:participant_id>/grant/": {
+  "access": "super_only",
+  "name": "admin_event_referral_grant"
+ },
+ "admin/event-referral/participants/<int:participant_id>/restore/": {
+  "access": "super_only",
+  "name": "admin_event_referral_restore"
+ },
+ "admin/event-referral/participants/<int:participant_id>/target/": {
+  "access": "super_only",
+  "name": "admin_event_referral_target"
+ },
+ "admin/event-referral/participants/<int:participant_id>/test-add-referrals/": {
+  "access": "super_only",
+  "name": "admin_event_referral_test_add"
+ },
+ "admin/event-referral/participants/<int:participant_id>/test-remove-referrals/": {
+  "access": "super_only",
+  "name": "admin_event_referral_test_remove"
+ },
+ "admin/event-referral/settings/update/": {
+  "access": "super_only",
+  "name": "admin_event_referral_settings"
+ },
+ "admin/event-referral/test-mode/": {
+  "access": "super_only",
+  "name": "admin_event_referral_test_mode"
+ },
+ "admin/event-referral/toggle/": {
+  "access": "super_only",
+  "name": "admin_event_referral_toggle"
+ },
+ "admin/events/": {
+  "access": [
+   "events"
+  ],
+  "name": "admin_events_index"
+ },
+ "admin/events/<int:event_id>/": {
+  "access": [
+   "events"
+  ],
+  "name": "admin_events_show"
+ },
+ "admin/events/<int:event_id>/export/": {
+  "access": [
+   "events"
+  ],
+  "name": "admin_events_export"
+ },
+ "admin/export/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_index"
+ },
+ "admin/export/agents/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_agents"
+ },
+ "admin/export/contacts/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_contacts"
+ },
+ "admin/export/leads/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_leads"
+ },
+ "admin/export/pending/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_pending"
+ },
+ "admin/export/reviews/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_reviews"
+ },
+ "admin/export/subscriptions/": {
+  "access": [
+   "export"
+  ],
+  "name": "export_subscriptions"
+ },
+ "admin/feature-flags/": {
+  "access": [
+   "feature_flags",
+   "site_settings"
+  ],
+  "name": "admin_feature_flags"
+ },
+ "admin/feature-flags/create/": {
+  "access": [
+   "feature_flags",
+   "site_settings"
+  ],
+  "name": "admin_feature_flag_create"
+ },
+ "admin/feature-flags/delete/": {
+  "access": "super_only",
+  "name": "admin_feature_flag_delete"
+ },
+ "admin/feature-flags/toggle/": {
+  "access": [
+   "feature_flags",
+   "site_settings"
+  ],
+  "name": "admin_feature_flag_toggle"
+ },
+ "admin/feature-flags/update/": {
+  "access": [
+   "feature_flags",
+   "site_settings"
+  ],
+  "name": "admin_feature_flag_update"
+ },
+ "admin/finance/": {
+  "access": [
+   "finance_accounts"
+  ],
+  "name": "admin_finance_index"
+ },
+ "admin/finance/mark-payment/": {
+  "access": [
+   "finance_accounts"
+  ],
+  "name": "admin_finance_mark_payment"
+ },
+ "admin/find-agent-locator/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator"
+ },
+ "admin/find-agent-locator/assign-agent/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_assign_agent"
+ },
+ "admin/find-agent-locator/create-agent/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_create_agent"
+ },
+ "admin/find-agent-locator/extract/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_extract"
+ },
+ "admin/find-agent-locator/live-preview/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_live_preview"
+ },
+ "admin/find-agent-locator/save-pincode/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_save_pincode"
+ },
+ "admin/find-agent-locator/search-agents/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_search_agents"
+ },
+ "admin/find-agent-locator/unlink-agent/": {
+  "access": [
+   "agents",
+   "geocoding",
+   "pincode"
+  ],
+  "name": "admin_find_agent_locator_unlink_agent"
+ },
+ "admin/free-trial/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_free_trial"
+ },
+ "admin/free-trial/analytics-data/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_analytics_data"
+ },
+ "admin/free-trial/generate-promo/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_generate_promo"
+ },
+ "admin/free-trial/history/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_history"
+ },
+ "admin/free-trial/promo/<int:promo_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_ft_delete_promo"
+ },
+ "admin/free-trial/promo/<int:promo_id>/update/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_update_promo"
+ },
+ "admin/free-trial/test-credit/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_force_test_credit"
+ },
+ "admin/free-trial/toggle-promo/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_toggle_promo"
+ },
+ "admin/free-trial/update-config/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_update_config"
+ },
+ "admin/free-trial/update-discount/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_update_discount"
+ },
+ "admin/free-trial/update-referral-config/": {
+  "access": [
+   "free_trial"
+  ],
+  "name": "admin_ft_update_referral_config"
+ },
+ "admin/geocoding-manager/": {
+  "access": [
+   "geocoding"
+  ],
+  "name": "admin_geocoding_index"
+ },
+ "admin/geocoding-manager/batch/": {
+  "access": [
+   "geocoding"
+  ],
+  "name": "admin_geocoding_batch"
+ },
+ "admin/geocoding-manager/single/": {
+  "access": [
+   "geocoding"
+  ],
+  "name": "admin_geocoding_single"
+ },
+ "admin/geocoding-manager/stats/": {
+  "access": [
+   "geocoding"
+  ],
+  "name": "admin_geocoding_stats"
+ },
+ "admin/insurance-approvals/": {
+  "access": [
+   "insurance_approvals"
+  ],
+  "name": "admin_insurance_approvals_index"
+ },
+ "admin/insurance-approvals/<int:id>/process/": {
+  "access": [
+   "insurance_approvals"
+  ],
+  "name": "admin_insurance_approvals_process"
+ },
+ "admin/insurance-approvals/onboarding/<int:id>/approve/": {
+  "access": [
+   "insurance_approvals"
+  ],
+  "name": "admin_insurance_approvals_approve_onboarding"
+ },
+ "admin/insurance-approvals/onboarding/<int:id>/reject/": {
+  "access": [
+   "insurance_approvals"
+  ],
+  "name": "admin_insurance_approvals_reject_onboarding"
+ },
+ "admin/insurance/": {
+  "access": [
+   "insurance"
+  ],
+  "name": "admin_insurance_index"
+ },
+ "admin/insurance/<int:id>/": {
+  "access": [
+   "insurance"
+  ],
+  "name": "admin_insurance_show"
+ },
+ "admin/insurance/create/": {
+  "access": [
+   "insurance"
+  ],
+  "name": "admin_insurance_create"
+ },
+ "admin/insurance/store/": {
+  "access": [
+   "insurance"
+  ],
+  "name": "admin_insurance_store"
+ },
+ "admin/insurance/toggle-status/": {
+  "access": [
+   "insurance"
+  ],
+  "name": "admin_insurance_toggle_status"
+ },
+ "admin/investment-types/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_investment_types_index"
+ },
+ "admin/investment-types/<int:pk>/delete/": {
+  "access": "super_only",
+  "name": "admin_investment_types_delete"
+ },
+ "admin/investment-types/<int:pk>/toggle/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_investment_types_toggle"
+ },
+ "admin/investment-types/<int:pk>/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_investment_types_update"
+ },
+ "admin/investment-types/store/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_investment_types_store"
+ },
+ "admin/invoices/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoices"
+ },
+ "admin/invoices/<int:invoice_id>/download/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_download"
+ },
+ "admin/invoices/<int:invoice_id>/preview/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_preview"
+ },
+ "admin/invoices/<int:invoice_id>/sync/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_sync_single"
+ },
+ "admin/invoices/create/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoices_create"
+ },
+ "admin/invoices/open-sheet/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_open_sheet"
+ },
+ "admin/invoices/settings/url/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_save_sheet_url"
+ },
+ "admin/invoices/sync/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoice_sync_sheet"
+ },
+ "admin/invoices/verify-promo/": {
+  "access": [
+   "invoices"
+  ],
+  "name": "admin_invoices_verify_promo"
+ },
+ "admin/leads/": {
+  "access": [
+   "leads"
+  ],
+  "name": "admin_leads_index"
+ },
+ "admin/leads/update-status/": {
+  "access": [
+   "leads"
+  ],
+  "name": "admin_leads_update_status"
+ },
+ "admin/login/": {
+  "access": "public",
+  "name": "admin_login_page"
+ },
+ "admin/login/post/": {
+  "access": "public",
+  "name": "admin_login_post"
+ },
+ "admin/logout/": {
+  "access": "public",
+  "name": "admin_logout"
+ },
+ "admin/pages/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_pages_index"
+ },
+ "admin/pages/<int:page_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_pages_delete"
+ },
+ "admin/pages/<int:page_id>/edit/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_pages_edit"
+ },
+ "admin/pages/<int:page_id>/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_pages_update"
+ },
+ "admin/pages/create/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_pages_create"
+ },
+ "admin/pages/store/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_pages_store"
+ },
+ "admin/payments/reconcile/": {
+  "access": "super_only",
+  "name": "admin_payment_reconcile"
+ },
+ "admin/payments/reconcile/execute/": {
+  "access": "super_only",
+  "name": "admin_payment_reconcile_execute"
+ },
+ "admin/payments/reconcile/inspect/": {
+  "access": "super_only",
+  "name": "admin_payment_reconcile_inspect"
+ },
+ "admin/pending-registrations/": {
+  "access": [
+   "pending_registrations"
+  ],
+  "name": "admin_agents_pending_registrations"
+ },
+ "admin/pincode-heatmap/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_heatmap"
+ },
+ "admin/pincode-heatmap/lookup/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_heatmap_lookup"
+ },
+ "admin/pincode-heatmap/toggle-flag/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_toggle_heatmap_flag"
+ },
+ "admin/pincode-manager/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_index"
+ },
+ "admin/pincode-manager/delete-state/": {
+  "access": "super_only",
+  "name": "admin_pincode_delete_state"
+ },
+ "admin/pincode-manager/districts/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_districts"
+ },
+ "admin/pincode-manager/export/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_export"
+ },
+ "admin/pincode-manager/import/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_import"
+ },
+ "admin/pincode-manager/sample/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_sample"
+ },
+ "admin/pincode-manager/upload/": {
+  "access": [
+   "pincode"
+  ],
+  "name": "admin_pincode_upload"
+ },
+ "admin/plans/": {
+  "access": [
+   "subscriptions"
+  ],
+  "name": "admin_plans_index"
+ },
+ "admin/plans/<int:plan_id>/edit/": {
+  "access": [
+   "subscriptions"
+  ],
+  "name": "admin_plan_edit"
+ },
+ "admin/plans/add/": {
+  "access": [
+   "subscriptions"
+  ],
+  "name": "admin_plan_create"
+ },
+ "admin/plans/delete/": {
+  "access": "super_only",
+  "name": "admin_plan_delete"
+ },
+ "admin/profile-banners/": {
+  "access": [
+   "agents",
+   "content"
+  ],
+  "name": "admin_profile_banners_index"
+ },
+ "admin/profile-banners/<int:banner_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_profile_banner_delete"
+ },
+ "admin/profile-banners/<int:banner_id>/toggle/": {
+  "access": [
+   "agents",
+   "content"
+  ],
+  "name": "admin_profile_banner_toggle"
+ },
+ "admin/profile-banners/settings/save/": {
+  "access": [
+   "agents",
+   "content"
+  ],
+  "name": "admin_profile_banner_settings_save"
+ },
+ "admin/profile-banners/upload/": {
+  "access": [
+   "agents",
+   "content"
+  ],
+  "name": "admin_profile_banner_upload"
+ },
+ "admin/promo-codes/": {
+  "access": [
+   "promo_codes"
+  ],
+  "name": "admin_promo_codes"
+ },
+ "admin/promo-codes/<int:promo_id>/toggle-status/": {
+  "access": [
+   "promo_codes"
+  ],
+  "name": "admin_promo_code_toggle_status"
+ },
+ "admin/promo-codes/<int:promo_id>/update/": {
+  "access": [
+   "promo_codes"
+  ],
+  "name": "admin_promo_code_update"
+ },
+ "admin/promo-codes/store/": {
+  "access": [
+   "promo_codes"
+  ],
+  "name": "admin_promo_code_store"
+ },
+ "admin/qr-files/": {
+  "access": [
+   "qr_generator"
+  ],
+  "name": "admin_qr_files_index"
+ },
+ "admin/qr-files/<int:id>/delete/": {
+  "access": "super_only",
+  "name": "admin_qr_files_delete"
+ },
+ "admin/qr-files/<int:id>/update/": {
+  "access": [
+   "qr_generator"
+  ],
+  "name": "admin_qr_files_update"
+ },
+ "admin/qr-files/upload/": {
+  "access": [
+   "qr_generator"
+  ],
+  "name": "admin_qr_files_store"
+ },
+ "admin/quick-registration-leads/": {
+  "access": [
+   "leads"
+  ],
+  "name": "admin_quick_registration_leads"
+ },
+ "admin/quick-registration-leads/<int:lead_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_quick_registration_lead_delete"
+ },
+ "admin/quick-registration-leads/export/csv/": {
+  "access": [
+   "leads"
+  ],
+  "name": "admin_quick_registration_leads_export_csv"
+ },
+ "admin/quick-registration-leads/export/xlsx/": {
+  "access": [
+   "leads"
+  ],
+  "name": "admin_quick_registration_leads_export_xlsx"
+ },
+ "admin/referrals/": {
+  "access": [
+   "referrals"
+  ],
+  "name": "admin_referrals_index"
+ },
+ "admin/referrals/<int:code_id>/mark-claimed/": {
+  "access": [
+   "referrals"
+  ],
+  "name": "admin_referrals_mark_claimed"
+ },
+ "admin/referrals/generate-missing-codes/": {
+  "access": [
+   "referrals"
+  ],
+  "name": "admin_referrals_generate_missing"
+ },
+ "admin/referrals/toggle-code/": {
+  "access": [
+   "referrals"
+  ],
+  "name": "admin_referrals_toggle_code"
+ },
+ "admin/referrals/update-tiers/": {
+  "access": [
+   "referrals"
+  ],
+  "name": "admin_referrals_update_tiers"
+ },
+ "admin/revenue/": {
+  "access": [
+   "revenue"
+  ],
+  "name": "admin_revenue"
+ },
+ "admin/reviews/": {
+  "access": [
+   "reviews"
+  ],
+  "name": "admin_reviews_index"
+ },
+ "admin/reviews/bulk-approve/": {
+  "access": [
+   "reviews"
+  ],
+  "name": "admin_reviews_bulk_approve"
+ },
+ "admin/reviews/delete/": {
+  "access": "super_only",
+  "name": "admin_reviews_delete"
+ },
+ "admin/reviews/toggle-approval/": {
+  "access": [
+   "reviews"
+  ],
+  "name": "admin_reviews_toggle_approval"
+ },
+ "admin/search/": {
+  "access": [
+   "dashboard"
+  ],
+  "name": "admin_search"
+ },
+ "admin/security/block-ip/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "security_block_ip"
+ },
+ "admin/security/blocked-ips/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "security_blocked_ips"
+ },
+ "admin/security/blocked-ips/<int:ip_id>/unblock/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "security_unblock_ip"
+ },
+ "admin/security/threat-logs/": {
+  "access": [
+   "analytics"
+  ],
+  "name": "security_threat_logs"
+ },
+ "admin/security/threat-logs/delete/": {
+  "access": "super_only",
+  "name": "security_threat_logs_delete"
+ },
+ "admin/sessions/": {
+  "access": [
+   "sessions"
+  ],
+  "name": "admin_sessions_index"
+ },
+ "admin/sessions/revoke/": {
+  "access": [
+   "sessions"
+  ],
+  "name": "admin_sessions_revoke"
+ },
+ "admin/settings/banner-popup/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_settings_banner_popup"
+ },
+ "admin/settings/banner-popup/save-banner/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_save_banner_settings"
+ },
+ "admin/settings/banner-popup/save-popup/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_save_popup_settings"
+ },
+ "admin/settings/banner-popup/toggle/<str:target>/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_toggle_banner_popup"
+ },
+ "admin/settings/general/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_settings_general"
+ },
+ "admin/settings/hero-section/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_settings_hero_section"
+ },
+ "admin/settings/hero-section/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_settings_hero_section_update"
+ },
+ "admin/settings/homepage/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_settings_homepage"
+ },
+ "admin/settings/homepage/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_settings_homepage_update"
+ },
+ "admin/settings/security/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_settings_security"
+ },
+ "admin/settings/seo/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_settings_seo"
+ },
+ "admin/settings/seo/link-og/<int:rule_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_link_og_delete"
+ },
+ "admin/settings/seo/link-og/<int:rule_id>/toggle/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_link_og_toggle"
+ },
+ "admin/settings/seo/link-og/save/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_link_og_save"
+ },
+ "admin/settings/templates/": {
+  "access": [
+   "email_templates"
+  ],
+  "name": "admin_settings_templates"
+ },
+ "admin/settings/templates/update/": {
+  "access": "super_only",
+  "name": "admin_settings_templates_update"
+ },
+ "admin/settings/update/": {
+  "access": [
+   "site_settings"
+  ],
+  "name": "admin_settings_update"
+ },
+ "admin/settings/wa-bot/toggle/": {
+  "access": "super_only",
+  "name": "admin_toggle_wa_bot_service"
+ },
+ "admin/subscriptions/": {
+  "access": [
+   "subscriptions"
+  ],
+  "name": "admin_subscriptions_index"
+ },
+ "admin/subscriptions/delete/": {
+  "access": "super_only",
+  "name": "admin_delete_subscription"
+ },
+ "admin/system/api-logs/": {
+  "access": [
+   "api_logs"
+  ],
+  "name": "admin_system_api_logs"
+ },
+ "admin/system/backups/": {
+  "access": [
+   "backups"
+  ],
+  "name": "admin_system_backups"
+ },
+ "admin/system/backups/download/<str:filename>/": {
+  "access": [
+   "backups"
+  ],
+  "name": "admin_system_download_backup"
+ },
+ "admin/system/backups/run/": {
+  "access": [
+   "backups"
+  ],
+  "name": "admin_system_run_backup"
+ },
+ "admin/system/clear-cache/": {
+  "access": [
+   "server_health"
+  ],
+  "name": "admin_system_clear_cache"
+ },
+ "admin/system/health/": {
+  "access": [
+   "server_health"
+  ],
+  "name": "admin_system_health"
+ },
+ "admin/system/logs/": {
+  "access": [
+   "logs"
+  ],
+  "name": "admin_system_logs"
+ },
+ "admin/system/purge-cloudflare/": {
+  "access": "super_only",
+  "name": "admin_system_purge_cloudflare"
+ },
+ "admin/system/run-jobs/": {
+  "access": "super_only",
+  "name": "admin_system_run_jobs"
+ },
+ "admin/system/save-cloudflare/": {
+  "access": "super_only",
+  "name": "admin_system_save_cloudflare"
+ },
+ "admin/users/": {
+  "access": [
+   "users"
+  ],
+  "name": "admin_users"
+ },
+ "admin/users/<int:user_id>/edit/": {
+  "access": [
+   "users"
+  ],
+  "name": "admin_users_edit"
+ },
+ "admin/users/<int:user_id>/update/": {
+  "access": [
+   "users"
+  ],
+  "name": "admin_users_update"
+ },
+ "admin/visiting-card-studio/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_digital_card_studio_direct"
+ },
+ "admin/wa-bot/logs/": {
+  "access": "super_only",
+  "name": "admin_wa_bot_logs_alt"
+ },
+ "admin/wa-bot/sessions/": {
+  "access": "super_only",
+  "name": "admin_wa_bot_sessions_alt"
+ },
+ "admin/wa_agent_bot/wabotmessagelog/": {
+  "access": "super_only",
+  "name": "admin_wa_bot_logs"
+ },
+ "admin/wa_agent_bot/wabotsession/": {
+  "access": "super_only",
+  "name": "admin_wa_bot_sessions"
+ },
+ "admin/whatsapp/": {
+  "access": "super_only",
+  "name": "admin_wa_dashboard"
+ },
+ "admin/whatsapp/broadcast/": {
+  "access": "super_only",
+  "name": "admin_wa_broadcast"
+ },
+ "admin/whatsapp/broadcast/<int:broadcast_id>/action/": {
+  "access": "super_only",
+  "name": "admin_wa_broadcast_action"
+ },
+ "admin/whatsapp/broadcast/progress/": {
+  "access": "super_only",
+  "name": "admin_wa_broadcast_progress"
+ },
+ "admin/whatsapp/broadcast/templates/": {
+  "access": "super_only",
+  "name": "admin_wa_broadcast_templates"
+ },
+ "admin/whatsapp/get-qr/": {
+  "access": "super_only",
+  "name": "admin_wa_get_qr_ajax"
+ },
+ "admin/whatsapp/list-sessions/": {
+  "access": "super_only",
+  "name": "admin_wa_list_remote_sessions"
+ },
+ "admin/whatsapp/logs/": {
+  "access": "super_only",
+  "name": "admin_wa_logs_list"
+ },
+ "admin/whatsapp/messages/": {
+  "access": "super_only",
+  "name": "admin_wa_messages"
+ },
+ "admin/whatsapp/resend-creds/<int:session_id>/": {
+  "access": "super_only",
+  "name": "admin_wa_resend_credentials"
+ },
+ "admin/whatsapp/reset-session/<int:session_id>/": {
+  "access": "super_only",
+  "name": "admin_wa_reset_session"
+ },
+ "admin/whatsapp/save-config/": {
+  "access": "super_only",
+  "name": "admin_wa_save_config"
+ },
+ "admin/whatsapp/security/": {
+  "access": "super_only",
+  "name": "admin_wa_security_status"
+ },
+ "admin/whatsapp/send-test/": {
+  "access": "super_only",
+  "name": "admin_wa_send_test_message"
+ },
+ "admin/whatsapp/session-action/": {
+  "access": "super_only",
+  "name": "admin_wa_session_action"
+ },
+ "admin/whatsapp/sessions/": {
+  "access": "super_only",
+  "name": "admin_wa_sessions_list"
+ },
+ "admin/whatsapp/sync-webhook/": {
+  "access": "super_only",
+  "name": "admin_wa_sync_webhook"
+ },
+ "admin/whatsapp/toggle-bot/": {
+  "access": "super_only",
+  "name": "admin_wa_toggle_service"
+ },
+ "admin/whatsapp/toggle-lead-alerts/": {
+  "access": "super_only",
+  "name": "admin_wa_toggle_lead_alerts"
+ },
+ "admin/whatsapp/view-alerts/": {
+  "access": "super_only",
+  "name": "admin_wa_save_view_alerts"
+ }
+}

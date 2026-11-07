@@ -4,80 +4,11 @@ from django.views.decorators.http import require_POST
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.home.models.site_setting import SiteSetting
 from apps.home.models.upcoming_feature import UpcomingFeature
+from apps.admin_panel.services import coming_soon_service
 
+import logging
 
-DEFAULT_FEATURES = [
-    {
-        'title': 'AI Assist',
-        'description': 'Smart replies, instant quotes and AI-drafted follow-ups for every lead.',
-        'icon': 'fa-solid fa-wand-magic-sparkles',
-        'status_badge': 'next_up',
-        'custom_badge_text': 'Next up',
-        'visible_to': 'all',
-        'sort_order': 1,
-        'is_active': True,
-    },
-    {
-        'title': 'Cross Sell Products',
-        'description': 'Get suggested products for each client based on what they already own.',
-        'icon': 'fa-solid fa-arrows-rotate',
-        'status_badge': '',
-        'custom_badge_text': '',
-        'visible_to': 'all',
-        'sort_order': 2,
-        'is_active': True,
-    },
-    {
-        'title': 'Existing Customer Servicing Tools',
-        'description': 'Endorsements, nominee updates and policy service requests in one place.',
-        'icon': 'fa-solid fa-headset',
-        'status_badge': '',
-        'custom_badge_text': '',
-        'visible_to': 'all',
-        'sort_order': 3,
-        'is_active': True,
-    },
-    {
-        'title': 'VAS for Existing Customers',
-        'description': 'Health check-ups, teleconsultation and lifestyle benefits you can offer.',
-        'icon': 'fa-solid fa-gift',
-        'status_badge': '',
-        'custom_badge_text': '',
-        'visible_to': 'all',
-        'sort_order': 4,
-        'is_active': True,
-    },
-    {
-        'title': 'Customer Retention Tools',
-        'description': 'Renewal nudges, birthday wishes and win-back campaigns on autopilot.',
-        'icon': 'fa-solid fa-heart-circle-check',
-        'status_badge': '',
-        'custom_badge_text': '',
-        'visible_to': 'all',
-        'sort_order': 5,
-        'is_active': True,
-    },
-    {
-        'title': 'Marketplace',
-        'description': 'Buy leads, marketing creatives and growth services from trusted partners.',
-        'icon': 'fa-solid fa-store',
-        'status_badge': '',
-        'custom_badge_text': '',
-        'visible_to': 'all',
-        'sort_order': 6,
-        'is_active': True,
-    },
-]
-
-
-def _auto_seed_if_empty():
-    """Seed initial screenshot features if table is empty."""
-    try:
-        if UpcomingFeature.objects.count() == 0:
-            for item in DEFAULT_FEATURES:
-                UpcomingFeature.objects.create(**item)
-    except Exception:
-        pass
+logger = logging.getLogger(__name__)
 
 
 def coming_soon_index(request):
@@ -88,7 +19,7 @@ def coming_soon_index(request):
 
     table_exists = True
     try:
-        _auto_seed_if_empty()
+        coming_soon_service.auto_seed_if_empty()
         features = list(UpcomingFeature.objects.all().order_by('sort_order', 'id'))
         total_count = len(features)
         active_count = len([f for f in features if f.is_active])
@@ -180,22 +111,20 @@ def save_feature(request):
     try:
         if feature_id:
             feature = get_object_or_404(UpcomingFeature, id=feature_id)
-            feature.title = title
-            feature.description = description
-            feature.icon = icon
-            feature.status_badge = status_badge
-            feature.custom_badge_text = custom_badge_text
-            feature.visible_to = visible_to
-            feature.sort_order = sort_order
-            feature.is_active = is_active
-            feature.save()
+            coming_soon_service.update_feature(
+                feature,
+                title=title,
+                description=description,
+                icon=icon,
+                status_badge=status_badge,
+                custom_badge_text=custom_badge_text,
+                visible_to=visible_to,
+                sort_order=sort_order,
+                is_active=is_active,
+            )
             action_msg = 'Feature updated successfully!'
         else:
-            if sort_order == 0:
-                last = UpcomingFeature.objects.order_by('-sort_order').first()
-                sort_order = (last.sort_order + 1) if last else 1
-
-            feature = UpcomingFeature.objects.create(
+            feature = coming_soon_service.create_feature(
                 title=title,
                 description=description,
                 icon=icon,
@@ -239,8 +168,7 @@ def toggle_feature_status(request, id):
 
     try:
         feature = get_object_or_404(UpcomingFeature, id=id)
-        feature.is_active = not feature.is_active
-        feature.save(update_fields=['is_active'])
+        coming_soon_service.toggle_feature(feature)
 
         status_str = 'active' if feature.is_active else 'hidden'
         return JsonResponse({
@@ -264,8 +192,7 @@ def delete_feature(request, id):
 
     try:
         feature = get_object_or_404(UpcomingFeature, id=id)
-        title = feature.title
-        feature.delete()
+        title = coming_soon_service.delete_feature(feature)
 
         return JsonResponse({
             'success': True,
@@ -295,11 +222,7 @@ def reorder_features(request):
             order_data = []
 
     try:
-        for index, fid in enumerate(order_data, 1):
-            try:
-                UpcomingFeature.objects.filter(id=int(fid)).update(sort_order=index)
-            except (ValueError, TypeError):
-                continue
+        coming_soon_service.reorder_features(order_data)
         return JsonResponse({'success': True, 'message': 'Feature card order updated successfully.'})
     except Exception:
         return JsonResponse({
@@ -316,14 +239,7 @@ def seed_default_features(request):
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
 
     try:
-        created_count = 0
-        for item in DEFAULT_FEATURES:
-            _, created = UpcomingFeature.objects.get_or_create(
-                title=item['title'],
-                defaults=item
-            )
-            if created:
-                created_count += 1
+        created_count = coming_soon_service.seed_default_features()
 
         return JsonResponse({
             'success': True,
@@ -354,8 +270,7 @@ def save_coming_soon(request):
             status=400
         )
 
-    setting_key = f'coming_soon_{plan}_html'
-    SiteSetting.set_value(setting_key, html_content, group='coming_soon')
+    coming_soon_service.save_coming_soon_html(plan, html_content)
 
     plan_label = 'Starter' if plan == 'starter' else 'Professional'
     return JsonResponse({
@@ -404,7 +319,8 @@ def save_google_review_config(request):
             'config': saved
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Failed to save: {str(e)}'}, status=500)
+        logger.exception("Admin request failed in coming_soon")  # detail stays server-side
+        return JsonResponse({'success': False, 'message': 'Failed to save. Details are in the server log.'}, status=500)
 
 
 @require_POST
@@ -414,15 +330,8 @@ def toggle_google_review_system(request):
     if not admin_id:
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
 
-    from apps.agents.services.google_review import (
-        get_google_review_system_config,
-        save_google_review_system_config,
-    )
-
     try:
-        cfg = get_google_review_system_config()
-        cfg['enabled'] = not cfg.get('enabled', False)
-        saved = save_google_review_system_config(cfg)
+        saved = coming_soon_service.toggle_google_review_system()
         status_text = 'Enabled' if saved['enabled'] else 'Disabled'
         return JsonResponse({
             'success': True,
@@ -430,4 +339,5 @@ def toggle_google_review_system(request):
             'message': f'Google Review system is now {status_text}.'
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Error toggling: {str(e)}'}, status=500)
+        logger.exception("Admin request failed in coming_soon")  # detail stays server-side
+        return JsonResponse({'success': False, 'message': 'Error toggling. Details are in the server log.'}, status=500)

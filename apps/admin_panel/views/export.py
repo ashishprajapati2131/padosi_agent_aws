@@ -12,122 +12,109 @@ Adaptations from source:
   - All SQL queries, CSV structure, and business logic are preserved identically.
 """
 
-from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
+from apps.admin_panel.services.spreadsheet_safety import streaming_csv_response
 
-from django.db import connection
-from django.http import HttpResponse
+from django.http import StreamingHttpResponse
 from django.shortcuts import redirect, render
 from django.utils.timezone import now
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models import Agent, AgentSubscription, AgentReview
 from apps.admin_panel.models.contact_submission import ContactSubmission
+from apps.admin_panel.selectors.export import (
+    count_table,
+    fetch_agent_export_rows,
+    fetch_lead_export_rows,
+    fetch_pending_export_rows,
+    fetch_review_export_rows,
+    fetch_subscription_export_rows,
+)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _csv_response(filename: str, header: list, rows: list) -> HttpResponse:
-    """
-    Build a CSV download response.
-    Uses HttpResponse directly as the file-like object for csv.writer,
-    mirroring PHP's fopen('php://output','w') + fputcsv() pattern.
-    """
-    response = HttpResponse(content_type='text/csv; charset=UTF-8')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response['Pragma'] = 'no-cache'
-    response['Cache-Control'] = 'must-revalidate, post-check=0, pre-check=0'
-    response['Expires'] = '0'
-    # Write UTF-8 BOM so Excel opens without encoding issues
-    response.write(b'\xef\xbb\xbf')
-    writer = safe_csv_writer(response)
-    writer.writerow(header)   # header row
-    writer.writerows(rows)    # all data rows
-    return response
+
+def _csv_response(filename: str, header: list, rows) -> StreamingHttpResponse:
+    """Streamed, formula-safe CSV download (rows may be any iterable)."""
+    return streaming_csv_response(filename, header, rows)
 
 
 def _today() -> str:
-    return now().strftime('%Y-%m-%d')
+    return now().strftime("%Y-%m-%d")
 
 
 # ─── Index ───────────────────────────────────────────────────────────────────
+
 
 def index(request):
     """Export Center landing page – mirrors AdminExportController::index."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
     counts = {
-        'agents':        Agent.objects.count(),
-        'leads':         _count_table('agent_leads'),
-        'contacts':      ContactSubmission.objects.count(),
-        'subscriptions': AgentSubscription.objects.count(),
-        'reviews':       AgentReview.objects.count(),
+        "agents": Agent.objects.count(),
+        "leads": count_table("agent_leads"),
+        "contacts": ContactSubmission.objects.count(),
+        "subscriptions": AgentSubscription.objects.count(),
+        "reviews": AgentReview.objects.count(),
     }
-    return render(request, 'admin/export_center.html', {'counts': counts})
-
-
-ALLOWED_EXPORT_TABLES = {
-    'agent_leads', 'agents', 'contact_submissions', 'agent_subscriptions',
-    'agent_reviews', 'promo_codes', 'pincodes', 'insurance_companies',
-    'referral_codes', 'referral_usages', 'free_trial_history'
-}
-
-def _count_table(table: str) -> int:
-    """Count rows in a raw table that may not have a Django model."""
-    if table not in ALLOWED_EXPORT_TABLES:
-        return 0
-    with connection.cursor() as cursor:
-        cursor.execute(f"SELECT COUNT(*) FROM `{table}`")
-        return cursor.fetchone()[0]
+    return render(request, "admin/export_center.html", {"counts": counts})
 
 
 # ─── Agents CSV ──────────────────────────────────────────────────────────────
+
 
 def export_agents(request):
     """Export agents with profile + subscription info as CSV."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    status_filter = request.GET.get('status', 'all')
-    if status_filter == 'All Status':
-        status_filter = 'all'
+    status_filter = request.GET.get("status", "all")
+    if status_filter == "All Status":
+        status_filter = "all"
 
-    with connection.cursor() as cursor:
-        base_sql = """
-            SELECT
-                a.id, a.fullname, ap.display_name, a.email, a.mobile, a.status,
-                ap.agency_name, ap.address, a.user_types, a.experience_range,
-                s.selected_plan, s.expires_at, a.created_at
-            FROM agents a
-            LEFT JOIN agent_profiles ap ON a.id = ap.agent_id
-            LEFT JOIN agent_subscriptions s ON a.id = s.agent_id
-        """
-        params = []
-        if status_filter != 'all':
-            base_sql += ' WHERE a.status = %s'
-            params.append(status_filter)
-        base_sql += ' ORDER BY a.created_at DESC'
-        cursor.execute(base_sql, params)
-        rows_raw = cursor.fetchall()
+    rows_raw = fetch_agent_export_rows(status_filter)
 
     header = [
-        'ID', 'Full Name', 'Display Name', 'Email', 'Mobile', 'Status',
-        'Agency', 'Address', 'User Types', 'Experience', 'Plan', 'Plan Expires', 'Joined',
+        "ID",
+        "Full Name",
+        "Display Name",
+        "Email",
+        "Mobile",
+        "Status",
+        "Agency",
+        "Address",
+        "User Types",
+        "Experience",
+        "Plan",
+        "Plan Expires",
+        "Joined",
     ]
-    rows = [
+    rows = (
         [
-            r[0], r[1] or '', r[2] or '', r[3] or '', r[4] or '',
-            r[5] or '', r[6] or '', r[7] or '', r[8] or '', r[9] or '',
-            r[10] or '', str(r[11]) if r[11] else '', str(r[12]) if r[12] else '',
+            r[0],
+            r[1] or "",
+            r[2] or "",
+            r[3] or "",
+            r[4] or "",
+            r[5] or "",
+            r[6] or "",
+            r[7] or "",
+            r[8] or "",
+            r[9] or "",
+            r[10] or "",
+            str(r[11]) if r[11] else "",
+            str(r[12]) if r[12] else "",
         ]
         for r in rows_raw
-    ]
-    return _csv_response(f'agents_{status_filter}_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"agents_{status_filter}_{_today()}.csv", header, rows)
 
 
 # ─── Leads CSV ───────────────────────────────────────────────────────────────
+
 
 def export_leads(request):
     """Export agent leads as CSV.
@@ -137,198 +124,187 @@ def export_leads(request):
     """
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    type_filter = request.GET.get('type', 'all')
+    type_filter = request.GET.get("type", "all")
 
-    with connection.cursor() as cursor:
-        base_sql = """
-            SELECT
-                l.id, a.fullname, a.email,
-                l.interaction_type,
-                l.customer_name, l.customer_mobile,
-                l.customer_email, l.customer_pincode,
-                l.service_type, l.insurance_type,
-                l.lead_status, l.created_at
-            FROM agent_leads l
-            LEFT JOIN agents a ON l.agent_id = a.id
-        """
-        params = []
-        if type_filter != 'all':
-            base_sql += ' WHERE l.interaction_type = %s'
-            params.append(type_filter)
-        base_sql += ' ORDER BY l.created_at DESC'
-        cursor.execute(base_sql, params)
-        rows_raw = cursor.fetchall()
+    rows_raw = fetch_lead_export_rows(type_filter)
 
     header = [
-        'ID', 'Agent Name', 'Agent Email',
-        'Lead Type',
-        'Customer Name', 'Customer Mobile',
-        'Customer Email', 'Customer Pincode',
-        'Service Type', 'Insurance Type',
-        'Status', 'Date',
+        "ID",
+        "Agent Name",
+        "Agent Email",
+        "Lead Type",
+        "Customer Name",
+        "Customer Mobile",
+        "Customer Email",
+        "Customer Pincode",
+        "Service Type",
+        "Insurance Type",
+        "Status",
+        "Date",
     ]
-    rows = [
+    rows = (
         [
-            r[0], r[1] or '', r[2] or '',
-            r[3] or '',
-            r[4] or '', r[5] or '',
-            r[6] or '', r[7] or '',
-            r[8] or '', r[9] or '',
-            r[10] or '', str(r[11]) if r[11] else '',
+            r[0],
+            r[1] or "",
+            r[2] or "",
+            r[3] or "",
+            r[4] or "",
+            r[5] or "",
+            r[6] or "",
+            r[7] or "",
+            r[8] or "",
+            r[9] or "",
+            r[10] or "",
+            str(r[11]) if r[11] else "",
         ]
         for r in rows_raw
-    ]
-    return _csv_response(f'leads_{type_filter}_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"leads_{type_filter}_{_today()}.csv", header, rows)
 
 
 # ─── Contacts CSV ────────────────────────────────────────────────────────────
+
 
 def export_contacts(request):
     """Export contact submissions as CSV."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    qs = ContactSubmission.objects.order_by('-created_at')
-    header = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Status', 'Date']
-    rows = [
+    qs = ContactSubmission.objects.order_by("-created_at")
+    header = ["ID", "Name", "Email", "Phone", "Subject", "Message", "Status", "Date"]
+    rows = (
         [
-            r.id, r.name or '', r.email or '',
-            r.mobile or '',
-            r.subject or '', r.message or '', r.status or '',
-            str(r.created_at) if r.created_at else '',
+            r.id,
+            r.name or "",
+            r.email or "",
+            r.mobile or "",
+            r.subject or "",
+            r.message or "",
+            r.status or "",
+            str(r.created_at) if r.created_at else "",
         ]
         for r in qs
-    ]
-    return _csv_response(f'contacts_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"contacts_{_today()}.csv", header, rows)
 
 
 # ─── Subscriptions CSV ───────────────────────────────────────────────────────
+
 
 def export_subscriptions(request):
     """Export subscription history as CSV."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT
-                s.id, a.fullname, a.email,
-                s.selected_plan, s.registration_amount, s.payment_status,
-                s.starts_at, s.expires_at, s.created_at
-            FROM agent_subscriptions s
-            JOIN agents a ON s.agent_id = a.id
-            ORDER BY s.created_at DESC
-        """)
-        rows_raw = cursor.fetchall()
+    rows_raw = fetch_subscription_export_rows()
 
     header = [
-        'ID', 'Agent Name', 'Agent Email', 'Plan',
-        'Amount (Rs.)', 'Payment Status', 'Starts At', 'Expires At', 'Created At',
+        "ID",
+        "Agent Name",
+        "Agent Email",
+        "Plan",
+        "Amount (Rs.)",
+        "Payment Status",
+        "Starts At",
+        "Expires At",
+        "Created At",
     ]
-    rows = [
+    rows = (
         [
-            r[0], r[1] or '', r[2] or '',
-            r[3] or '', r[4] or '', r[5] or '',
-            str(r[6]) if r[6] else '', str(r[7]) if r[7] else '', str(r[8]) if r[8] else '',
+            r[0],
+            r[1] or "",
+            r[2] or "",
+            r[3] or "",
+            r[4] or "",
+            r[5] or "",
+            str(r[6]) if r[6] else "",
+            str(r[7]) if r[7] else "",
+            str(r[8]) if r[8] else "",
         ]
         for r in rows_raw
-    ]
-    return _csv_response(f'subscriptions_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"subscriptions_{_today()}.csv", header, rows)
 
 
 # ─── Reviews CSV ─────────────────────────────────────────────────────────────
+
 
 def export_reviews(request):
     """Export agent reviews as CSV."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT
-                r.id, a.fullname AS agent_name,
-                r.reviewer_name, r.rating, r.review,
-                r.is_approved, r.created_at
-            FROM agent_reviews r
-            LEFT JOIN agents a ON r.agent_id = a.id
-            ORDER BY r.created_at DESC
-        """)
-        rows_raw = cursor.fetchall()
+    rows_raw = fetch_review_export_rows()
 
-    header = ['ID', 'Agent', 'Reviewer Name', 'Rating', 'Review', 'Approved', 'Date']
-    rows = [
+    header = ["ID", "Agent", "Reviewer Name", "Rating", "Review", "Approved", "Date"]
+    rows = (
         [
-            r[0], r[1] or '', r[2] or '',
-            r[3] or '', r[4] or '',
-            'Yes' if r[5] else 'No',
-            str(r[6]) if r[6] else '',
+            r[0],
+            r[1] or "",
+            r[2] or "",
+            r[3] or "",
+            r[4] or "",
+            "Yes" if r[5] else "No",
+            str(r[6]) if r[6] else "",
         ]
         for r in rows_raw
-    ]
-    return _csv_response(f'reviews_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"reviews_{_today()}.csv", header, rows)
 
 
 # ─── Pending Registrations CSV ───────────────────────────────────────────────
+
 
 def export_pending(request):
     """Export incomplete/pending agents as CSV."""
     admin = _get_admin_from_session(request)
     if not admin:
-        return redirect('admin_login_page')
+        return redirect("admin_login_page")
 
-    search = request.GET.get('search', '')
-    event_filter = request.GET.get('event_id', 'All Events')
+    search = request.GET.get("search", "")
+    event_filter = request.GET.get("event_id", "All Events")
 
-    with connection.cursor() as cursor:
-        base_sql = """
-            SELECT
-                a.id, a.fullname, ap.display_name, a.email, a.mobile,
-                a.status, a.registration_step,
-                s.selected_plan, s.registration_amount, s.payment_status,
-                ap.address,
-                TIMESTAMPDIFF(HOUR, a.created_at, UTC_TIMESTAMP()) AS hours_waiting,
-                a.created_at
-            FROM agents a
-            LEFT JOIN agent_profiles ap ON a.id = ap.agent_id
-            LEFT JOIN agent_subscriptions s ON a.id = s.agent_id
-                AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
-            WHERE a.status IN ('incomplete', 'pending_payment', 'event_challenge')
-        """
-        params = []
-        
-        if search:
-            base_sql += " AND (a.fullname LIKE %s OR a.email LIKE %s OR ap.display_name LIKE %s)"
-            search_param = f"%{search}%"
-            params.extend([search_param, search_param, search_param])
-            
-        from apps.admin_panel.views.agents import _event_filter_sql
+    from apps.admin_panel.views.agents import _event_filter_sql
 
-        event_sql, event_params = _event_filter_sql(event_filter)
-        base_sql += event_sql
-        params.extend(event_params)
-
-        base_sql += " ORDER BY TIMESTAMPDIFF(HOUR, a.created_at, UTC_TIMESTAMP()) DESC"
-
-        cursor.execute(base_sql, params)
-        rows_raw = cursor.fetchall()
+    event_sql, event_params = _event_filter_sql(event_filter)
+    rows_raw = fetch_pending_export_rows(search, event_sql, event_params)
 
     header = [
-        'ID', 'Full Name', 'Display Name', 'Email', 'Mobile', 'Status', 'Reg. Step',
-        'Selected Plan', 'Amount (Rs.)', 'Payment Status', 'Location', 'Waiting (Hours)', 'Registered At',
+        "ID",
+        "Full Name",
+        "Display Name",
+        "Email",
+        "Mobile",
+        "Status",
+        "Reg. Step",
+        "Selected Plan",
+        "Amount (Rs.)",
+        "Payment Status",
+        "Location",
+        "Waiting (Hours)",
+        "Registered At",
     ]
-    rows = [
+    rows = (
         [
-            r[0], r[1] or '', r[2] or '', r[3] or '', r[4] or '',
-            r[5] or '', r[6] or '',
-            r[7] or 'Not Selected', r[8] or '0', r[9] or '',
-            r[10] or '', r[11] or 0,
-            str(r[12]) if r[12] else '',
+            r[0],
+            r[1] or "",
+            r[2] or "",
+            r[3] or "",
+            r[4] or "",
+            r[5] or "",
+            r[6] or "",
+            r[7] or "Not Selected",
+            r[8] or "0",
+            r[9] or "",
+            r[10] or "",
+            r[11] or 0,
+            str(r[12]) if r[12] else "",
         ]
         for r in rows_raw
-    ]
-    return _csv_response(f'pending_registrations_{_today()}.csv', header, rows)
+    )
+    return _csv_response(f"pending_registrations_{_today()}.csv", header, rows)

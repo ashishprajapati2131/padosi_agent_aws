@@ -1,4 +1,4 @@
-{% load static %}
+{% load static admin_tags %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -26,6 +26,13 @@
 
     <!-- jQuery & Bootstrap 5 JS (loaded early so child templates can use $) -->
     <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script>
+    // Shared by admin pages (was copy-pasted per template).
+    function getCookie(name) {
+        const match = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name + '='));
+        return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
+    }
+    </script>
     <script>window.$ = window.jQuery;</script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -517,31 +524,31 @@
         <div class="sidebar-menu">
 
             <!-- Dashboard -->
-            {% if is_super_admin or 'dashboard' in admin_permissions %}
+            {% if nav_open|any_open:"admin_dashboard" %}
             <a href="/admin/dashboard/" class="menu-item {% if request.path == '/admin/dashboard/' %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Dashboard
             </a>
             {% endif %}
 
             <!-- User Management -->
-            {% if is_super_admin or 'agents' in admin_permissions or 'distributors' in admin_permissions or 'approvals' in admin_permissions or 'blacklisted_agents' in admin_permissions or 'pending_registrations' in admin_permissions or 'users' in admin_permissions or 'insurance' in admin_permissions or 'insurance_approvals' in admin_permissions %}
+            {% if nav_open|any_open:"admin_agents,admin_distributors,admin_agents_approvals,admin_agents_pending_registrations,admin_users,admin_blacklisted_agents,admin_deletion_requests,admin_insurance_index,admin_insurance_approvals_index" %}
             <div class="menu-label">User Management</div>
             {% endif %}
 
-            {% if is_super_admin or 'agents' in admin_permissions %}
+            {% if nav_open|any_open:"admin_agents" %}
             <a href="/admin/agents/?status=active" class="menu-item {% if request.path == '/admin/agents/' %}active{% endif %}">
                 <i class="fa-solid fa-users-gear"></i> Agents
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'distributors' in admin_permissions %}
+            {% if nav_open|any_open:"admin_distributors" %}
             <a href="/admin/distributors/"
                 class="menu-item {% if '/admin/distributors/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-building-user"></i> Distributors
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'approvals_awaiting_verification' in admin_permissions or 'approvals_missing_licenses' in admin_permissions %}
+            {% if nav_open|any_open:"admin_agents_approvals" %}
             <a href="/admin/approvals/" class="menu-item {% if '/admin/approvals/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-user-check"></i> Pending Approvals
                 {% if pending_agents_count > 0 %}
@@ -550,7 +557,7 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'pending_registrations' in admin_permissions %}
+            {% if nav_open|any_open:"admin_agents_pending_registrations" %}
             <a href="/admin/pending-registrations/"
                 class="menu-item {% if '/admin/pending-registrations/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-user-clock"></i> Registration Pending
@@ -560,32 +567,32 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'users' in admin_permissions %}
+            {% if nav_open|any_open:"admin_users" %}
             <a href="/admin/users/" class="menu-item {% if '/admin/users/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-user-group"></i> Clients / Users
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'blacklisted_agents' in admin_permissions %}
-            <a href="{% url 'admin_blacklisted_agents' %}"
+            {% if nav_open|any_open:"admin_blacklisted_agents,admin_deletion_requests" %}
+            {% if 'admin_blacklisted_agents' in nav_open %}<a href="{% url 'admin_blacklisted_agents' %}"
                 class="menu-item {% if request.path == '/admin/blacklisted-agents/' %}active{% endif %}">
                 <i class="fa-solid fa-user-slash"></i> Blacklisted Agents
-            </a>
-            <a href="{% url 'admin_deletion_requests' %}"
+            </a>{% endif %}
+            {% if 'admin_deletion_requests' in nav_open %}<a href="{% url 'admin_deletion_requests' %}"
                 class="menu-item {% if '/admin/account-deletion-requests/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-user-xmark" style="color:#dc2626;"></i> Deletion Requests
-            </a>
+            </a>{% endif %}
             {% endif %}
 
 
-            {% if is_super_admin or 'insurance' in admin_permissions %}
+            {% if nav_open|any_open:"admin_insurance_index" %}
             <a href="{% url 'admin_insurance_index' %}"
                 class="menu-item {% if '/admin/insurance/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved" style="color:#0f3460;"></i> Insurance Companies
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'insurance_approvals' in admin_permissions %}
+            {% if nav_open|any_open:"admin_insurance_approvals_index" %}
             <a href="{% url 'admin_insurance_approvals_index' %}"
                 class="menu-item {% if '/admin/insurance-approvals/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-clipboard-check" style="color:#d97706;"></i> Insurance Approvals
@@ -603,7 +610,7 @@
             {% endif %}
 
             <!-- Event Management -->
-            {% if is_super_admin or 'events' in admin_permissions %}
+            {% if nav_open|any_open:"admin_events_index" %}
             <div class="menu-label">Event Management</div>
 
             <a href="/admin/events/" class="menu-item {% if '/admin/events/' in request.path %}active{% endif %}">
@@ -612,44 +619,44 @@
             {% endif %}
 
             <!-- Subscriptions -->
-            {% if is_super_admin or 'subscriptions' in admin_permissions %}
+            {% if nav_open|any_open:"admin_plans_index,admin_subscriptions_index" %}
             <div class="menu-label">Subscriptions</div>
 
-            <a href="{% url 'admin_plans_index' %}"
+            {% if 'admin_plans_index' in nav_open %}<a href="{% url 'admin_plans_index' %}"
                 class="menu-item {% if '/admin/plans/' in request.path and 'content' not in request.path %}active{% endif %}">
                 <i class="fa-solid fa-list-check"></i> Subscription Plans
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/subscriptions/"
+            {% if 'admin_subscriptions_index' in nav_open %}<a href="/admin/subscriptions/"
                 class="menu-item {% if '/admin/subscriptions/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved"></i> Renewal Tracker
                 {% if expiring_soon_count > 0 %}
                 <span class="badge bg-danger ms-auto">{{ expiring_soon_count }}</span>
                 {% endif %}
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- Leads & Inquiries -->
-            {% if is_super_admin or 'leads' in admin_permissions or 'contacts' in admin_permissions %}
+            {% if nav_open|any_open:"admin_leads_index,admin_quick_registration_leads,admin_contacts_index" %}
             <div class="menu-label">Leads &amp; Inquiries</div>
             {% endif %}
 
-            {% if is_super_admin or 'leads' in admin_permissions %}
-            <a href="/admin/leads/" class="menu-item {% if '/admin/leads/' in request.path %}active{% endif %}">
+            {% if nav_open|any_open:"admin_leads_index,admin_quick_registration_leads" %}
+            {% if 'admin_leads_index' in nav_open %}<a href="/admin/leads/" class="menu-item {% if '/admin/leads/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-phone-volume"></i> Agent Leads
                 {% if new_leads_count > 0 %}
                 <span class="badge bg-warning text-dark ms-auto">{{ new_leads_count }}</span>
                 {% endif %}
-            </a>
-            <a href="{% url 'admin_quick_registration_leads' %}" class="menu-item {% if '/admin/quick-registration-leads/' in request.path %}active{% endif %}">
+            </a>{% endif %}
+            {% if 'admin_quick_registration_leads' in nav_open %}<a href="{% url 'admin_quick_registration_leads' %}" class="menu-item {% if '/admin/quick-registration-leads/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-user-plus"></i> Quick Registration Leads
                 {% if quick_registration_leads_count > 0 %}
                 <span class="badge bg-warning text-dark ms-auto">{{ quick_registration_leads_count }}</span>
                 {% endif %}
-            </a>
+            </a>{% endif %}
             {% endif %}
 
-            {% if is_super_admin or 'contacts' in admin_permissions %}
+            {% if nav_open|any_open:"admin_contacts_index" %}
             <a href="/admin/contacts/" class="menu-item {% if '/admin/contacts/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-envelope-open-text"></i> Contact Inbox
                 {% if pending_contacts_count > 0 %}
@@ -659,7 +666,7 @@
             {% endif %}
 
             <!-- Reviews & Ratings -->
-            {% if is_super_admin or 'reviews' in admin_permissions %}
+            {% if nav_open|any_open:"admin_reviews_index" %}
             <div class="menu-label">Reviews &amp; Ratings</div>
 
             <a href="/admin/reviews/" class="menu-item {% if '/admin/reviews/' in request.path %}active{% endif %}">
@@ -671,116 +678,116 @@
             {% endif %}
 
             <!-- Communications -->
-            {% if is_super_admin or 'notifications' in admin_permissions %}
+            {% if nav_open|any_open:"agent_notify,broadcast_index,admin_wa_dashboard" %}
             <div class="menu-label">Communications</div>
 
-            <a href="/admin/agent/notifications/"
+            {% if 'agent_notify' in nav_open %}<a href="/admin/agent/notifications/"
                 class="menu-item {% if '/admin/agent/notifications/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-bell"></i> Custom Notification
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/broadcast/" class="menu-item {% if '/admin/broadcast/' in request.path %}active{% endif %}">
+            {% if 'broadcast_index' in nav_open %}<a href="/admin/broadcast/" class="menu-item {% if '/admin/broadcast/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-paper-plane"></i> Broadcast
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_wa_dashboard' %}" class="menu-item {% if '/admin/whatsapp/' in request.path %}active{% endif %}">
+            {% if 'admin_wa_dashboard' in nav_open %}<a href="{% url 'admin_wa_dashboard' %}" class="menu-item {% if '/admin/whatsapp/' in request.path %}active{% endif %}">
                 <i class="fa-brands fa-whatsapp text-success"></i> WhatsApp &amp; OpenWA
                 <span class="badge bg-success ms-auto" style="font-size: 10px;">Hub</span>
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- Content Control -->
-            {% if is_super_admin or 'content' in admin_permissions %}
+            {% if nav_open|any_open:"admin_content_invite_studio,admin_digital_card_studio,admin_investment_types_index,admin_content_calculators,admin_settings_homepage,admin_settings_hero_section,admin_content_banners,admin_profile_banners_index,admin_agent_card_themes,admin_content_registration_cards,admin_content_faqs,admin_content_plans,admin_content_about,admin_content_contact,admin_pages_index" %}
             <div class="menu-label">Content Control</div>
 
-            <a href="/admin/content/invite-studio/"
+            {% if 'admin_content_invite_studio' in nav_open %}<a href="/admin/content/invite-studio/"
                 class="menu-item {% if '/admin/content/invite-studio/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-share-nodes"></i> Invite Studio Editor
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_digital_card_studio' %}"
+            {% if 'admin_digital_card_studio' in nav_open %}<a href="{% url 'admin_digital_card_studio' %}"
                 class="menu-item {% if '/admin/content/visiting-card-studio/' in request.path or '/admin/visiting-card-studio/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-id-card text-info"></i> Visiting Card Studio
                 <span class="badge bg-primary ms-auto" style="font-size: 10px;">Pro</span>
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_investment_types_index' %}"
+            {% if 'admin_investment_types_index' in nav_open %}<a href="{% url 'admin_investment_types_index' %}"
                 class="menu-item {% if '/admin/investment-types/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Investment Types
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_content_calculators' %}"
+            {% if 'admin_content_calculators' in nav_open %}<a href="{% url 'admin_content_calculators' %}"
                 class="menu-item {% if '/admin/content/calculators/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-calculator"></i> Calculators
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/settings/homepage/"
+            {% if 'admin_settings_homepage' in nav_open %}<a href="/admin/settings/homepage/"
                 class="menu-item {% if '/admin/settings/homepage/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-house-laptop"></i> Homepage Dynamic
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/settings/hero-section/"
+            {% if 'admin_settings_hero_section' in nav_open %}<a href="/admin/settings/hero-section/"
                 class="menu-item {% if '/admin/settings/hero-section/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-star"></i> Hero Section Editor
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/content/banners/"
+            {% if 'admin_content_banners' in nav_open %}<a href="/admin/content/banners/"
                 class="menu-item {% if '/admin/content/banners/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-images"></i> Banner Slides
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_profile_banners_index' %}"
+            {% if 'admin_profile_banners_index' in nav_open %}<a href="{% url 'admin_profile_banners_index' %}"
                 class="menu-item {% if '/admin/profile-banners/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-panorama"></i> Profile Banners
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_agent_card_themes' %}"
+            {% if 'admin_agent_card_themes' in nav_open %}<a href="{% url 'admin_agent_card_themes' %}"
                 class="menu-item {% if '/admin/agent-card-themes/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-palette"></i> Agent Card Themes
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_content_registration_cards' %}"
+            {% if 'admin_content_registration_cards' in nav_open %}<a href="{% url 'admin_content_registration_cards' %}"
                 class="menu-item {% if '/admin/content/registration-cards/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-id-card"></i> Registration Cards
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/content/faqs/"
+            {% if 'admin_content_faqs' in nav_open %}<a href="/admin/content/faqs/"
                 class="menu-item {% if '/admin/content/faqs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-circle-question"></i> FAQ Manager
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_content_plans' %}"
+            {% if 'admin_content_plans' in nav_open %}<a href="{% url 'admin_content_plans' %}"
                 class="menu-item {% if '/admin/content/plans/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-tags"></i> Plans &amp; Pricing
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/content/about/"
+            {% if 'admin_content_about' in nav_open %}<a href="/admin/content/about/"
                 class="menu-item {% if '/admin/content/about/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-building-columns"></i> About Page
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/content/contact/"
+            {% if 'admin_content_contact' in nav_open %}<a href="/admin/content/contact/"
                 class="menu-item {% if '/admin/content/contact/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-address-book"></i> Contact Page
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/pages/" class="menu-item {% if '/admin/pages/' in request.path %}active{% endif %}">
+            {% if 'admin_pages_index' in nav_open %}<a href="/admin/pages/" class="menu-item {% if '/admin/pages/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-file-lines"></i> Pages &amp; CMS
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- Finances -->
-            {% if is_super_admin or 'revenue' in admin_permissions or 'invoices' in admin_permissions or 'promo_codes' in admin_permissions or 'free_trial' in admin_permissions or 'referrals' in admin_permissions %}
+            {% if nav_open|any_open:"admin_revenue,admin_invoices,admin_payment_reconcile,admin_promo_codes,admin_free_trial,admin_referrals_index,admin_championship_dashboard,admin_event_referral_dashboard" %}
             <div class="menu-label">Finances</div>
             {% endif %}
 
-            {% if is_super_admin or 'revenue' in admin_permissions %}
+            {% if nav_open|any_open:"admin_revenue" %}
             <a href="/admin/revenue/" class="menu-item {% if '/admin/revenue/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-indian-rupee-sign"></i> Revenue Dashboard
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'invoices' in admin_permissions %}
+            {% if nav_open|any_open:"admin_invoices" %}
             <a href="/admin/invoices/" class="menu-item {% if '/admin/invoices/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-file-invoice" style="color:#4f46e5;"></i> Invoices
                 {% if unsynced_invoice_count > 0 %}
@@ -789,20 +796,20 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'invoices' in admin_permissions or 'revenue' in admin_permissions %}
+            {% if nav_open|any_open:"admin_payment_reconcile" %}
             <a href="/admin/payments/reconcile/" class="menu-item {% if '/admin/payments/reconcile/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-file-invoice-dollar" style="color:#059669;"></i> Payment Recovery
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'promo_codes' in admin_permissions %}
+            {% if nav_open|any_open:"admin_promo_codes" %}
             <a href="/admin/promo-codes/"
                 class="menu-item {% if '/admin/promo-codes/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-ticket-alt"></i> Promo Codes
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'free_trial' in admin_permissions %}
+            {% if nav_open|any_open:"admin_free_trial" %}
             <a href="/admin/free-trial/"
                 class="menu-item {% if '/admin/free-trial/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-flask text-success"></i> Free Trial Manager
@@ -812,56 +819,56 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'referrals' in admin_permissions %}
-            <a href="/admin/referrals/" class="menu-item {% if '/admin/referrals/' in request.path %}active{% endif %}">
+            {% if nav_open|any_open:"admin_referrals_index,admin_championship_dashboard,admin_event_referral_dashboard" %}
+            {% if 'admin_referrals_index' in nav_open %}<a href="/admin/referrals/" class="menu-item {% if '/admin/referrals/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-share-nodes" style="color:#7c3aed;"></i> Referral System
                 {% if unclaimed_rewards_count > 0 %}
                 <span class="badge ms-auto" style="background:#7c3aed;">{{ unclaimed_rewards_count }}</span>
                 {% endif %}
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/championship/" class="menu-item {% if '/admin/championship/' in request.path %}active{% endif %}">
+            {% if 'admin_championship_dashboard' in nav_open %}<a href="/admin/championship/" class="menu-item {% if '/admin/championship/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-trophy" style="color:#f59e0b;"></i> Referral Championship
                 <span class="badge bg-warning text-dark ms-auto">2026</span>
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/event-referral/" class="menu-item {% if '/admin/event-referral/' in request.path %}active{% endif %}">
+            {% if 'admin_event_referral_dashboard' in nav_open %}<a href="/admin/event-referral/" class="menu-item {% if '/admin/event-referral/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-stopwatch" style="color:#0d9488;"></i> Event Referral
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- Tools -->
-            {% if is_super_admin or 'finance_accounts' in admin_permissions or 'export' in admin_permissions or 'qr_generator' in admin_permissions or 'geocoding' in admin_permissions or 'pincode' in admin_permissions %}
+            {% if nav_open|any_open:"admin_finance_index,export_index,admin_qr_files_index,admin_coming_soon_index,admin_geocoding_index,admin_pincode_index,admin_find_agent_locator,admin_pincode_heatmap" %}
             <div class="menu-label">Tools</div>
             {% endif %}
 
-            {% if is_super_admin or 'finance_accounts' in admin_permissions %}
+            {% if nav_open|any_open:"admin_finance_index" %}
             <a href="/admin/finance/" class="menu-item {% if '/admin/finance/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-landmark" style="color:#2563eb;"></i> Finance &amp; Accounts
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'export' in admin_permissions %}
+            {% if nav_open|any_open:"export_index" %}
             <a href="/admin/export/" class="menu-item {% if '/admin/export/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-download"></i> Export Center
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'qr_generator' in admin_permissions %}
+            {% if nav_open|any_open:"admin_qr_files_index" %}
             <a href="{% url 'admin_qr_files_index' %}"
                 class="menu-item {% if '/admin/qr-files/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-qrcode" style="color:#10b981;"></i> QR Code Generator
             </a>
             {% endif %}
 
-            {% if is_super_admin %}
+            {% if nav_open|any_open:"admin_coming_soon_index" %}
             <a href="{% url 'admin_coming_soon_index' %}"
                 class="menu-item {% if '/admin/coming-soon/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-rocket" style="color:#f59e0b;"></i> Coming Soon Manager
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'geocoding' in admin_permissions %}
+            {% if nav_open|any_open:"admin_geocoding_index" %}
             <a href="/admin/geocoding-manager/"
                 class="menu-item {% if '/admin/geocoding-manager/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-map-location-dot" style="color:#0891b2;"></i> Geocoding Manager
@@ -871,7 +878,7 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'pincode' in admin_permissions %}
+            {% if nav_open|any_open:"admin_pincode_index" %}
             <a href="{% url 'admin_pincode_index' %}"
                 class="menu-item {% if '/admin/pincode/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-map-pin" style="color:#7c3aed;"></i> Pincode Manager
@@ -881,18 +888,18 @@
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'pincode' in admin_permissions or 'geocoding' in admin_permissions or 'agents' in admin_permissions %}
-            <a href="{% url 'admin_find_agent_locator' %}"
+            {% if nav_open|any_open:"admin_find_agent_locator,admin_pincode_heatmap" %}
+            {% if 'admin_find_agent_locator' in nav_open %}<a href="{% url 'admin_find_agent_locator' %}"
                 class="menu-item {% if '/admin/find-agent-locator/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-location-crosshairs" style="color:#10b981;"></i> Pincode &amp; Find Agent
                 <span class="badge ms-auto" style="background:#10b981;">Live</span>
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_pincode_heatmap' %}"
+            {% if 'admin_pincode_heatmap' in nav_open %}<a href="{% url 'admin_pincode_heatmap' %}"
                 class="menu-item {% if '/admin/pincode-heatmap/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-fire-flame-curved" style="color:#f59e0b;"></i> Pincode Heatmap (BI)
                 <span class="badge ms-auto bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 10px;">Beta</span>
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- Developer & API -->
@@ -905,30 +912,30 @@
             {% endif %}
 
             <!-- Advanced -->
-            {% if is_super_admin or 'analytics' in admin_permissions or 'error_logs' in admin_permissions %}
+            {% if nav_open|any_open:"advanced_analytics,admin_error_logs_index,advanced_activity_logs,security_threat_logs" %}
             <div class="menu-label">Advanced</div>
 
-            <a href="/admin/advanced/analytics/"
+            {% if 'advanced_analytics' in nav_open %}<a href="/admin/advanced/analytics/"
                 class="menu-item {% if '/admin/advanced/analytics/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-chart-line"></i> Analytics
-            </a>
+            </a>{% endif %}
 
-            {% if is_super_admin or 'error_logs' in admin_permissions %}
+            {% if nav_open|any_open:"admin_error_logs_index" %}
             <a href="{% url 'admin_error_logs_index' %}"
                 class="menu-item {% if '/admin/advanced/error-logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-triangle-exclamation text-danger"></i> Error Logs
             </a>
             {% endif %}
 
-            <a href="/admin/advanced/activity-logs/"
+            {% if 'advanced_activity_logs' in nav_open %}<a href="/admin/advanced/activity-logs/"
                 class="menu-item {% if '/admin/advanced/activity-logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-clock-rotate-left"></i> Activity Logs
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/security/threat-logs/"
+            {% if 'security_threat_logs' in nav_open %}<a href="/admin/security/threat-logs/"
                 class="menu-item {% if '/admin/security/threat-logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-bug-slash"></i> Threat Intelligence
-            </a>
+            </a>{% endif %}
             {% endif %}
 
             <!-- B2B Wholesale Marketplace -->
@@ -948,10 +955,10 @@
             {% endif %}
 
             <!-- System -->
-            {% if is_super_admin or 'feature_flags' in admin_permissions or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions or 'server_health' in admin_permissions or 'logs' in admin_permissions or 'api_logs' in admin_permissions or 'backups' in admin_permissions %}
+            {% if nav_open|any_open:"admin_feature_flags,admin_settings_general,admin_settings_seo,admin_settings_banner_popup,admin_settings_security,admin_settings_templates" %}
             <div class="menu-label">System</div>
 
-            {% if is_super_admin or 'feature_flags' in admin_permissions or 'site_settings' in admin_permissions %}
+            {% if nav_open|any_open:"admin_feature_flags" %}
             <a href="{% url 'admin_feature_flags' %}"
                 class="menu-item {% if '/admin/feature-flags/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-toggle-on" style="color:#0ea5e9;"></i> Feature Flags
@@ -961,28 +968,28 @@
             </a>
             {% endif %}
 
-            <a href="/admin/settings/general/"
+            {% if 'admin_settings_general' in nav_open %}<a href="/admin/settings/general/"
                 class="menu-item {% if '/admin/settings/general/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-sliders"></i> Site Settings
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/settings/seo/"
+            {% if 'admin_settings_seo' in nav_open %}<a href="/admin/settings/seo/"
                 class="menu-item {% if '/admin/settings/seo/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-magnifying-glass-chart"></i> SEO Meta
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'admin_settings_banner_popup' %}"
+            {% if 'admin_settings_banner_popup' in nav_open %}<a href="{% url 'admin_settings_banner_popup' %}"
                 class="menu-item {% if '/admin/settings/banner-popup/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-bullhorn" style="color:#10b981;"></i> Banner &amp; Popup Studio
                 <span class="badge ms-auto bg-success text-white" style="font-size: 10px;">Live</span>
-            </a>
+            </a>{% endif %}
 
-            <a href="/admin/settings/security/"
+            {% if 'admin_settings_security' in nav_open %}<a href="/admin/settings/security/"
                 class="menu-item {% if '/admin/settings/security/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved"></i> Security &amp; Limits
-            </a>
+            </a>{% endif %}
 
-            {% if is_super_admin or 'email_templates' in admin_permissions %}
+            {% if nav_open|any_open:"admin_settings_templates" %}
             <a href="/admin/settings/templates/"
                 class="menu-item {% if '/admin/settings/templates/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-file-code"></i> Email &amp; PDF Templates
@@ -990,42 +997,42 @@
             {% endif %}
             {% endif %}
 
-            {% if is_super_admin or 'server_health' in admin_permissions %}
+            {% if nav_open|any_open:"admin_system_health" %}
             <a href="{% url 'admin_system_health' %}"
                 class="menu-item {% if '/admin/system/health/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-server"></i> Server Health
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'logs' in admin_permissions %}
+            {% if nav_open|any_open:"admin_system_logs" %}
             <a href="{% url 'admin_system_logs' %}"
                 class="menu-item {% if '/admin/system/logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-bug"></i> Error Logs
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'api_logs' in admin_permissions %}
+            {% if nav_open|any_open:"admin_system_api_logs" %}
             <a href="{% url 'admin_system_api_logs' %}"
                 class="menu-item {% if '/admin/system/api-logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-network-wired"></i> API Logs
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'backups' in admin_permissions %}
+            {% if nav_open|any_open:"admin_system_backups" %}
             <a href="{% url 'admin_system_backups' %}"
                 class="menu-item {% if '/admin/system/backups/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-database"></i> Database Backups
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'sessions' in admin_permissions %}
+            {% if nav_open|any_open:"admin_sessions_index" %}
             <a href="{% url 'admin_sessions_index' %}"
                 class="menu-item {% if '/admin/sessions/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-desktop"></i> Active Sessions
             </a>
             {% endif %}
 
-            {% if is_super_admin or 'app_version' in admin_permissions %}
+            {% if nav_open|any_open:"admin_app_version" %}
             <a href="{% url 'admin_app_version' %}"
                 class="menu-item {% if '/admin/app-version/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-mobile-screen-button"></i> App Version Control
@@ -1191,12 +1198,14 @@
                         </div>
                         {% endif %}
 
+                        {% if 'advanced_activity_logs' in nav_open %}
                         <div style="padding:10px 16px;text-align:center;border-top:1px solid var(--border-color);">
                             <a href="/admin/advanced/activity-logs/"
                                 style="font-size:12px;color:var(--primary);text-decoration:none;">
                                 View all activity logs →
                             </a>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
 

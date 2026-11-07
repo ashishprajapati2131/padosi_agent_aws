@@ -118,7 +118,7 @@ class IsolateAdminAgentSessionsTests(SimpleTestCase):
         mock_objects.filter.assert_not_called()
         self.assertEqual(response.cookies['session_token'].value, 'new-token')
 
-    @patch('apps.admin_panel.views.dashboard.invalidate_admin_session_token')
+    @patch('apps.admin_panel.auth.invalidate_admin_session_token')
     def test_strips_admin_cookie_when_django_user_is_an_agent(self, mock_invalidate):
         request = self.factory.get('/agent/dashboard/')
         request.user = SimpleNamespace(is_authenticated=True, pk=42)

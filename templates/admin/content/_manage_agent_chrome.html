@@ -1,3 +1,4 @@
+{% load json_tags %}
 {% if admin_lock_preview %}
 <style>
 body.admin-lock-preview { padding-top: 0; }
@@ -283,9 +284,9 @@ window.MANAGE_AGENT = {
     toggleUrl: "{% url 'admin_content_plans_manage_agent_toggle' plan_slug=preview_plan_slug %}",
     csrfToken: "{{ csrf_token }}",
     csrfCookieName: "padosi_csrf_token",
-    enabled: {{ preview_enabled_features_json|default:"[]"|safe }},
-    labels: {{ preview_feature_labels_json|default:"{}"|safe }},
-    builder: {{ preview_unlock_builder_json|default:"{}"|safe }}
+    enabled: {{ preview_enabled_features_json|safe_json:"[]" }},
+    labels: {{ preview_feature_labels_json|safe_json:"{}" }},
+    builder: {{ preview_unlock_builder_json|safe_json:"{}" }}
 };
 </script>
 {% endif %}

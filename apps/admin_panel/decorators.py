@@ -1,8 +1,7 @@
 from functools import wraps
 from django.shortcuts import redirect
 from apps.home.services.portal_messages import PORTAL_ADMIN, portal_error
-from apps.admin_panel.views.dashboard import _get_admin_from_session
-
+from apps.admin_panel.auth import _get_admin_from_session
 def admin_login_required(view_func):
     """
     Decorator for views that checks that the user is logged in as an admin via session guard.

@@ -7,6 +7,10 @@ from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.agents.models import SubscriptionPlan
 from apps.admin_panel.models import AdminActivityLog
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def plans_index(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id: return redirect('admin_login')
@@ -102,7 +106,8 @@ def plan_create(request):
             return redirect('admin_plans_index')
             
         except Exception as e:
-            messages.error(request, f"Error creating plan: {str(e)}")
+            logger.exception("Admin request failed in plans")  # detail stays server-side
+            messages.error(request, "Error creating plan. Details are in the server log.")
             
     return render(request, 'admin/plans/form.html', {'title': 'Add New Plan'})
 
@@ -115,9 +120,8 @@ def plan_edit(request, plan_id):
     if request.method == 'POST':
         try:
             plan.name = request.POST.get('name')
-            # Auto-generate slug from updated name; preserves consistency
-            # with SiteSettings keys and agent.plan_type
-            plan.slug = slugify(plan.name) if plan.name else plan.slug
+            # Slug is fixed after creation: plan toggles, agent.plan_type and the FastAPI plan
+            # mapping key off it, so renaming a plan must not orphan them.
             plan.description = request.POST.get('description', '')
             plan.color_theme = request.POST.get('color_theme', 'starter-theme')
             plan.badge_text = request.POST.get('badge_text', '')
@@ -161,7 +165,8 @@ def plan_edit(request, plan_id):
             return redirect('admin_plans_index')
             
         except Exception as e:
-            messages.error(request, f"Error updating plan: {str(e)}")
+            logger.exception("Admin request failed in plans")  # detail stays server-side
+            messages.error(request, "Error updating plan. Details are in the server log.")
             
     return render(request, 'admin/plans/form.html', {'plan': plan, 'title': 'Edit Plan'})
 
@@ -189,6 +194,7 @@ def plan_delete(request):
             AdminActivityLog.log('Delete Plan', 'SubscriptionPlan', plan_id, request=request)
             return JsonResponse({'success': True, 'message': f"Plan '{name}' deleted successfully."})
         except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+            logger.exception("Admin request failed in plans")  # detail stays server-side
+            return JsonResponse({'success': False, 'message': 'Something went wrong. Details are in the server log.'}, status=500)
             
     return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)

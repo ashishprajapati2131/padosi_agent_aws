@@ -9,6 +9,7 @@ from apps.home.models.calculator import Calculator, flush_calculator_cache
 from apps.home.models.calculator_category import CalculatorCategory
 from apps.home.calculators.registry import get_spec
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+from apps.admin_panel.services import calculators_service
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 
 
@@ -105,8 +106,7 @@ def edit(request, pk):
             if q and a:
                 faqs.append({'q': q, 'a': a})
         calc.faq_json = faqs
-        calc.save()
-        flush_calculator_cache()
+        calculators_service.save_calculator(calc)
         AdminActivityLog.log(f'Updated calculator {calc.slug}', 'Calculator', model_id=calc.id, request=request)
         messages.success(request, 'Calculator updated successfully.')
         return redirect('admin_content_calculators_edit', pk=calc.id)
@@ -147,18 +147,13 @@ def toggle_status(request, pk):
             'is_active': False,
         }, status=400)
 
-    calc.is_active = not calc.is_active
-    if calc.is_active and not calc.engine_ready:
-        calc.is_active = False
-        calc.save(update_fields=['is_active', 'updated_at'])
+    if not calculators_service.toggle_calculator_status(calc):
         return JsonResponse({
             'success': False,
             'message': 'Engine not shipped yet. This calculator cannot be activated.',
             'is_active': False,
         }, status=400)
 
-    calc.save(update_fields=['is_active', 'updated_at'])
-    flush_calculator_cache()
     status_text = 'activated' if calc.is_active else 'deactivated'
     AdminActivityLog.log(
         f'Toggled calculator {calc.slug} → {status_text}',
@@ -185,9 +180,7 @@ def change_category(request, pk):
     category = CalculatorCategory.objects.filter(pk=cat_id).first()
     if not category:
         return JsonResponse({'success': False, 'message': 'Category not found.'}, status=404)
-    calc.category = category
-    calc.save(update_fields=['category', 'updated_at'])
-    flush_calculator_cache()
+    calculators_service.set_calculator_category(calc, category)
     AdminActivityLog.log(
         f'Moved calculator {calc.slug} to {category.slug}',
         'Calculator',
@@ -222,27 +215,28 @@ def category_save(request):
         if CalculatorCategory.objects.exclude(pk=cat.pk).filter(slug=slug).exists():
             messages.error(request, 'That slug is already used by another category.')
             return redirect('/admin/content/calculators/?tab=categories')
-        cat.name = name
-        cat.slug = slug
-        cat.icon_class = icon_class
-        cat.meta_title = meta_title
-        cat.meta_description = meta_description
-        cat.sort_order = sort_order
-        cat.save()
-        AdminActivityLog.log(f'Updated calculator category {cat.slug}', 'CalculatorCategory', model_id=cat.id, request=request)
-        messages.success(request, 'Category updated.')
-    else:
-        if CalculatorCategory.objects.filter(slug=slug).exists():
-            messages.error(request, 'That slug is already used by another category.')
-            return redirect('/admin/content/calculators/?tab=categories')
-        cat = CalculatorCategory.objects.create(
+        calculators_service.update_category(
+            cat,
             name=name,
             slug=slug,
             icon_class=icon_class,
             meta_title=meta_title,
             meta_description=meta_description,
             sort_order=sort_order,
-            is_active=True,
+        )
+        AdminActivityLog.log(f'Updated calculator category {cat.slug}', 'CalculatorCategory', model_id=cat.id, request=request)
+        messages.success(request, 'Category updated.')
+    else:
+        if CalculatorCategory.objects.filter(slug=slug).exists():
+            messages.error(request, 'That slug is already used by another category.')
+            return redirect('/admin/content/calculators/?tab=categories')
+        cat = calculators_service.create_category(
+            name=name,
+            slug=slug,
+            icon_class=icon_class,
+            meta_title=meta_title,
+            meta_description=meta_description,
+            sort_order=sort_order,
         )
         AdminActivityLog.log(f'Created calculator category {cat.slug}', 'CalculatorCategory', model_id=cat.id, request=request)
         messages.success(request, 'Category added.')
@@ -255,9 +249,7 @@ def category_toggle(request, pk):
     if not _require_admin(request):
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
     cat = get_object_or_404(CalculatorCategory, pk=pk)
-    cat.is_active = not cat.is_active
-    cat.save(update_fields=['is_active', 'updated_at'])
-    flush_calculator_cache()
+    calculators_service.toggle_category(cat)
     AdminActivityLog.log(
         f'Toggled calculator category {cat.slug} → {"on" if cat.is_active else "off"}',
         'CalculatorCategory',
@@ -276,9 +268,7 @@ def category_delete(request, pk):
     if count:
         messages.error(request, f'Cannot delete “{cat.name}”: {count} calculator(s) still use it. Reassign them first.')
         return redirect('/admin/content/calculators/?tab=categories')
-    slug = cat.slug
-    cat.delete()
-    flush_calculator_cache()
+    slug = calculators_service.delete_category(cat)
     AdminActivityLog.log(f'Deleted calculator category {slug}', 'CalculatorCategory', request=request)
     messages.success(request, 'Category removed.')
     return redirect('/admin/content/calculators/?tab=categories')

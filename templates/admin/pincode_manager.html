@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static admin_tags %}
 
 {% block title %}Pincode Manager — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Pincode Manager{% endblock %}
@@ -210,35 +210,7 @@
         {% if pincodes.has_other_pages %}
         <div class="d-flex justify-content-center mt-3">
             <nav>
-                <ul class="pagination mb-0">
-                    {% if pincodes.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ pincodes.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if state %}&state={{ state }}{% endif %}{% if district %}&district={{ district }}{% endif %}">&laquo;</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                    {% endif %}
-
-                    {% for num in elided_page_range %}
-                        {% if num == ellipsis %}
-                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
-                        {% elif pincodes.number == num %}
-                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                        {% else %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if state %}&state={{ state }}{% endif %}{% if district %}&district={{ district }}{% endif %}">{{ num }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if pincodes.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ pincodes.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if state %}&state={{ state }}{% endif %}{% if district %}&district={{ district }}{% endif %}">&raquo;</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                    {% endif %}
-                </ul>
+                {% admin_pagination pincodes %}
             </nav>
         </div>
         {% endif %}

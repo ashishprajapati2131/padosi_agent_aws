@@ -1,0 +1,48 @@
+"""Admin routes served by views/agents.py."""
+from django.urls import path
+
+from ..views.agents import (
+    agent_list,
+    manage_agent,
+    toggle_status,
+    update_badge,
+    update_irdai_license,
+    save_agent_notes,
+    bulk_action_agents,
+    update_visibility,
+    update_achievement_limit,
+    update_plan,
+    toggle_review_approval as agent_toggle_review_approval,
+    update_profile,
+    get_agent_json,
+    get_edit_logs,
+    admin_edit_profile,
+    admin_full_update_profile,
+    agent_approvals,
+    agent_pending_registrations,
+    admin_verify_pending_payment,
+)
+
+urlpatterns = [
+    path("admin/agents/", agent_list, name="admin_agents"),
+    path("admin/agents/<int:id>/manage/", manage_agent, name="admin_agents_manage"),
+    path("admin/agents/manage/<int:id>/", manage_agent, name="admin_agents_manage_alt"),
+    path("admin/agents/toggle-status/", toggle_status, name="admin_agents_toggle_status"),
+    path("admin/agents/update-badge/", update_badge, name="admin_agents_update_badge"),
+    path("admin/agents/update-irdai-license/", update_irdai_license, name="admin_agents_update_irdai_license"),
+    path("admin/agents/save-notes/", save_agent_notes, name="admin_agents_save_notes"),
+    path("admin/agents/bulk-action/", bulk_action_agents, name="admin_agents_bulk_action"),
+    path("admin/agents/update-visibility/", update_visibility, name="admin_agents_update_visibility"),
+    path("admin/agents/update-achievement-limit/", update_achievement_limit, name="admin_agents_update_achievement_limit"),
+    path("admin/agents/update-plan/", update_plan, name="admin_agents_update_plan"),
+    path("admin/agents/toggle-review-approval/", agent_toggle_review_approval, name="admin_agents_toggle_review_approval"),
+    path("admin/agents/update-profile/", update_profile, name="admin_agents_update_profile"),
+    path("admin/agents/get/<int:id>/", get_agent_json, name="admin_agents_get_agent_json"),
+    path("admin/agents/<int:id>/edit-logs/", get_edit_logs, name="admin_agents_get_edit_logs"),
+    path("admin/agents/<int:id>/edit-profile/", admin_edit_profile, name="admin_agents_edit_profile"),
+    path("admin/agents/<int:id>/edit-profile/update/", admin_full_update_profile, name="admin_agents_full_update_profile"),
+    path("admin/approvals/", agent_approvals, name="admin_agents_approvals"),
+    path("admin/pending-registrations/", agent_pending_registrations, name="admin_agents_pending_registrations"),
+    path("admin/agents/pending/", agent_pending_registrations, name="admin_agents_pending"),
+    path("admin/agents/verify-pending-payment/", admin_verify_pending_payment, name="admin_agents_verify_pending_payment"),
+]

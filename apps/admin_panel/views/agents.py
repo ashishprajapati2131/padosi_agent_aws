@@ -1,3 +1,4 @@
+from apps.agents.models import PaymentStatus
 import logging
 from django.utils import timezone
 from django.db import connection
@@ -11,6 +12,21 @@ from django.core.cache import cache
 import json
 
 from .dashboard import _get_admin_from_session
+from ..services import agents_service
+from ..selectors.agents import (
+    count_missing_irdai_agents,
+    fetch_agent_detail,
+    fetch_agent_json,
+    fetch_agent_list_count,
+    fetch_agent_list_page,
+    fetch_agent_recent_reviews,
+    fetch_event_names,
+    fetch_latest_agent_events,
+    fetch_latest_draft_events,
+    fetch_missing_irdai_agents,
+    fetch_pending_drafts,
+    fetch_queue_rows,
+)
 from apps.agents.services.feature_unlock import (
     PLAN_LABELS,
     paid_plan_label,
@@ -20,7 +36,10 @@ from apps.agents.services.feature_unlock import (
 
 logger = logging.getLogger(__name__)
 
-def _build_agent_list_query(search, plan_filter, status_filter, city_filter, promo_code_filter):
+
+def _build_agent_list_query(
+    search, plan_filter, status_filter, city_filter, promo_code_filter
+):
     """
     Builds the raw SQL query and params for the agent list based on Laravel logic.
     """
@@ -44,28 +63,24 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
         query += " AND (a.fullname LIKE %s OR a.email LIKE %s OR a.mobile LIKE %s OR ap.display_name LIKE %s)"
         search_param = f"%{search}%"
         params.extend([search_param, search_param, search_param, search_param])
-        
-    if plan_filter and plan_filter != 'All Plans':
-        if plan_filter == PLAN_LABELS['professional']:
-            query += (
-                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
-            )
+
+    if plan_filter and plan_filter != "All Plans":
+        if plan_filter == PLAN_LABELS["professional"]:
+            query += " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
             params.append(plan_filter)
-        elif plan_filter == PLAN_LABELS['starter']:
-            query += (
-                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
-            )
+        elif plan_filter == PLAN_LABELS["starter"]:
+            query += " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
             params.append(plan_filter)
         else:
             query += " AND s.selected_plan = %s"
             params.append(plan_filter)
 
     # Status Filter logic
-    if status_filter == 'blacklisted':
+    if status_filter == "blacklisted":
         query += " AND a.is_blacklisted = 1"
-    elif status_filter == 'not_blacklisted':
+    elif status_filter == "not_blacklisted":
         query += " AND (a.is_blacklisted = 0 OR a.is_blacklisted IS NULL)"
-    elif status_filter and status_filter != 'All Status':
+    elif status_filter and status_filter != "All Status":
         query += " AND a.status = %s"
         params.append(status_filter)
     elif not status_filter and not promo_code_filter:
@@ -82,14 +97,16 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
             OR
             a.referred_by_code = %s
         )"""
-        params.extend([promo_code_filter, promo_code_filter, promo_code_filter, promo_code_filter])
+        params.extend(
+            [promo_code_filter, promo_code_filter, promo_code_filter, promo_code_filter]
+        )
 
     if city_filter:
         query += " AND ap.address LIKE %s"
         params.append(f"%{city_filter}%")
 
     query += " ORDER BY a.id DESC"
-    
+
     return query, params
 
 
@@ -97,10 +114,10 @@ def _apply_resolved_plan_label(agent_row):
     if not agent_row:
         return
     label = resolve_agent_display_plan_label(
-        agent_row.get('plan_type'),
-        agent_row.get('selected_plan'),
+        agent_row.get("plan_type"),
+        agent_row.get("selected_plan"),
     )
-    agent_row['selected_plan'] = label or agent_row.get('selected_plan') or 'FREE'
+    agent_row["selected_plan"] = label or agent_row.get("selected_plan") or "FREE"
 
 
 class _RawAgentPage:
@@ -115,14 +132,12 @@ class _RawAgentPage:
 
     def count(self):
         if self._count is None:
-            body = self.query[self.query.index('FROM agents AS a'):]
-            order_at = body.rfind(' ORDER BY ')
+            body = self.query[self.query.index("FROM agents AS a") :]
+            order_at = body.rfind(" ORDER BY ")
             if order_at != -1:
                 body = body[:order_at]
             try:
-                with connection.cursor() as cursor:
-                    cursor.execute('SELECT COUNT(*) ' + body, self.params)
-                    self._count = int(cursor.fetchone()[0] or 0)
+                self._count = fetch_agent_list_count(body, self.params)
             except Exception as e:
                 logger.error(f"Error counting agents list: {e}")
                 self._count = 0
@@ -133,7 +148,7 @@ class _RawAgentPage:
 
     def __getitem__(self, key):
         if not isinstance(key, slice):
-            rows = self[key:key + 1]
+            rows = self[key : key + 1]
             if not rows:
                 raise IndexError(key)
             return rows[0]
@@ -142,13 +157,10 @@ class _RawAgentPage:
         if stop <= start:
             return []
         try:
-            with connection.cursor() as cursor:
-                cursor.execute(self.query + ' LIMIT %s OFFSET %s', self.params + [stop - start, start])
-                columns = [col[0] for col in cursor.description]
-                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-                for row in rows:
-                    _apply_resolved_plan_label(row)
-                return rows
+            rows = fetch_agent_list_page(self.query, self.params, stop - start, start)
+            for row in rows:
+                _apply_resolved_plan_label(row)
+            return rows
         except Exception as e:
             logger.error(f"Error fetching agents list: {e}")
             return []
@@ -160,31 +172,33 @@ def agent_list(request):
     """
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    search = request.GET.get('search', '')
-    plan_filter = request.GET.get('plan', 'All Plans')
-    status_filter = (request.GET.get('status') or '').strip() or 'active'
-    city_filter = request.GET.get('city', '')
-    promo_code_filter = request.GET.get('promo_code', '')
+    search = request.GET.get("search", "")
+    plan_filter = request.GET.get("plan", "All Plans")
+    status_filter = (request.GET.get("status") or "").strip() or "active"
+    city_filter = request.GET.get("city", "")
+    promo_code_filter = request.GET.get("promo_code", "")
 
-    query, params = _build_agent_list_query(search, plan_filter, status_filter, city_filter, promo_code_filter)
+    query, params = _build_agent_list_query(
+        search, plan_filter, status_filter, city_filter, promo_code_filter
+    )
 
     paginator = Paginator(_RawAgentPage(query, params), 25)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'agents': page_obj.object_list,
-        'search': search,
-        'plan_filter': plan_filter,
-        'status_filter': status_filter,
-        'city_filter': city_filter,
-        'promo_code': promo_code_filter,
-        'page_obj': page_obj,
+        "agents": page_obj.object_list,
+        "search": search,
+        "plan_filter": plan_filter,
+        "status_filter": status_filter,
+        "city_filter": city_filter,
+        "promo_code": promo_code_filter,
+        "page_obj": page_obj,
     }
-    
-    return render(request, 'admin/agents/list.html', context)
+
+    return render(request, "admin/agents/list.html", context)
 
 
 def manage_agent(request, id):
@@ -193,59 +207,25 @@ def manage_agent(request, id):
     """
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     # 1. Fetch Agent Details via raw SQL mimicking Laravel's showManageAgent
     agent = None
-    query = """
-        SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
-            ap.address, ap.license_number, ap.experience_years, ap.office_address, ap.pan_number, ap.profile_photo_path,
-            ap.is_profile_visible, ap.is_card_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
-            ap.show_experience, ap.show_claims_stats, ap.show_client_base, ap.show_ratings,
-            ap.show_languages, ap.show_gallery, ap.show_contact_info, ap.show_social_links,
-            ap.license_valid_till, ap.arn_number, ap.euin_number, ap.investment_valid_till, ap.investment_types,
-            s.selected_plan, s.expires_at,
-            (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
-            (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as review_count,
-            (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 0) as pending_reviews
-        FROM agents AS a
-        LEFT JOIN agent_profiles AS ap ON a.id = ap.agent_id
-        LEFT JOIN agent_subscriptions AS s ON a.id = s.agent_id
-            AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
-        WHERE a.id = %s
-    """
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(query, [id])
-            row = cursor.fetchone()
-            if row:
-                columns = [col[0] for col in cursor.description]
-                agent = dict(zip(columns, row))
-                _apply_resolved_plan_label(agent)
+        row = fetch_agent_detail(id)
+        if row:
+            agent = row
+            _apply_resolved_plan_label(agent)
     except Exception as e:
         logger.error(f"Error fetching agent details: {e}")
 
     if not agent:
-        return redirect('admin_agents')
+        return redirect("admin_agents")
 
     # 2. Fetch Recent Reviews via Raw SQL mimicking Laravel's showManageAgent
     reviews = []
-    reviews_query = """
-        SELECT 
-            r.id, r.rating, r.review as review_text, r.is_approved, r.created_at,
-            u.fullname as client_name
-        FROM agent_reviews AS r
-        LEFT JOIN users AS u ON r.user_id = u.id
-        WHERE r.agent_id = %s
-        ORDER BY r.created_at DESC
-        LIMIT 10
-    """
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(reviews_query, [id])
-            columns = [col[0] for col in cursor.description]
-            reviews = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        reviews = fetch_agent_recent_reviews(id)
     except Exception as e:
         logger.error(f"Error fetching agent reviews: {e}")
 
@@ -253,9 +233,11 @@ def manage_agent(request, id):
     # from admin_panel.models.agent_profile_edit_log import AgentProfileEditLog
     from ..models.agent_profile_edit_log import AgentProfileEditLog
     import json
-    
-    edit_logs_raw = AgentProfileEditLog.objects.filter(agent_id=id).order_by('-created_at', '-id')[:50]
-    
+
+    edit_logs_raw = AgentProfileEditLog.objects.filter(agent_id=id).order_by(
+        "-created_at", "-id"
+    )[:50]
+
     edit_logs = []
     for log in edit_logs_raw:
         parsed_changes = []
@@ -267,85 +249,107 @@ def manage_agent(request, id):
                     parsed_changes = json.loads(log.changes)
                 except (json.JSONDecodeError, TypeError):
                     parsed_changes = []
-                
-        edit_logs.append({
-            'id': log.id,
-            'step': log.step,
-            'step_label': log.step_label,
-            'changes': parsed_changes,
-            'status_before': log.status_before,
-            'status_after': log.status_after,
-            'edited_by': log.edited_by,
-            'created_at': log.created_at,
-        })
+
+        edit_logs.append(
+            {
+                "id": log.id,
+                "step": log.step,
+                "step_label": log.step_label,
+                "changes": parsed_changes,
+                "status_before": log.status_before,
+                "status_after": log.status_after,
+                "edited_by": log.edited_by,
+                "created_at": log.created_at,
+            }
+        )
 
     # Parse investment_types JSON if it is a string
-    if agent and 'investment_types' in agent:
+    if agent and "investment_types" in agent:
         import json
-        inv_types = agent['investment_types']
+
+        inv_types = agent["investment_types"]
         if isinstance(inv_types, str):
             try:
-                agent['investment_types'] = json.loads(inv_types)
+                agent["investment_types"] = json.loads(inv_types)
             except Exception:
-                agent['investment_types'] = []
+                agent["investment_types"] = []
         elif inv_types is None:
-            agent['investment_types'] = []
+            agent["investment_types"] = []
 
     context = {
-        'agent': agent,
-        'reviews': reviews,
-        'edit_logs': edit_logs,
+        "agent": agent,
+        "reviews": reviews,
+        "edit_logs": edit_logs,
     }
-    
-    return render(request, 'admin/agents/manage.html', context)
+
+    return render(request, "admin/agents/manage.html", context)
 
 
 # Every status an agent row can legitimately hold. Anything else is a typo or
 # tampering and would silently hide the agent from every admin queue.
 AGENT_STATUSES = (
-    'incomplete', 'pending_payment', 'pending_approval', 'pending_admin_approval',
-    'pending_accounts_payment', 'event_challenge', 'active', 'inactive', 'suspended',
-    'blacklisted', 'rejected', 'deleted', 'expired',
+    "incomplete",
+    "pending_payment",
+    "pending_approval",
+    "pending_admin_approval",
+    "pending_accounts_payment",
+    "event_challenge",
+    "active",
+    "inactive",
+    "suspended",
+    "blacklisted",
+    "rejected",
+    "deleted",
+    "expired",
 )
 # What a staff admin with only the Approvals permission may do from the queue.
-QUEUE_DECISIONS = ('active', 'suspended', 'rejected')
+QUEUE_DECISIONS = ("active", "suspended", "rejected")
 
 
 def _admin_can_manage_all_agents(request):
-    admin = getattr(request, 'admin_user', None)  # set by AdminPermissionMiddleware
-    if admin is None or getattr(admin, 'role', '') == 'super':
+    admin = getattr(request, "admin_user", None)  # set by AdminPermissionMiddleware
+    if admin is None or getattr(admin, "role", "") == "super":
         return True
     perms = admin.permissions if isinstance(admin.permissions, list) else []
-    return 'agents' in perms
+    return "agents" in perms
 
 
 def _payment_note(agent_id):
     from apps.agents.models import AgentSubscription
-    sub = AgentSubscription.objects.filter(agent_id=agent_id, payment_status='completed').order_by('-created_at').first()
+
+    sub = (
+        AgentSubscription.objects.filter(
+            agent_id=agent_id, payment_status=PaymentStatus.COMPLETED
+        )
+        .order_by("-created_at")
+        .first()
+    )
     if not sub:
-        return 'no completed payment'
-    return f'paid subscription #{sub.pk} ({sub.selected_plan}, order {sub.razorpay_order_id or "-"})'
+        return "no completed payment"
+    return f"paid subscription #{sub.pk} ({sub.selected_plan}, order {sub.razorpay_order_id or '-'})"
 
 
 def toggle_status(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'})
-    
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         data = json.loads(request.body)
-        agent_id = data.get('id')
-        new_status = data.get('status')
+        agent_id = data.get("id")
+        new_status = data.get("status")
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     if not agent_id or not new_status:
-        return JsonResponse({'success': False, 'message': 'Missing data'})
+        return JsonResponse({"success": False, "message": "Missing data"})
     if new_status not in AGENT_STATUSES:
-        return JsonResponse({'success': False, 'message': 'Unknown status.'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Unknown status."}, status=400
+        )
 
     # Fetch agent to get old_status
     try:
@@ -353,351 +357,278 @@ def toggle_status(request):
             cursor.execute("SELECT status FROM agents WHERE id = %s", [agent_id])
             row = cursor.fetchone()
             if not row:
-                return JsonResponse({'success': False, 'message': 'Agent not found'})
+                return JsonResponse({"success": False, "message": "Agent not found"})
             old_status = row[0]
 
             # Approvals-only staff decide queue entries; they cannot change
             # other agents (the route also admits the Approvals permission).
             if not _admin_can_manage_all_agents(request) and not (
-                old_status == 'pending_approval' and new_status in QUEUE_DECISIONS
+                old_status == "pending_approval" and new_status in QUEUE_DECISIONS
             ):
-                return JsonResponse({
-                    'success': False,
-                    'message': 'You can only approve or reject agents awaiting approval.',
-                }, status=403)
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "You can only approve or reject agents awaiting approval.",
+                    },
+                    status=403,
+                )
 
-            # Update status
-            if new_status == 'active':
+            # Update status only if nobody changed it meanwhile: a double-clicked Approve
+            # otherwise ran twice and sent two WhatsApp approval messages.
+            if new_status == "active":
                 cursor.execute(
-                    "UPDATE agents SET status = %s, is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id = %s",
-                    [new_status, timezone.now(), agent_id]
+                    "UPDATE agents SET status = %s, is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id = %s AND status = %s",
+                    [new_status, timezone.now(), agent_id, old_status],
                 )
             else:
-                cursor.execute("UPDATE agents SET status = %s WHERE id = %s", [new_status, agent_id])
-            cache.delete('homepage_reviews')
+                cursor.execute(
+                    "UPDATE agents SET status = %s WHERE id = %s AND status = %s",
+                    [new_status, agent_id, old_status],
+                )
+            if cursor.rowcount == 0:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "This agent's status was just changed. Refresh the page.",
+                    },
+                    status=409,
+                )
+            cache.delete("homepage_reviews")
     except Exception as e:
         logger.error(f"Error updating agent status: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error'})
+        return JsonResponse({"success": False, "message": "Database error"})
 
-    try:
-        from apps.agents.models import Agent
-        from apps.agents.services.registration_leads import sync_lead_for_agent
-        agent_row = Agent.objects.filter(pk=agent_id).first()
-        if agent_row:
-            sync_lead_for_agent(agent_row)
-    except Exception:
-        logger.exception('Quick-registration lead sync failed after status change')
-
-    # Log boundary change
-    if new_status in ['active', 'suspended', 'rejected']:
-        step_label = 'Status Changed by Admin'
-        if new_status == 'active':
-            step_label = 'Approved by Admin'
-        elif new_status == 'suspended':
-            step_label = 'Suspended by Admin'
-            
-        try:
-            from ..models.agent_profile_edit_log import AgentProfileEditLog
-            AgentProfileEditLog.objects.create(
-                agent_id=int(agent_id),
-                edited_by='admin',
-                edited_by_id=admin_id,
-                step=None,
-                step_label=step_label,
-                changes=json.dumps([]),
-                ip_address=request.META.get('REMOTE_ADDR'),
-                status_before=old_status,
-                status_after=new_status,
-                created_at=timezone.now(),
-                updated_at=timezone.now(),
-            )
-        except Exception as e:
-            # The status is already saved; failing here returned an error for
-            # a change that had happened.
-            logger.error("AUDIT LOG ERROR: %r", e)
-
-    # Notify agent on WhatsApp if approved or rejected from pending_approval
-    if old_status == 'pending_approval':
-        if new_status == 'active':
-            try:
-                from apps.wa_agent_bot.services.notification_service import notify_agent_approved_whatsapp
-                notify_agent_approved_whatsapp(agent_id)
-            except Exception as notify_err:
-                logger.warning(f"Failed to notify agent #{agent_id} approval on WhatsApp: {notify_err}")
-        elif new_status in ('suspended', 'rejected'):
-            try:
-                from apps.wa_agent_bot.services.notification_service import notify_agent_rejected_whatsapp
-                notify_agent_rejected_whatsapp(agent_id)
-            except Exception as notify_err:
-                logger.warning(f"Failed to notify agent #{agent_id} rejection on WhatsApp: {notify_err}")
+    agents_service.after_status_change(
+        agent_id, admin_id, request.META.get("REMOTE_ADDR"), old_status, new_status
+    )
 
     from apps.admin_panel.models import AdminActivityLog
+
     AdminActivityLog.log(
-        f'Agent status {old_status} -> {new_status}', 'Agent', int(agent_id),
-        details=_payment_note(agent_id), request=request,
+        f"Agent status {old_status} -> {new_status}",
+        "Agent",
+        int(agent_id),
+        details=_payment_note(agent_id),
+        request=request,
     )
-    return JsonResponse({'success': True})
+    return JsonResponse({"success": True})
 
 
 def bulk_action_agents(request):
-    if request.method != 'POST':
-        return redirect('admin_agents_approvals')
+    if request.method != "POST":
+        return redirect("admin_agents_approvals")
 
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    action = request.POST.get('action')
-    agent_ids = request.POST.getlist('agent_ids[]')
+    action = request.POST.get("action")
+    agent_ids = request.POST.getlist("agent_ids[]")
 
     if not agent_ids:
-        messages.error(request, 'No agents selected.')
-        return redirect('admin_agents_approvals')
+        messages.error(request, "No agents selected.")
+        return redirect("admin_agents_approvals")
 
-    if action == 'approve':
+    if action == "approve":
         try:
-            from ..models.agent_profile_edit_log import AgentProfileEditLog
-            with connection.cursor() as cursor:
-                # Get existing statuses to log properly
-                format_strings = ','.join(['%s'] * len(agent_ids))
-                cursor.execute(f"SELECT id, status FROM agents WHERE id IN ({format_strings})", agent_ids)
-                rows = cursor.fetchall()
-                old_statuses = {row[0]: row[1] for row in rows}
-
-                # Bulk approve is for the approval queue only: an arbitrary id
-                # list could activate unpaid or suspended agents.
-                agent_ids = [str(aid) for aid, st in old_statuses.items() if st == 'pending_approval']
-                skipped = len(old_statuses) - len(agent_ids)
-                if not agent_ids:
-                    messages.error(request, 'None of the selected agents are awaiting approval.')
-                    return redirect('admin_agents_approvals')
-                format_strings = ','.join(['%s'] * len(agent_ids))
-
-                # Update statuses
-                cursor.execute(
-                    f"UPDATE agents SET status = 'active', is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id IN ({format_strings})",
-                    [timezone.now()] + agent_ids
+            agent_ids, skipped, old_statuses = agents_service.bulk_approve_pending(
+                agent_ids
+            )
+            if not agent_ids:
+                messages.error(
+                    request, "None of the selected agents are awaiting approval."
                 )
-                cache.delete('homepage_reviews')
-                try:
-                    from apps.agents.models import Agent
-                    from apps.agents.services.registration_leads import sync_lead_for_agent
-                    for approved in Agent.objects.filter(pk__in=agent_ids):
-                        sync_lead_for_agent(approved)
-                except Exception:
-                    logger.exception('Quick-registration lead sync failed after bulk approve')
+                return redirect("admin_agents_approvals")
 
-                from apps.admin_panel.models import AdminActivityLog
-                for aid in agent_ids:
-                    AdminActivityLog.log('Agent status pending_approval -> active (bulk)', 'Agent', int(aid),
-                                         details=_payment_note(aid), request=request)
-                    try:
-                        from apps.wa_agent_bot.services.notification_service import notify_agent_approved_whatsapp
-                        notify_agent_approved_whatsapp(aid)
-                    except Exception as notify_err:
-                        logger.warning(f"Failed to notify agent #{aid} approval on WhatsApp: {notify_err}")
+            from apps.admin_panel.models import AdminActivityLog
 
-                for aid in agent_ids:
-                    aid_int = int(aid)
-                    old_status = old_statuses.get(aid_int, 'pending')
-                    AgentProfileEditLog.objects.create(
-                        agent_id=aid_int,
-                        edited_by='admin',
-                        edited_by_id=admin_id,
-                        step=None,
-                        step_label='Approved by Admin (Bulk)',
-                        changes=json.dumps([]),
-                        ip_address=request.META.get('REMOTE_ADDR'),
-                        status_before=old_status,
-                        status_after='active',
-                        created_at=timezone.now(),
-                        updated_at=timezone.now(),
-                    )
-            messages.success(request, 'Selected agents have been approved.'
-                             + (f' {skipped} not awaiting approval were skipped.' if skipped else ''))
+            for aid in agent_ids:
+                AdminActivityLog.log(
+                    "Agent status pending_approval -> active (bulk)",
+                    "Agent",
+                    int(aid),
+                    details=_payment_note(aid),
+                    request=request,
+                )
+                agents_service.notify_approved_whatsapp(aid)
+
+            agents_service.log_bulk_approvals(
+                agent_ids, old_statuses, admin_id, request.META.get("REMOTE_ADDR")
+            )
+            messages.success(
+                request,
+                "Selected agents have been approved."
+                + (
+                    f" {skipped} not awaiting approval were skipped." if skipped else ""
+                ),
+            )
         except Exception as e:
             logger.error(f"Bulk approve error: {e}")
-            messages.error(request, 'Failed to bulk approve agents.')
+            messages.error(request, "Failed to bulk approve agents.")
 
-    return redirect('admin_agents_approvals')
+    return redirect("admin_agents_approvals")
 
 
 def update_badge(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'})
-        
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         data = json.loads(request.body)
-        agent_id = data.get('id')
-        badge_data = data.get('badge')
+        agent_id = data.get("id")
+        badge_data = data.get("badge")
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     if not agent_id:
-        return JsonResponse({'success': False, 'message': 'Missing agent ID'})
+        return JsonResponse({"success": False, "message": "Missing agent ID"})
 
     if isinstance(badge_data, list):
         # Filter empty values and join by comma
-        badge_value = ','.join(filter(None, badge_data))
+        badge_value = ",".join(filter(None, badge_data))
     else:
-        badge_value = badge_data if badge_data else ''
+        badge_value = badge_data if badge_data else ""
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE agents SET badge = %s WHERE id = %s", [badge_value, agent_id])
-            if cursor.rowcount == 0:
-                cursor.execute("SELECT id FROM agents WHERE id = %s", [agent_id])
-                if not cursor.fetchone():
-                    return JsonResponse({'success': False, 'message': 'Agent not found'})
+        if not agents_service.update_badge(agent_id, badge_value):
+            return JsonResponse({"success": False, "message": "Agent not found"})
     except Exception as e:
         logger.error(f"Error updating agent badge: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error'})
+        return JsonResponse({"success": False, "message": "Database error"})
 
-    return JsonResponse({'success': True})
+    return JsonResponse({"success": True})
 
 
 def update_irdai_license(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'})
-        
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         data = json.loads(request.body)
-        agent_id = data.get('id')
-        license_number = data.get('license_number')
+        agent_id = data.get("id")
+        license_number = data.get("license_number")
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     if not agent_id or license_number is None:
-        return JsonResponse({'success': False, 'message': 'Missing required fields'})
+        return JsonResponse({"success": False, "message": "Missing required fields"})
 
     license_number = license_number.strip()
 
     try:
-        with connection.cursor() as cursor:
-            # Check if agent exists
-            cursor.execute("SELECT id FROM agents WHERE id = %s", [agent_id])
-            if not cursor.fetchone():
-                return JsonResponse({'success': False, 'message': 'Agent not found'})
-            
-            # Check if agent profile exists
-            cursor.execute("SELECT id FROM agent_profiles WHERE agent_id = %s", [agent_id])
-            profile_exists = bool(cursor.fetchone())
-            
-            if profile_exists:
-                cursor.execute(
-                    "UPDATE agent_profiles SET license_number = %s, updated_at = %s WHERE agent_id = %s",
-                    [license_number, timezone.now(), agent_id]
-                )
-            else:
-                cursor.execute(
-                    "INSERT INTO agent_profiles (agent_id, license_number, created_at, updated_at) VALUES (%s, %s, %s, %s)",
-                    [agent_id, license_number, timezone.now(), timezone.now()]
-                )
-                
-            return JsonResponse({'success': True, 'message': 'IRDAI license number updated successfully.'})
+        if not agents_service.update_irdai_license(agent_id, license_number):
+            return JsonResponse({"success": False, "message": "Agent not found"})
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "IRDAI license number updated successfully.",
+            }
+        )
     except Exception as e:
         logger.error(f"Error updating agent IRDAI license: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error.'})
+        return JsonResponse({"success": False, "message": "Database error."})
 
 
 def save_agent_notes(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'})
-        
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         data = json.loads(request.body)
-        agent_id = data.get('id')
-        notes = data.get('notes')
-        admin_notes = data.get('admin_notes')
+        agent_id = data.get("id")
+        notes = data.get("notes")
+        admin_notes = data.get("admin_notes")
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     if not agent_id:
-        return JsonResponse({'success': False, 'message': 'Missing agent ID'})
+        return JsonResponse({"success": False, "message": "Missing agent ID"})
 
     final_notes = notes if notes is not None else admin_notes
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE agents SET admin_notes = %s WHERE id = %s", [final_notes, agent_id])
-            if cursor.rowcount == 0:
-                cursor.execute("SELECT id FROM agents WHERE id = %s", [agent_id])
-                if not cursor.fetchone():
-                    return JsonResponse({'success': False, 'message': 'Agent not found'})
+        if not agents_service.save_agent_notes(agent_id, final_notes):
+            return JsonResponse({"success": False, "message": "Agent not found"})
     except Exception as e:
         logger.error(f"Error saving agent notes: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error'})
+        return JsonResponse({"success": False, "message": "Database error"})
 
-    return JsonResponse({'success': True})
+    return JsonResponse({"success": True})
 
 
 def update_visibility(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'})
-        
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         data = json.loads(request.body)
-        field = data.get('field')
-        value = 1 if data.get('value') else 0
-        agent_id = data.get('id')
+        field = data.get("field")
+        value = 1 if data.get("value") else 0
+        agent_id = data.get("id")
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     valid_fields = [
-        'is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews',
-        'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
-        'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
+        "is_profile_visible",
+        "is_card_visible",
+        "show_certificates",
+        "show_achievements",
+        "show_reviews",
+        "show_experience",
+        "show_claims_stats",
+        "show_client_base",
+        "show_ratings",
+        "show_languages",
+        "show_gallery",
+        "show_contact_info",
+        "show_social_links",
     ]
     if field not in valid_fields:
-        return JsonResponse({'success': False, 'message': 'Invalid field'})
+        return JsonResponse({"success": False, "message": "Invalid field"})
 
     try:
-        with connection.cursor() as cursor:
-            # We construct the query safely using the whitelisted field string.
-            query = f"UPDATE agent_profiles SET {field} = %s, updated_at = %s WHERE agent_id = %s"
-            cursor.execute(query, [value, timezone.now(), agent_id])
+        agents_service.update_visibility(field, value, agent_id)
     except Exception as e:
         logger.error(f"Error updating agent visibility: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error'})
+        return JsonResponse({"success": False, "message": "Database error"})
 
-    if field in ('is_profile_visible', 'show_reviews'):
-        cache.delete('homepage_reviews')
+    if field in ("is_profile_visible", "show_reviews"):
+        cache.delete("homepage_reviews")
 
-    return JsonResponse({'success': True})
-
+    return JsonResponse({"success": True})
 
 
 def update_achievement_limit(request):
-    if request.method != 'POST':
-        return redirect('admin_dashboard')
-        
+    if request.method != "POST":
+        return redirect("admin_dashboard")
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    agent_id = request.POST.get('id')
-    raw_limit = request.POST.get('achievement_photo_limit')
+    agent_id = request.POST.get("id")
+    raw_limit = request.POST.get("achievement_photo_limit")
 
     if not agent_id:
         messages.error(request, "Agent ID is required.")
-        return redirect('admin_agents')
-        
+        return redirect("admin_agents")
+
     agent_id = int(agent_id)
 
     # Check if the column exists
@@ -705,277 +636,293 @@ def update_achievement_limit(request):
         with connection.cursor() as cursor:
             cursor.execute("SHOW COLUMNS FROM agents LIKE 'achievement_photo_limit'")
             if not cursor.fetchone():
-                messages.error(request, 'Achievement limit column not found. Please run database migration first.')
-                return redirect('admin_agents_manage', id=agent_id)
-                
+                messages.error(
+                    request,
+                    "Achievement limit column not found. Please run database migration first.",
+                )
+                return redirect("admin_agents_manage", id=agent_id)
+
             cursor.execute("SELECT id FROM agents WHERE id = %s", [agent_id])
             if not cursor.fetchone():
-                messages.error(request, 'Agent not found.')
-                return redirect('admin_agents')
+                messages.error(request, "Agent not found.")
+                return redirect("admin_agents")
 
-            cursor.execute("SELECT selected_plan FROM agent_subscriptions WHERE agent_id = %s ORDER BY id DESC LIMIT 1", [agent_id])
+            cursor.execute(
+                "SELECT selected_plan FROM agent_subscriptions WHERE agent_id = %s ORDER BY id DESC LIMIT 1",
+                [agent_id],
+            )
             plan_row = cursor.fetchone()
-            selected_plan = plan_row[0] if plan_row else ''
-            
+            selected_plan = plan_row[0] if plan_row else ""
+
     except Exception as e:
         logger.error(f"Error checking achievement limit schema: {e}")
-        messages.error(request, 'Database error.')
-        return redirect('admin_agents_manage', id=agent_id)
+        messages.error(request, "Database error.")
+        return redirect("admin_agents_manage", id=agent_id)
 
     plan_text = str(selected_plan).lower()
-    default_limit = 10 if 'professional' in plan_text else 5
+    default_limit = 10 if "professional" in plan_text else 5
 
     new_limit = int(raw_limit) if raw_limit and raw_limit.strip() else None
 
     if new_limit is not None and new_limit < default_limit:
-        messages.error(request, f"Custom limit cannot be lower than the default {default_limit} for this plan.")
-        return redirect('admin_agents_manage', id=agent_id)
+        messages.error(
+            request,
+            f"Custom limit cannot be lower than the default {default_limit} for this plan.",
+        )
+        return redirect("admin_agents_manage", id=agent_id)
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE agents SET achievement_photo_limit = %s, updated_at = %s WHERE id = %s", [new_limit, timezone.now(), agent_id])
+        agents_service.set_achievement_limit(agent_id, new_limit)
     except Exception as e:
         logger.error(f"Error updating agent achievement limit: {e}")
-        messages.error(request, 'Database error updating limit.')
-        return redirect('admin_agents_manage', id=agent_id)
+        messages.error(request, "Database error updating limit.")
+        return redirect("admin_agents_manage", id=agent_id)
 
     effective = new_limit if new_limit is not None else default_limit
-    messages.success(request, f"Achievement photo limit updated successfully. Effective limit: {effective}")
-    return redirect('admin_agents_manage', id=agent_id)
+    messages.success(
+        request,
+        f"Achievement photo limit updated successfully. Effective limit: {effective}",
+    )
+    return redirect("admin_agents_manage", id=agent_id)
 
 
 def update_plan(request):
-    if request.method != 'POST':
-        return redirect('admin_dashboard')
-        
+    if request.method != "POST":
+        return redirect("admin_dashboard")
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    agent_id = request.POST.get('id')
-    new_plan = request.POST.get('selected_plan')
+    agent_id = request.POST.get("id")
+    new_plan = request.POST.get("selected_plan")
     if new_plan:
         label = paid_plan_label(new_plan)
-        if label in (PLAN_LABELS['starter'], PLAN_LABELS['professional']):
+        if label in (PLAN_LABELS["starter"], PLAN_LABELS["professional"]):
             new_plan = label
 
     if not agent_id or new_plan is None:
         messages.error(request, "Agent ID is required.")
-        return redirect('admin_agents')
-        
-    agent_id = int(agent_id)
+        return redirect("admin_agents")
 
-    from datetime import timedelta
-    from django.db import transaction
-    from apps.agents.models import Agent, AgentSubscription
+    try:
+        agent_id = int(agent_id)
+    except (TypeError, ValueError):
+        messages.error(request, "Invalid agent ID.")
+        return redirect("admin_agents")
+
+    # Free text here was stored verbatim and later rendered on the dashboard (stored XSS).
+    if new_plan and new_plan not in PLAN_LABELS.values():
+        messages.error(request, "Unknown plan.")
+        return redirect("admin_agents_manage", id=agent_id)
+
     from apps.admin_panel.models import AdminActivityLog
 
     # Map the chosen plan to agents.plan_type (what feature unlocks read).
-    plan_slug = plan_slug_from_name(new_plan or '')
+    plan_slug = plan_slug_from_name(new_plan or "")
+    # Granting a paid plan without payment is the same power as mark_payment: Super Admin only.
+    from .pages import _is_super_admin
+
+    if plan_slug in ("starter", "professional", "exclusive") and not _is_super_admin(
+        admin_id
+    ):
+        messages.error(request, "Only a Super Admin can assign a paid plan.")
+        return redirect("admin_agents_manage", id=agent_id)
     if not new_plan:
-        plan_type = ''              # "No Plan" (was 'standard', i.e. Starter features)
-    elif plan_slug == 'starter':
-        plan_type = 'basic'
-    elif plan_slug in ('professional', 'exclusive'):
-        plan_type = plan_slug       # exclusive used to fall through to 'standard'
-    elif 'trial' in new_plan.lower():
-        plan_type = 'free_trial'
+        plan_type = ""  # "No Plan" (was 'standard', i.e. Starter features)
+    elif plan_slug == "starter":
+        plan_type = "basic"
+    elif plan_slug in ("professional", "exclusive"):
+        plan_type = plan_slug  # exclusive used to fall through to 'standard'
+    elif "trial" in new_plan.lower():
+        plan_type = "free_trial"
     else:
-        plan_type = 'standard'
+        plan_type = "standard"
 
     try:
-        with transaction.atomic():
-            # Change the agent's current subscription only. Updating every row
-            # rewrote the plan of all past payments (and their invoices).
-            current = (
-                AgentSubscription.objects.filter(agent_id=agent_id, status='active').order_by('-created_at').first()
-                or AgentSubscription.objects.filter(agent_id=agent_id).order_by('-created_at').first()
-            )
-            old_plan = current.selected_plan if current else None
-            if current:
-                current.selected_plan = new_plan
-                current.save(update_fields=['selected_plan', 'updated_at'])
-            elif new_plan:
-                now = timezone.now()
-                AgentSubscription.objects.create(
-                    agent_id=agent_id, selected_plan=new_plan, registration_amount=0,
-                    payment_status='completed', status='active',
-                    starts_at=now, expires_at=now + timedelta(days=365),
-                )
-
-            Agent.objects.filter(pk=agent_id).update(plan_type=plan_type, updated_at=timezone.now())
+        old_plan = agents_service.apply_plan_change(agent_id, new_plan, plan_type)
 
         AdminActivityLog.log(
-            'Admin changed agent plan', 'Agent', agent_id,
-            details=f'{old_plan or "(none)"} -> {new_plan or "(no plan)"}; plan_type={plan_type or "(none)"}',
+            "Admin changed agent plan",
+            "Agent",
+            agent_id,
+            details=f"{old_plan or '(none)'} -> {new_plan or '(no plan)'}; plan_type={plan_type or '(none)'}",
             request=request,
         )
     except Exception as e:
         logger.error(f"Error updating agent plan: {e}")
-        messages.error(request, 'Database error updating plan.')
-        return redirect('admin_agents_manage', id=agent_id)
+        messages.error(request, "Database error updating plan.")
+        return redirect("admin_agents_manage", id=agent_id)
 
     messages.success(request, "Subscription plan updated successfully.")
-    return redirect('admin_agents_manage', id=agent_id)
+    return redirect("admin_agents_manage", id=agent_id)
 
 
 def toggle_review_approval(request):
-    if request.method != 'POST':
-        return redirect('admin_dashboard')
-        
+    if request.method != "POST":
+        return redirect("admin_dashboard")
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    review_id = request.POST.get('review_id')
-    is_approved = request.POST.get('is_approved')
-    agent_id = request.POST.get('agent_id') # To redirect back properly
+    review_id = request.POST.get("review_id")
+    is_approved = request.POST.get("is_approved")
+    agent_id = request.POST.get("agent_id")  # To redirect back properly
 
     if not review_id or is_approved is None:
         messages.error(request, "Missing review approval parameters.")
         if agent_id:
-            return redirect('admin_agents_manage', id=agent_id)
-        return redirect('admin_agents')
+            return redirect("admin_agents_manage", id=agent_id)
+        return redirect("admin_agents")
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE agent_reviews SET is_approved = %s WHERE id = %s", [is_approved, review_id])
+        agents_service.set_review_approval(review_id, is_approved)
     except Exception as e:
         logger.error(f"Error toggling review approval: {e}")
-        messages.error(request, 'Database error.')
+        messages.error(request, "Database error.")
         if agent_id:
-            return redirect('admin_agents_manage', id=agent_id)
-        return redirect('admin_agents')
+            return redirect("admin_agents_manage", id=agent_id)
+        return redirect("admin_agents")
 
     messages.success(request, "Review status updated.")
     if agent_id:
-        return redirect('admin_agents_manage', id=agent_id)
-    return redirect('admin_agents')
+        return redirect("admin_agents_manage", id=agent_id)
+    return redirect("admin_agents")
 
 
 def update_profile(request):
-    if request.method != 'POST':
-        return redirect('admin_dashboard')
-        
+    if request.method != "POST":
+        return redirect("admin_dashboard")
+
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    agent_id = request.POST.get('id')
-    fullname = request.POST.get('fullname')
-    email = request.POST.get('email')
-    mobile = request.POST.get('mobile')
-    experience_range = request.POST.get('experience_range')
-    address = request.POST.get('address')
-    office_address = request.POST.get('office_address')
-    license_number = request.POST.get('license_number')
-    pan_number = request.POST.get('pan_number')
-    
-    license_valid_till = request.POST.get('license_valid_till') or None
-    arn_number = request.POST.get('arn_number', '').strip()
-    euin_number = request.POST.get('euin_number', '').strip()
-    investment_valid_till = request.POST.get('investment_valid_till') or None
-    investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
+    agent_id = request.POST.get("id")
+    fullname = request.POST.get("fullname")
+    email = request.POST.get("email")
+    mobile = request.POST.get("mobile")
+    experience_range = request.POST.get("experience_range")
+    address = request.POST.get("address")
+    office_address = request.POST.get("office_address")
+    license_number = request.POST.get("license_number")
+    pan_number = request.POST.get("pan_number")
+
+    license_valid_till = request.POST.get("license_valid_till") or None
+    arn_number = request.POST.get("arn_number", "").strip()
+    euin_number = request.POST.get("euin_number", "").strip()
+    investment_valid_till = request.POST.get("investment_valid_till") or None
+    investment_types = request.POST.getlist(
+        "investment_types[]"
+    ) or request.POST.getlist("investment_types")
 
     if not agent_id:
         messages.error(request, "Agent ID is required.")
-        return redirect('admin_agents')
-        
-    agent_id = int(agent_id)
+        return redirect("admin_agents")
 
     try:
-        import json
-        with connection.cursor() as cursor:
-            # Update agents table
-            cursor.execute("""
-                UPDATE agents 
-                SET fullname = %s, email = %s, mobile = %s, experience_range = %s, updated_at = %s 
-                WHERE id = %s
-            """, [fullname, email, mobile, experience_range, timezone.now(), agent_id])
+        agent_id = int(agent_id)
+    except (TypeError, ValueError):
+        messages.error(request, "Invalid agent ID.")
+        return redirect("admin_agents")
 
-            # Update agent_profiles table
-            cursor.execute("""
-                UPDATE agent_profiles 
-                SET address = %s, office_address = %s, license_number = %s, pan_number = %s, experience_years = %s,
-                    license_valid_till = %s, arn_number = %s, euin_number = %s, investment_valid_till = %s, investment_types = %s,
-                    updated_at = %s 
-                WHERE agent_id = %s
-            """, [
-                address, office_address, license_number, pan_number, experience_range,
-                license_valid_till, arn_number, euin_number, investment_valid_till, json.dumps(investment_types),
-                timezone.now(), agent_id
-            ])
-            
+    from apps.agents.models import Agent
+    from apps.agents.views.dashboard import _email_taken_by_other_login
+
+    agent = Agent.objects.filter(pk=agent_id).first()
+    if not agent:
+        messages.error(request, "Agent not found.")
+        return redirect("admin_agents")
+    email = (email or "").strip()
+    if not email:
+        messages.error(request, "Email is required.")
+        return redirect("admin_agents_manage", id=agent_id)
+    previous_email = agent.email
+    # CLAUDE.md invariant 6: login resolves agents by email, so a shared address hands over the dashboard.
+    if email.lower() != (previous_email or "").lower() and (
+        _email_taken_by_other_login(email, agent)
+        or Agent.objects.filter(email__iexact=email).exclude(pk=agent_id).exists()
+    ):
+        messages.error(request, "That email already belongs to another account.")
+        return redirect("admin_agents_manage", id=agent_id)
+
+    try:
+        agents_service.update_agent_profile(
+            agent_id,
+            previous_email,
+            fullname,
+            email,
+            mobile,
+            experience_range,
+            address,
+            office_address,
+            license_number,
+            pan_number,
+            license_valid_till,
+            arn_number,
+            euin_number,
+            investment_valid_till,
+            investment_types,
+        )
     except Exception as e:
         logger.error(f"Error updating agent profile: {e}")
-        messages.error(request, 'Database error updating profile.')
-        return redirect('admin_agents_manage', id=agent_id)
+        messages.error(request, "Database error updating profile.")
+        return redirect("admin_agents_manage", id=agent_id)
 
     messages.success(request, "Agent profile updated successfully.")
-    return redirect('admin_agents_manage', id=agent_id)
+    return redirect("admin_agents_manage", id=agent_id)
 
 
 def get_agent_json(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    a.id, a.fullname, a.email, a.mobile as phone, a.status, ap.address as location,
-                    ap.license_number as license, ap.experience_years as experience, a.admin_notes,
-                    s.selected_plan
-                FROM agents AS a
-                LEFT JOIN agent_profiles AS ap ON a.id = ap.agent_id
-                LEFT JOIN agent_subscriptions AS s ON a.id = s.agent_id
-                    AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
-                WHERE a.id = %s
-            """, [id])
-            
-            row = cursor.fetchone()
-            if row:
-                columns = [col[0] for col in cursor.description]
-                agent = dict(zip(columns, row))
-                return JsonResponse({'success': True, 'agent': agent})
-                
+        agent = fetch_agent_json(id)
+        if agent:
+            return JsonResponse({"success": True, "agent": agent})
+
     except Exception as e:
         logger.error(f"Error getting agent json: {e}")
-        
-    return JsonResponse({'success': False})
+
+    return JsonResponse({"success": False})
 
 
 from django.utils.timesince import timesince
 from django.utils.html import escape
 from django.db.models import Q
 
+
 def get_edit_logs(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        return JsonResponse({"success": False, "message": "Unauthorized"})
 
     try:
         from ..models.agent_profile_edit_log import AgentProfileEditLog
-        
+
         # Step 1: Find the last time admin approved this agent
-        last_approved = AgentProfileEditLog.objects.filter(
-            agent_id=id,
-            edited_by='admin',
-            step__isnull=True,
-            status_after='active'
-        ).order_by('-created_at').first()
+        last_approved = (
+            AgentProfileEditLog.objects.filter(
+                agent_id=id, edited_by="admin", step__isnull=True, status_after="active"
+            )
+            .order_by("-created_at")
+            .first()
+        )
 
         last_approved_at = last_approved.created_at if last_approved else None
 
         # Build query
-        query = AgentProfileEditLog.objects.filter(agent_id=id).exclude(edited_by='admin_marker')
-        
+        query = AgentProfileEditLog.objects.filter(agent_id=id).exclude(
+            edited_by="admin_marker"
+        )
+
         # Exclude boundary log entries themselves (empty changes, admin action)
         query = query.filter(
-            Q(edited_by='agent') | 
-            Q(edited_by='admin', step__isnull=False)
-        ).order_by('-created_at')
+            Q(edited_by="agent") | Q(edited_by="admin", step__isnull=False)
+        ).order_by("-created_at")
 
         if last_approved_at:
             query = query.filter(created_at__gt=last_approved_at)
@@ -995,43 +942,71 @@ def get_edit_logs(request, id):
             if isinstance(changes, list):
                 changes = [
                     {k: escape(v) if isinstance(v, str) else v for k, v in ch.items()}
-                    for ch in changes if isinstance(ch, dict)
+                    for ch in changes
+                    if isinstance(ch, dict)
                 ]
 
-            diff_for_humans = timesince(log.created_at) + " ago" if log.created_at else ""
-            created_at_str = log.created_at.strftime('%d %b %Y, %I:%M %p') if log.created_at else ""
-            
-            logs_data.append({
-                'id': log.id,
-                'step_label': log.step_label if log.step_label else 'Profile Edit',
-                'step': log.step,
-                'edited_by': log.edited_by,
-                'changes': changes,
-                'status_before': log.status_before,
-                'status_after': log.status_after,
-                'ip_address': log.ip_address,
-                'created_at': created_at_str,
-                'diff_for_humans': diff_for_humans,
-            })
+            diff_for_humans = (
+                timesince(log.created_at) + " ago" if log.created_at else ""
+            )
+            created_at_str = (
+                log.created_at.strftime("%d %b %Y, %I:%M %p") if log.created_at else ""
+            )
 
-        return JsonResponse({'success': True, 'logs': logs_data})
+            logs_data.append(
+                {
+                    "id": log.id,
+                    "step_label": log.step_label if log.step_label else "Profile Edit",
+                    "step": log.step,
+                    "edited_by": log.edited_by,
+                    "changes": changes,
+                    "status_before": log.status_before,
+                    "status_after": log.status_after,
+                    "ip_address": log.ip_address,
+                    "created_at": created_at_str,
+                    "diff_for_humans": diff_for_humans,
+                }
+            )
+
+        return JsonResponse({"success": True, "logs": logs_data})
 
     except Exception as e:
         logger.error(f"Error getting edit logs json: {e}")
-        return JsonResponse({'success': False, 'message': str(e)})
+        logger.exception("Admin request failed in agents")  # detail stays server-side
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Something went wrong. Details are in the server log.",
+            }
+        )
 
 
-def _build_queue_query(status_filter, search, plan_filter, city_filter, event_filter, sort_by):
+def _build_queue_query(
+    status_filter,
+    search,
+    plan_filter,
+    city_filter,
+    event_filter,
+    sort_by,
+    light=False,
+    only_ids=None,
+):
+    """light: only the columns needed to sort, count and paginate (skips the per-row
+    event/blacklist/review subqueries). only_ids: restrict to these agent ids."""
     from django.db import connection
-    if connection.vendor == 'sqlite':
-        hours_expr = "CAST((julianday('now') - julianday(a.created_at)) * 24 AS INTEGER)"
-        minutes_expr = "CAST((julianday('now') - julianday(s.created_at)) * 1440 AS INTEGER)"
+
+    if connection.vendor == "sqlite":
+        hours_expr = (
+            "CAST((julianday('now') - julianday(a.created_at)) * 24 AS INTEGER)"
+        )
+        minutes_expr = (
+            "CAST((julianday('now') - julianday(s.created_at)) * 1440 AS INTEGER)"
+        )
     else:
         hours_expr = "TIMESTAMPDIFF(HOUR, a.created_at, NOW())"
         minutes_expr = "TIMESTAMPDIFF(MINUTE, s.created_at, NOW())"
 
-    query = f'''
-        SELECT
+    full_columns = f"""
             a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.event_id,
             (SELECT e.name FROM events e WHERE e.id = a.event_id LIMIT 1) AS event_name,
             a.created_at, a.updated_at, a.badge, a.registration_step, a.is_blacklisted,
@@ -1043,7 +1018,12 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
             (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as review_count,
             {hours_expr} as hours_waiting,
-            {minutes_expr} as sub_minutes_ago
+            {minutes_expr} as sub_minutes_ago"""
+    light_columns = f"""
+            a.id, a.created_at, a.status, s.razorpay_order_id,
+            s.payment_status as sub_payment_status, {hours_expr} as hours_waiting"""
+    query = f"""
+        SELECT {light_columns if light else full_columns}
         FROM agents as a
         LEFT JOIN agent_profiles as ap ON a.id = ap.agent_id
         LEFT JOIN agent_subscriptions as s ON a.id = s.agent_id
@@ -1052,7 +1032,7 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
                 (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
             )
         WHERE 1=1
-    '''
+    """
     params = []
 
     if isinstance(status_filter, list):
@@ -1062,21 +1042,24 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
         query += " AND a.status = %s"
         params.append(status_filter)
 
+    if only_ids is not None:
+        ids = [int(i) for i in only_ids] or [0]
+        query += " AND a.id IN (" + ",".join(["%s"] * len(ids)) + ")"
+        params.extend(ids)
+
     if search:
-        query += " AND (a.fullname LIKE %s OR a.email LIKE %s OR ap.display_name LIKE %s)"
+        query += (
+            " AND (a.fullname LIKE %s OR a.email LIKE %s OR ap.display_name LIKE %s)"
+        )
         search_param = f"%{search}%"
         params.extend([search_param, search_param, search_param])
 
-    if plan_filter and plan_filter != 'All Plans':
-        if plan_filter == PLAN_LABELS['professional']:
-            query += (
-                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
-            )
+    if plan_filter and plan_filter != "All Plans":
+        if plan_filter == PLAN_LABELS["professional"]:
+            query += " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
             params.append(plan_filter)
-        elif plan_filter == PLAN_LABELS['starter']:
-            query += (
-                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
-            )
+        elif plan_filter == PLAN_LABELS["starter"]:
+            query += " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
             params.append(plan_filter)
         else:
             query += " AND s.selected_plan = %s"
@@ -1090,23 +1073,24 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
     query += event_sql
     params.extend(event_params)
 
-    if sort_by == 'oldest':
+    if sort_by == "oldest":
         query += " ORDER BY a.created_at ASC"
-    elif sort_by == 'waiting':
+    elif sort_by == "waiting":
         query += f" ORDER BY {hours_expr} DESC"
     else:
         query += " ORDER BY a.created_at DESC"
 
     return query, params
 
+
 def _event_filter_sql(event_filter):
     """SQL fragment + params for admin event_id filters (includes Paldi challengers)."""
-    if not event_filter or event_filter == 'All Events':
-        return '', []
+    if not event_filter or event_filter == "All Events":
+        return "", []
     try:
         event_id_int = int(event_filter)
     except (TypeError, ValueError):
-        return ' AND a.event_id = %s', [event_filter]
+        return " AND a.event_id = %s", [event_filter]
 
     paldi_id = None
     try:
@@ -1118,48 +1102,47 @@ def _event_filter_sql(event_filter):
 
     if paldi_id is not None and event_id_int == paldi_id:
         return (
-            ' AND (a.event_id = %s OR a.id IN (SELECT agent_id FROM event_referral_participants))',
+            " AND (a.event_id = %s OR a.id IN (SELECT agent_id FROM event_referral_participants))",
             [event_id_int],
         )
-    return ' AND a.event_id = %s', [event_id_int]
+    return " AND a.event_id = %s", [event_id_int]
 
 
 def _get_events_list():
     events = []
     try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT id, name FROM events ORDER BY name ASC")
-            columns = [col[0] for col in cursor.description]
-            events = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        events = fetch_event_names()
     except Exception:
         pass
     try:
         from apps.event_referral.services.paldi_event import get_or_create_paldi_event
 
         paldi = get_or_create_paldi_event()
-        if not any(e.get('id') == paldi.id for e in events):
-            events.append({'id': paldi.id, 'name': paldi.name})
-            events.sort(key=lambda e: (e.get('name') or '').lower())
+        if not any(e.get("id") == paldi.id for e in events):
+            events.append({"id": paldi.id, "name": paldi.name})
+            events.sort(key=lambda e: (e.get("name") or "").lower())
     except Exception:
         pass
     return events
 
 
+MISSING_IRDAI_LIMIT = 200
 
 
 def agent_approvals(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    search = request.GET.get('search', '')
-    plan_filter = request.GET.get('plan', 'All Plans')
-    sort_by = request.GET.get('sort', 'newest')
-    city_filter = request.GET.get('city', '')
-    event_filter = request.GET.get('event_id', 'All Events')
+    search = request.GET.get("search", "")
+    plan_filter = request.GET.get("plan", "All Plans")
+    sort_by = request.GET.get("sort", "newest")
+    city_filter = request.GET.get("city", "")
+    event_filter = request.GET.get("event_id", "All Events")
 
-    query, params = _build_queue_query('pending_approval', search, plan_filter, city_filter, event_filter, sort_by)
+    query, params = _build_queue_query(
+        "pending_approval", search, plan_filter, city_filter, event_filter, sort_by
+    )
 
     agents = []
     total_pending = 0
@@ -1167,18 +1150,14 @@ def agent_approvals(request):
     total_wait_hours = 0
 
     try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            columns = [col[0] for col in cursor.description]
-            agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        agents = fetch_queue_rows(query, params)
     except Exception as e:
         logger.error(f"Error fetching approvals list: {e}")
 
     for agent in agents:
         _apply_resolved_plan_label(agent)
         total_pending += 1
-        hours_waiting = agent.get('hours_waiting') or 0
+        hours_waiting = agent.get("hours_waiting") or 0
         total_wait_hours += hours_waiting
         if hours_waiting > 48:
             urgent_count += 1
@@ -1186,62 +1165,57 @@ def agent_approvals(request):
     avg_wait_hours = (total_wait_hours / total_pending) if total_pending > 0 else 0
 
     missing_irdai_agents = []
+    missing_irdai_total = 0
     try:
-        missing_query = """
-            SELECT a.id, a.fullname, a.email, a.mobile, a.badge, ap.pan_number, ap.license_number
-            FROM agents as a
-            LEFT JOIN agent_profiles as ap ON a.id = ap.agent_id
-            WHERE a.status = 'active'
-              AND (ap.license_number IS NULL OR ap.license_number = '')
-            ORDER BY a.id DESC
-        """
-        with connection.cursor() as cursor:
-            cursor.execute(missing_query)
-            columns = [col[0] for col in cursor.description]
-            missing_irdai_agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        missing_irdai_total = count_missing_irdai_agents()
+        missing_irdai_agents = fetch_missing_irdai_agents(MISSING_IRDAI_LIMIT)
     except Exception as e:
         logger.error(f"Error fetching missing IRDAI agents: {e}")
 
     for agent in missing_irdai_agents:
-        badge_str = agent.get('badge') or ''
-        agent['badges'] = [b for b in badge_str.split(',') if b]
-        agent['initials'] = agent['fullname'][0].upper() if agent['fullname'] else 'A'
+        badge_str = agent.get("badge") or ""
+        agent["badges"] = [b for b in badge_str.split(",") if b]
+        agent["initials"] = agent["fullname"][0].upper() if agent["fullname"] else "A"
 
     context = {
-        'agents': agents,
-        'search': search,
-        'plan_filter': plan_filter,
-        'city_filter': city_filter,
-        'event_filter': event_filter,
-        'sort_by': sort_by,
-        'events': _get_events_list(),
-        'totalPending': total_pending,
-        'urgentCount': urgent_count,
-        'avgWaitHours': avg_wait_hours,
-        'missingIrdaiAgents': missing_irdai_agents,
+        "agents": agents,
+        "search": search,
+        "plan_filter": plan_filter,
+        "city_filter": city_filter,
+        "event_filter": event_filter,
+        "sort_by": sort_by,
+        "events": _get_events_list(),
+        "totalPending": total_pending,
+        "urgentCount": urgent_count,
+        "avgWaitHours": avg_wait_hours,
+        "missingIrdaiAgents": missing_irdai_agents,
+        "missingIrdaiTotal": missing_irdai_total,
     }
 
-    return render(request, 'admin/agents/approvals.html', context)
+    return render(request, "admin/agents/approvals.html", context)
 
 
 def agent_pending_registrations(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    search = request.GET.get('search', '')
-    plan_filter = request.GET.get('plan', 'All Plans')
-    sort_by = request.GET.get('sort', 'newest')
-    city_filter = request.GET.get('city', '')
-    event_filter = request.GET.get('event_id', 'All Events')
+    search = request.GET.get("search", "")
+    plan_filter = request.GET.get("plan", "All Plans")
+    sort_by = request.GET.get("sort", "newest")
+    city_filter = request.GET.get("city", "")
+    event_filter = request.GET.get("event_id", "All Events")
 
+    pending_statuses = ["incomplete", "pending_payment", "event_challenge"]
+    # Light rows for every pending agent (sort, stats, pagination); full rows for the page only.
     query, params = _build_queue_query(
-        ['incomplete', 'pending_payment', 'event_challenge'],
+        pending_statuses,
         search,
         plan_filter,
         city_filter,
         event_filter,
         sort_by,
+        light=True,
     )
 
     agents = []
@@ -1251,193 +1225,170 @@ def agent_pending_registrations(request):
     payment_initiated_count = 0
 
     try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            columns = [col[0] for col in cursor.description]
-            agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        agents = fetch_queue_rows(query, params)
     except Exception as e:
         logger.error(f"Error fetching pending registrations list: {e}")
-
-    for agent in agents:
-        _apply_resolved_plan_label(agent)
 
     # ── Also fetch AgentDraft entries (Step 1 done, plan not yet chosen) ──
     # Only include drafts whose email does NOT already exist in the agents table.
     draft_entries = []
-    if (not plan_filter or plan_filter == 'All Plans') and (not event_filter or event_filter == 'All Events'):
+    if (not plan_filter or plan_filter == "All Plans") and (
+        not event_filter or event_filter == "All Events"
+    ):
         try:
-            from django.db import connection as _dc
-            _draft_hours_expr = (
-                "CAST((julianday('now') - julianday(d.created_at)) * 24 AS INTEGER)"
-                if _dc.vendor == 'sqlite'
-                else "TIMESTAMPDIFF(HOUR, d.created_at, NOW())"
-            )
-            draft_query = f"""
-                SELECT
-                    d.id, d.fullname, d.email, d.mobile,
-                    d.address, d.state, d.agent_pincode,
-                    d.registration_step, d.created_at, d.updated_at,
-                    {_draft_hours_expr} AS hours_waiting
-                FROM agent_drafts AS d
-                WHERE d.registration_step >= 1
-                  AND d.email NOT IN (SELECT email FROM agents WHERE email IS NOT NULL AND email != '')
-            """
-            draft_params = []
-            if search:
-                draft_query += " AND (d.fullname LIKE %s OR d.email LIKE %s)"
-                sp = f"%{search}%"
-                draft_params.extend([sp, sp])
-            if city_filter:
-                draft_query += " AND (d.address LIKE %s OR d.state LIKE %s)"
-                cp = f"%{city_filter}%"
-                draft_params.extend([cp, cp])
-            if sort_by == 'oldest':
-                draft_query += " ORDER BY d.created_at ASC"
-            elif sort_by == 'waiting':
-                draft_query += f" ORDER BY {_draft_hours_expr} DESC"
-            else:
-                draft_query += " ORDER BY d.created_at DESC"
-            with _dc.cursor() as _cur:
-                _cur.execute(draft_query, draft_params)
-                draft_cols = [col[0] for col in _cur.description]
-                raw_drafts = [dict(zip(draft_cols, row)) for row in _cur.fetchall()]
+            raw_drafts = fetch_pending_drafts(search, city_filter, sort_by)
             for d in raw_drafts:
-                reg_step = d.get('registration_step') or 1
-                is_claimed = (reg_step >= 2)
-                draft_entries.append({
-                    'id': d['id'],
-                    'fullname': d['fullname'] or '',
-                    'email': d['email'] or '',
-                    'mobile': d['mobile'] or '',
-                    'status': 'claim' if is_claimed else 'draft',
-                    'registration_step': reg_step,
-                    'draft_badge': 'CLAIM' if is_claimed else 'DRAFT',
-                    'is_claimed': is_claimed,
-                    'address': d.get('address') or d.get('state') or '',
-                    'display_name': d['fullname'] or '',
-                    'profile_photo_path': None,
-                    'pan_number': None,
-                    'is_blacklisted': False,
-                    'is_blacklisted_by_pan': 0,
-                    'badge': None,
-                    'selected_plan': None,
-                    'razorpay_order_id': None,
-                    'sub_payment_status': None,
-                    'sub_created_at': None,
-                    'sub_minutes_ago': None,
-                    'registration_amount': None,
-                    'avg_rating': None,
-                    'review_count': 0,
-                    'created_at': d['created_at'],
-                    'updated_at': d['updated_at'],
-                    'hours_waiting': d.get('hours_waiting') or 0,
-                    'is_draft': True,
-                    'last_event': '',
-                    'event_label': '',
-                })
+                reg_step = d.get("registration_step") or 1
+                is_claimed = reg_step >= 2
+                draft_entries.append(
+                    {
+                        "id": d["id"],
+                        "fullname": d["fullname"] or "",
+                        "email": d["email"] or "",
+                        "mobile": d["mobile"] or "",
+                        "status": "claim" if is_claimed else "draft",
+                        "registration_step": reg_step,
+                        "draft_badge": "CLAIM" if is_claimed else "DRAFT",
+                        "is_claimed": is_claimed,
+                        "address": d.get("address") or d.get("state") or "",
+                        "display_name": d["fullname"] or "",
+                        "profile_photo_path": None,
+                        "pan_number": None,
+                        "is_blacklisted": False,
+                        "is_blacklisted_by_pan": 0,
+                        "badge": None,
+                        "selected_plan": None,
+                        "razorpay_order_id": None,
+                        "sub_payment_status": None,
+                        "sub_created_at": None,
+                        "sub_minutes_ago": None,
+                        "registration_amount": None,
+                        "avg_rating": None,
+                        "review_count": 0,
+                        "created_at": d["created_at"],
+                        "updated_at": d["updated_at"],
+                        "hours_waiting": d.get("hours_waiting") or 0,
+                        "is_draft": True,
+                        "last_event": "",
+                        "event_label": "",
+                    }
+                )
         except Exception as _e:
-            logger.error(f'Error fetching draft registrations: {_e}')
+            logger.error(f"Error fetching draft registrations: {_e}")
 
     # Merge and re-sort
     all_entries = agents + draft_entries
-    if sort_by == 'oldest':
-        all_entries.sort(key=lambda x: str(x.get('created_at') or ''), reverse=False)
-    elif sort_by == 'waiting':
-        all_entries.sort(key=lambda x: x.get('hours_waiting') or 0, reverse=True)
+    if sort_by == "oldest":
+        all_entries.sort(key=lambda x: str(x.get("created_at") or ""), reverse=False)
+    elif sort_by == "waiting":
+        all_entries.sort(key=lambda x: x.get("hours_waiting") or 0, reverse=True)
     else:
-        all_entries.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
+        all_entries.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
 
     # Agents + drafts are merged in Python, so paginate the list; stats below still cover all entries.
-    page_obj = Paginator(all_entries, 25).get_page(request.GET.get('page'))
-    page_entries = page_obj.object_list
+    page_obj = Paginator(all_entries, 25).get_page(request.GET.get("page"))
+    page_entries = list(page_obj.object_list)
+
+    page_agent_ids = [e["id"] for e in page_entries if not e.get("is_draft")]
+    full_by_id = {}
+    if page_agent_ids:
+        try:
+            full_query, full_params = _build_queue_query(
+                pending_statuses,
+                search,
+                plan_filter,
+                city_filter,
+                event_filter,
+                sort_by,
+                only_ids=page_agent_ids,
+            )
+            full_by_id = {
+                row["id"]: row for row in fetch_queue_rows(full_query, full_params)
+            }
+        except Exception as e:
+            logger.error(f"Error fetching pending registrations page: {e}")
+    for i, entry in enumerate(page_entries):
+        if not entry.get("is_draft") and entry["id"] in full_by_id:
+            page_entries[i] = full_by_id[entry["id"]]
+            _apply_resolved_plan_label(page_entries[i])
+    page_obj.object_list = page_entries
 
     # ── Bulk-fetch latest RegistrationActivityLog event per entry ──
     _EVENT_LABELS = {
-        'FORM_SUBMIT':             'Form Submitted',
-        'PENDING_FOR_REGISTRATION':'Pending Payment',
-        'DISTRIBUTION':            'Distributor Assigned',
-        'CLAIM_BUTTON':            'Choosing Plan',
-        'PAYMENT_BUTTON':          'Payment Done',
+        "FORM_SUBMIT": "Form Submitted",
+        "PENDING_FOR_REGISTRATION": "Pending Payment",
+        "DISTRIBUTION": "Distributor Assigned",
+        "CLAIM_BUTTON": "Choosing Plan",
+        "PAYMENT_BUTTON": "Payment Done",
     }
     _STATUS_LABELS = {
-        'event_challenge': 'Paldi — Referral challenge',
+        "event_challenge": "Paldi — Referral challenge",
     }
     draft_event_map = {}
     agent_event_map = {}
-    _draft_ids = [str(e['id']) for e in page_entries if e.get('is_draft')]
-    _agent_ids = [str(e['id']) for e in page_entries if not e.get('is_draft')]
+    _draft_ids = [str(e["id"]) for e in page_entries if e.get("is_draft")]
+    _agent_ids = [str(e["id"]) for e in page_entries if not e.get("is_draft")]
     try:
-        from django.db import connection as _ec
-        with _ec.cursor() as _cur:
-            if _draft_ids:
-                placeholders = ','.join(['%s'] * len(_draft_ids))
-                _cur.execute(
-                    f'SELECT draft_id, event_name FROM registration_activity_logs '
-                    f'WHERE draft_id IN ({placeholders}) ORDER BY created_at DESC',
-                    _draft_ids
-                )
-                for row in _cur.fetchall():
-                    did, ev = str(row[0]), row[1]
-                    if did not in draft_event_map:
-                        draft_event_map[did] = ev
-            if _agent_ids:
-                placeholders = ','.join(['%s'] * len(_agent_ids))
-                _cur.execute(
-                    f'SELECT agent_id, event_name FROM registration_activity_logs '
-                    f'WHERE agent_id IN ({placeholders}) ORDER BY created_at DESC',
-                    _agent_ids
-                )
-                for row in _cur.fetchall():
-                    aid, ev = str(row[0]), row[1]
-                    if aid not in agent_event_map:
-                        agent_event_map[aid] = ev
+        if _draft_ids:
+            draft_event_map = fetch_latest_draft_events(_draft_ids)
+        if _agent_ids:
+            agent_event_map = fetch_latest_agent_events(_agent_ids)
     except Exception as _e:
-        logger.warning(f'Event lookup failed: {_e}')
+        logger.warning(f"Event lookup failed: {_e}")
 
     for entry in page_entries:
-        _eid = str(entry.get('id', ''))
-        last_ev = draft_event_map.get(_eid, '') if entry.get('is_draft') else agent_event_map.get(_eid, '')
-        entry['last_event'] = last_ev
-        entry['event_label'] = _EVENT_LABELS.get(last_ev, '')
-        if entry.get('status') == 'event_challenge':
-            entry['event_label'] = entry.get('event_name') or _STATUS_LABELS['event_challenge']
-        elif entry.get('event_name'):
-            entry['event_label'] = entry['event_name']
-        if last_ev == 'CLAIM_BUTTON' and entry.get('is_draft'):
-            entry['draft_badge'] = 'CLAIM'
-            entry['is_claimed'] = True
+        _eid = str(entry.get("id", ""))
+        last_ev = (
+            draft_event_map.get(_eid, "")
+            if entry.get("is_draft")
+            else agent_event_map.get(_eid, "")
+        )
+        entry["last_event"] = last_ev
+        entry["event_label"] = _EVENT_LABELS.get(last_ev, "")
+        if entry.get("status") == "event_challenge":
+            entry["event_label"] = (
+                entry.get("event_name") or _STATUS_LABELS["event_challenge"]
+            )
+        elif entry.get("event_name"):
+            entry["event_label"] = entry["event_name"]
+        if last_ev == "CLAIM_BUTTON" and entry.get("is_draft"):
+            entry["draft_badge"] = "CLAIM"
+            entry["is_claimed"] = True
 
     for entry in all_entries:
         total_pending += 1
-        hours_waiting = entry.get('hours_waiting') or 0
+        hours_waiting = entry.get("hours_waiting") or 0
         total_wait_hours += hours_waiting
         if hours_waiting > 48:
             urgent_count += 1
-        if entry.get('razorpay_order_id') and entry.get('sub_payment_status') == 'pending':
+        if (
+            entry.get("razorpay_order_id")
+            and entry.get("sub_payment_status") == "pending"
+        ):
             payment_initiated_count += 1
 
     avg_wait_hours = (total_wait_hours / total_pending) if total_pending > 0 else 0
 
     context = {
-        'agents': page_entries,
-        'page_obj': page_obj,
-        'search': search,
-        'plan_filter': plan_filter,
-        'city_filter': city_filter,
-        'event_filter': event_filter,
-        'sort_by': sort_by,
-        'events': _get_events_list(),
-        'totalPending': total_pending,
-        'urgentCount': urgent_count,
-        'avgWaitHours': avg_wait_hours,
-        'paymentInitiatedCount': payment_initiated_count,
+        "agents": page_entries,
+        "page_obj": page_obj,
+        "search": search,
+        "plan_filter": plan_filter,
+        "city_filter": city_filter,
+        "event_filter": event_filter,
+        "sort_by": sort_by,
+        "events": _get_events_list(),
+        "totalPending": total_pending,
+        "urgentCount": urgent_count,
+        "avgWaitHours": avg_wait_hours,
+        "paymentInitiatedCount": payment_initiated_count,
     }
 
-    return render(request, 'admin/agents/pending_registrations.html', context)
+    return render(request, "admin/agents/pending_registrations.html", context)
 
 
 from django.views.decorators.csrf import csrf_protect
+
 
 @require_POST
 @csrf_protect
@@ -1449,85 +1400,131 @@ def admin_verify_pending_payment(request):
     """
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+        return JsonResponse({"success": False, "message": "Unauthorized"}, status=403)
 
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         data = request.POST
 
-    agent_id = data.get('agent_id')
+    agent_id = data.get("agent_id")
     if not agent_id:
-        return JsonResponse({'success': False, 'message': 'Agent ID is required.'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Agent ID is required."}, status=400
+        )
 
     from apps.agents.models import Agent, AgentSubscription
 
     agent = Agent.objects.filter(pk=agent_id).first()
     if not agent:
-        return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
+        return JsonResponse(
+            {"success": False, "message": "Agent not found."}, status=404
+        )
 
     from apps.agents.models import Invoice
 
     # Check for pending/failed subscription with razorpay_order_id
-    subscription = AgentSubscription.objects.filter(
-        agent=agent,
-        payment_status__in=['pending', 'failed'],
-    ).exclude(razorpay_order_id__isnull=True).exclude(razorpay_order_id='').order_by('-created_at').first()
+    subscription = (
+        AgentSubscription.objects.filter(
+            agent=agent,
+            payment_status__in=["pending", "failed"],
+        )
+        .exclude(razorpay_order_id__isnull=True)
+        .exclude(razorpay_order_id="")
+        .order_by("-created_at")
+        .first()
+    )
 
     # A paid invoice no longer short-circuits: an already-active agent can have
     # a paid upgrade / renewal order whose callback and webhook were both lost.
-    if not subscription and Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
-        return JsonResponse({
-            'success': True,
-            'already_active': True,
-            'message': f'Agent {agent.fullname} is already activated with a paid invoice.'
-        })
+    if (
+        not subscription
+        and Invoice.objects.filter(
+            agent_email=agent.email, payment_status="paid"
+        ).exists()
+    ):
+        return JsonResponse(
+            {
+                "success": True,
+                "already_active": True,
+                "message": f"Agent {agent.fullname} is already activated with a paid invoice.",
+            }
+        )
 
     if not subscription:
-        return JsonResponse({
-            'success': False,
-            'message': f'No pending payment found for {agent.fullname}. No Razorpay order was initiated.'
-        }, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": f"No pending payment found for {agent.fullname}. No Razorpay order was initiated.",
+            },
+            status=400,
+        )
 
     # Use existing verify_and_activate_pending_payment function
     from apps.agents.views.registration import verify_and_activate_pending_payment
-    
+
     try:
         result = verify_and_activate_pending_payment(agent, include_paid_agents=True)
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f"Error during manual payment verification for {agent.email}: {e}")
-        return JsonResponse({
-            'success': False,
-            'message': 'An internal server error occurred while verifying the payment. Please try again later.'
-        }, status=500)
+
+        logging.getLogger(__name__).error(
+            f"Error during manual payment verification for {agent.email}: {e}"
+        )
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "An internal server error occurred while verifying the payment. Please try again later.",
+            },
+            status=500,
+        )
 
     if result:
         agent.refresh_from_db()
-        logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})")
+        logger.info(
+            f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})"
+        )
         from apps.admin_panel.models import AdminActivityLog
-        AdminActivityLog.log('Verified pending payment', 'Agent', agent.pk,
-                             details=f'order={subscription.razorpay_order_id} status={agent.status}', request=request)
-        return JsonResponse({
-            'success': True,
-            'message': (f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.'
-                        if agent.status == 'pending_approval' else
-                        f'Payment verified successfully for {agent.fullname}! Plan updated (status: {agent.status}).'),
-            'agent_status': agent.status,
-        })
+
+        AdminActivityLog.log(
+            "Verified pending payment",
+            "Agent",
+            agent.pk,
+            details=f"order={subscription.razorpay_order_id} status={agent.status}",
+            request=request,
+        )
+        return JsonResponse(
+            {
+                "success": True,
+                "message": (
+                    f"Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue."
+                    if agent.status == "pending_approval"
+                    else f"Payment verified successfully for {agent.fullname}! Plan updated (status: {agent.status})."
+                ),
+                "agent_status": agent.status,
+            }
+        )
     else:
-        logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} attempted verification for agent {agent.email} (ID: {agent.id}) — payment NOT found on Razorpay")
+        logger.info(
+            f"[admin_verify_pending_payment] Admin #{admin_id} attempted verification for agent {agent.email} (ID: {agent.id}) — payment NOT found on Razorpay"
+        )
         from apps.agents.services.account_auth import agent_has_completed_payment
+
         if agent_has_completed_payment(agent):
-            return JsonResponse({
-                'success': True,
-                'already_active': True,
-                'message': f'Agent {agent.fullname} is already activated. The newer order {subscription.razorpay_order_id} has no payment on Razorpay.'
-            })
-        return JsonResponse({
-            'success': False,
-            'message': f'Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.'
-        }, status=400)
+            return JsonResponse(
+                {
+                    "success": True,
+                    "already_active": True,
+                    "message": f"Agent {agent.fullname} is already activated. The newer order {subscription.razorpay_order_id} has no payment on Razorpay.",
+                }
+            )
+        return JsonResponse(
+            {
+                "success": False,
+                "message": f"Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.",
+            },
+            status=400,
+        )
 
 
 @never_cache
@@ -1535,7 +1532,7 @@ def admin_edit_profile(request, id):
     """Full profile editor under /admin/agents/<id>/edit-profile/."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     from apps.agents.models import Agent
     from apps.agents.views.dashboard import render_edit_profile
@@ -1543,7 +1540,7 @@ def admin_edit_profile(request, id):
     agent = Agent.objects.filter(id=id).first()
     if not agent:
         messages.error(request, "Agent not found.")
-        return redirect('admin_agents')
+        return redirect("admin_agents")
     return render_edit_profile(request, agent, is_admin_view=True)
 
 
@@ -1553,12 +1550,16 @@ def admin_full_update_profile(request, id):
     """POST target for the admin full profile editor. Distinct from manage-stats update_profile."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
 
     from apps.agents.models import Agent
     from apps.agents.views.dashboard import apply_profile_update
 
     agent = Agent.objects.filter(id=id).first()
     if not agent:
-        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": "Agent not found"}, status=404
+        )
     return apply_profile_update(request, agent, is_admin_edit=True)

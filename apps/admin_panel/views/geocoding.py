@@ -99,7 +99,8 @@ def geocode_single(request):
         })
     except Exception as e:
         logger.error(f"[Admin GeoManager] Single geocode failed: Agent #{agent.id} - {str(e)}")
-        return JsonResponse({'success': False, 'message': f"Error: {str(e)}"}, status=500)
+        logger.exception("Admin request failed in geocoding")  # detail stays server-side
+        return JsonResponse({'success': False, 'message': "Error. Details are in the server log."}, status=500)
 
 def geocode_batch(request):
     admin_id = _get_admin_from_session(request)

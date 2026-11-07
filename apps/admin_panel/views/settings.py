@@ -12,6 +12,7 @@ from apps.home.models.site_setting import SiteSetting
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 
+
 def parse_nested_post(post_dict):
     """
     Parses flat Django post data like 'homepage_content[hero][headline]' into a nested dict.
@@ -19,18 +20,18 @@ def parse_nested_post(post_dict):
     """
     data = {}
     for key, value in post_dict.items():
-        if key == 'csrfmiddlewaretoken':
+        if key == "csrfmiddlewaretoken":
             continue
         # Find all brackets or initial keys
-        matches = re.findall(r'([^\[\]]+)', key)
+        matches = re.findall(r"([^\[\]]+)", key)
         if not matches:
             continue
-        
+
         current = data
         for i, part in enumerate(matches[:-1]):
             next_part = matches[i + 1]
             is_next_list = next_part.isdigit()
-            
+
             if is_next_list:
                 if part not in current:
                     current[part] = []
@@ -45,7 +46,7 @@ def parse_nested_post(post_dict):
                     if part not in current:
                         current[part] = {}
                     current = current[part]
-                    
+
         last_part = matches[-1]
         if isinstance(current, list):
             idx = int(last_part)
@@ -54,255 +55,680 @@ def parse_nested_post(post_dict):
             current[idx] = value
         else:
             current[last_part] = value
-            
+
     return data
+
 
 def homepage(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     # Fetch homepage settings (with fallback defaults)
     default_dyk_slides = [
-        {'accent': 'accent-rose',   'bg': 'bg-rose-500',   'icon': 'users',         'title': '3× faster claim settlements',      'body': 'Customers served by a nearby agent report claims clearing up to 3× faster — your agent walks the file through with the insurer.'},
-        {'accent': 'accent-emerald','bg': 'bg-emerald-500','icon': 'shield',         'title': 'Local agents catch policy gaps',    'body': 'A neighbourhood expert knows your city\'s hospital network, traffic risks and weather patterns — and recommends covers a tele-caller never will.'},
-        {'accent': 'accent-sky',    'bg': 'bg-sky-500',    'icon': 'clock',          'title': 'Face-to-face saves hours of confusion','body': '70%+ of policyholders say they understood their cover only after meeting an agent in person. Jargon disappears across a table.'},
-        {'accent': 'accent-amber',  'bg': 'bg-amber-500',  'icon': 'trending-up',    'title': '40% lower lapse rates',             'body': 'Customers with a dedicated nearby agent are 40% less likely to let a policy lapse — they get timely renewal nudges from a real human.'},
-        {'accent': 'accent-violet', 'bg': 'bg-violet-500', 'icon': 'lightbulb',      'title': 'Zero platform fee, full licensed advice','body': 'Your agent earns from the insurer — not from you. Same premium, lifetime advisor in your neighbourhood.'},
-        {'accent': 'accent-pink',   'bg': 'bg-pink-500',   'icon': 'heart',          'title': 'Lifetime relationship, not a ticket number','body': 'Your Padosi agent stays the same across renewals, claims and family additions — no fresh call-centre script each time.'},
-        {'accent': 'accent-indigo', 'bg': 'bg-indigo-500', 'icon': 'building-2',     'title': 'Hospital networks matter locally',  'body': 'A local agent maps the right cashless hospitals near your home and office before you ever need one.'},
-        {'accent': 'accent-teal',   'bg': 'bg-teal-500',   'icon': 'indian-rupee',   'title': 'Right cover, not the costliest cover','body': 'A neighbourhood advisor sizes the premium to your real life — not to a target sheet.'},
+        {
+            "accent": "accent-rose",
+            "bg": "bg-rose-500",
+            "icon": "users",
+            "title": "3× faster claim settlements",
+            "body": "Customers served by a nearby agent report claims clearing up to 3× faster — your agent walks the file through with the insurer.",
+        },
+        {
+            "accent": "accent-emerald",
+            "bg": "bg-emerald-500",
+            "icon": "shield",
+            "title": "Local agents catch policy gaps",
+            "body": "A neighbourhood expert knows your city's hospital network, traffic risks and weather patterns — and recommends covers a tele-caller never will.",
+        },
+        {
+            "accent": "accent-sky",
+            "bg": "bg-sky-500",
+            "icon": "clock",
+            "title": "Face-to-face saves hours of confusion",
+            "body": "70%+ of policyholders say they understood their cover only after meeting an agent in person. Jargon disappears across a table.",
+        },
+        {
+            "accent": "accent-amber",
+            "bg": "bg-amber-500",
+            "icon": "trending-up",
+            "title": "40% lower lapse rates",
+            "body": "Customers with a dedicated nearby agent are 40% less likely to let a policy lapse — they get timely renewal nudges from a real human.",
+        },
+        {
+            "accent": "accent-violet",
+            "bg": "bg-violet-500",
+            "icon": "lightbulb",
+            "title": "Zero platform fee, full licensed advice",
+            "body": "Your agent earns from the insurer — not from you. Same premium, lifetime advisor in your neighbourhood.",
+        },
+        {
+            "accent": "accent-pink",
+            "bg": "bg-pink-500",
+            "icon": "heart",
+            "title": "Lifetime relationship, not a ticket number",
+            "body": "Your Padosi agent stays the same across renewals, claims and family additions — no fresh call-centre script each time.",
+        },
+        {
+            "accent": "accent-indigo",
+            "bg": "bg-indigo-500",
+            "icon": "building-2",
+            "title": "Hospital networks matter locally",
+            "body": "A local agent maps the right cashless hospitals near your home and office before you ever need one.",
+        },
+        {
+            "accent": "accent-teal",
+            "bg": "bg-teal-500",
+            "icon": "indian-rupee",
+            "title": "Right cover, not the costliest cover",
+            "body": "A neighbourhood advisor sizes the premium to your real life — not to a target sheet.",
+        },
     ]
 
     default_quick_picks = [
-        {'label': 'Mediclaim',          'badge': 'Most Bought', 'badge_bg': '#ffe4e6', 'badge_color': '#be123c', 'icon_bg': '#fff1f2', 'icon_color': '#f43f5e', 'icon': 'heart-pulse',    'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Mediclaim&openFilter=1'},
-        {'label': 'Term Plan',           'badge': 'Pure Cover',  'badge_bg': '#e0f2fe', 'badge_color': '#0369a1', 'icon_bg': '#f0f9ff', 'icon_color': '#0284c7', 'icon': 'clock',          'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Term%20Plan&openFilter=1'},
-        {'label': 'Private Car',         'badge': 'Renew Fast',  'badge_bg': '#fef3c7', 'badge_color': '#b45309', 'icon_bg': '#fffbeb', 'icon_color': '#d97706', 'icon': 'car-front',      'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Private%20Car&openFilter=1'},
-        {'label': 'Two Wheeler',         'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#ecfdf5', 'icon_color': '#059669', 'icon': 'bike',           'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Two%20Wheeler&openFilter=1'},
-        {'label': 'Critical Illness',    'badge': 'Lumpsum',     'badge_bg': '#fae8ff', 'badge_color': '#a21caf', 'icon_bg': '#fdf4ff', 'icon_color': '#c026d3', 'icon': 'alert-triangle', 'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Critical%20Illness&openFilter=1'},
-        {'label': 'Personal Accident',   'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#fff7ed', 'icon_color': '#ea580c', 'icon': 'user-check',     'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Personal%20Accident&openFilter=1'},
-        {'label': 'Super Top-up',        'badge': 'Save Big',    'badge_bg': '#ccfbf1', 'badge_color': '#0f766e', 'icon_bg': '#f0fdfa', 'icon_color': '#0d9488', 'icon': 'trending-up',    'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Super%20Top-up&openFilter=1'},
-        {'label': 'ULIP Plan',           'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#f5f3ff', 'icon_color': '#7c3aed', 'icon': 'bar-chart-3',    'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=ULIP%20Plan&openFilter=1'},
-        {'label': 'Pension Plan',        'badge': 'Lifetime',    'badge_bg': '#e0e7ff', 'badge_color': '#4338ca', 'icon_bg': '#eef2ff', 'icon_color': '#4f46e5', 'icon': 'landmark',       'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Pension%20Plan&openFilter=1'},
-        {'label': 'Saving Plan',         'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#fdf2f8', 'icon_color': '#db2777', 'icon': 'piggy-bank',     'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Saving%20Plan&openFilter=1'},
-        {'label': 'Commercial Vehicle',  'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#fef9c3', 'icon_color': '#a16207', 'icon': 'truck',          'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Commercial%20Vehicle&openFilter=1'},
-        {'label': 'Fire (SME)',           'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#fef2f2', 'icon_color': '#dc2626', 'icon': 'flame',          'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Others&openFilter=1'},
-        {'label': 'Cyber (SME)',          'badge': 'New',         'badge_bg': '#cffafe', 'badge_color': '#0e7490', 'icon_bg': '#ecfeff', 'icon_color': '#0891b2', 'icon': 'lock',           'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Cyber%20(SME)&openFilter=1'},
-        {'label': 'Liability (SME)',      'badge': '',            'badge_bg': '',        'badge_color': '',        'icon_bg': '#f1f5f9', 'icon_color': '#475569', 'icon': 'scale',          'url': '/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Liability%20(SME)&openFilter=1'},
+        {
+            "label": "Mediclaim",
+            "badge": "Most Bought",
+            "badge_bg": "#ffe4e6",
+            "badge_color": "#be123c",
+            "icon_bg": "#fff1f2",
+            "icon_color": "#f43f5e",
+            "icon": "heart-pulse",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Mediclaim&openFilter=1",
+        },
+        {
+            "label": "Term Plan",
+            "badge": "Pure Cover",
+            "badge_bg": "#e0f2fe",
+            "badge_color": "#0369a1",
+            "icon_bg": "#f0f9ff",
+            "icon_color": "#0284c7",
+            "icon": "clock",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Term%20Plan&openFilter=1",
+        },
+        {
+            "label": "Private Car",
+            "badge": "Renew Fast",
+            "badge_bg": "#fef3c7",
+            "badge_color": "#b45309",
+            "icon_bg": "#fffbeb",
+            "icon_color": "#d97706",
+            "icon": "car-front",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Private%20Car&openFilter=1",
+        },
+        {
+            "label": "Two Wheeler",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#ecfdf5",
+            "icon_color": "#059669",
+            "icon": "bike",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Two%20Wheeler&openFilter=1",
+        },
+        {
+            "label": "Critical Illness",
+            "badge": "Lumpsum",
+            "badge_bg": "#fae8ff",
+            "badge_color": "#a21caf",
+            "icon_bg": "#fdf4ff",
+            "icon_color": "#c026d3",
+            "icon": "alert-triangle",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Critical%20Illness&openFilter=1",
+        },
+        {
+            "label": "Personal Accident",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#fff7ed",
+            "icon_color": "#ea580c",
+            "icon": "user-check",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Personal%20Accident&openFilter=1",
+        },
+        {
+            "label": "Super Top-up",
+            "badge": "Save Big",
+            "badge_bg": "#ccfbf1",
+            "badge_color": "#0f766e",
+            "icon_bg": "#f0fdfa",
+            "icon_color": "#0d9488",
+            "icon": "trending-up",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Health%20Insurance&InsuranceCompany=Super%20Top-up&openFilter=1",
+        },
+        {
+            "label": "ULIP Plan",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#f5f3ff",
+            "icon_color": "#7c3aed",
+            "icon": "bar-chart-3",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=ULIP%20Plan&openFilter=1",
+        },
+        {
+            "label": "Pension Plan",
+            "badge": "Lifetime",
+            "badge_bg": "#e0e7ff",
+            "badge_color": "#4338ca",
+            "icon_bg": "#eef2ff",
+            "icon_color": "#4f46e5",
+            "icon": "landmark",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Pension%20Plan&openFilter=1",
+        },
+        {
+            "label": "Saving Plan",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#fdf2f8",
+            "icon_color": "#db2777",
+            "icon": "piggy-bank",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Life%20Insurance&InsuranceCompany=Saving%20Plan&openFilter=1",
+        },
+        {
+            "label": "Commercial Vehicle",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#fef9c3",
+            "icon_color": "#a16207",
+            "icon": "truck",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=Motor%20Insurance&InsuranceCompany=Commercial%20Vehicle&openFilter=1",
+        },
+        {
+            "label": "Fire (SME)",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#fef2f2",
+            "icon_color": "#dc2626",
+            "icon": "flame",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Others&openFilter=1",
+        },
+        {
+            "label": "Cyber (SME)",
+            "badge": "New",
+            "badge_bg": "#cffafe",
+            "badge_color": "#0e7490",
+            "icon_bg": "#ecfeff",
+            "icon_color": "#0891b2",
+            "icon": "lock",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Cyber%20(SME)&openFilter=1",
+        },
+        {
+            "label": "Liability (SME)",
+            "badge": "",
+            "badge_bg": "",
+            "badge_color": "",
+            "icon_bg": "#f1f5f9",
+            "icon_color": "#475569",
+            "icon": "scale",
+            "url": "/find-agents?ServiceType=New%20Policy&InsuranceType=SME%20Insurance&InsuranceCompany=Liability%20(SME)&openFilter=1",
+        },
     ]
 
     default_why_cards = [
-        {'bg': '#fff1f2', 'stat': '0',      'caption': 'Spam Calls',      'icon_color': '#f43f5e', 'icon': 'shield-check', 'title': 'Privacy-first by design',         'body': 'Only YOU can contact an agent. Agents can never call you first — your number is never sold or shared.'},
-        {'bg': '#ecfdf5', 'stat': '₹0',     'caption': 'Platform Fee',    'icon_color': '#059669', 'icon': 'indian-rupee',  'title': '100% free for buyers',             'body': 'No charges, no hidden costs. Your premium stays the same — the agent earns from the insurer, never from you.'},
-        {'bg': '#f0f9ff', 'stat': '100%',   'caption': 'Licensed Agents', 'icon_color': '#0284c7', 'icon': 'badge-check',   'title': 'Verified, licensed experts only',  'body': 'Every agent is a licensed insurance professional, vetted before listing. No call-centre scripts, ever.'},
-        {'bg': '#fffbeb', 'stat': '1,000+', 'caption': 'Padosi Agents',   'icon_color': '#d97706', 'icon': 'map-pin',       'title': 'A neighbour in every PIN code',    'body': 'Discover trusted advisors within your locality who understand local hospitals, traffic and risks.'},
-        {'bg': '#f5f3ff', 'stat': '1L+',    'caption': 'Families Covered','icon_color': '#7c3aed', 'icon': 'users',         'title': 'A network you can rely on',        'body': 'Lakhs of Indian families have already found their PadosiAgent for buying, renewing and claims.'},
-        {'bg': '#fdf4ff', 'stat': '5.0★',   'caption': 'Average Rating',  'icon_color': '#c026d3', 'icon': 'star',          'title': 'Loved by buyers across India',     'body': 'Real reviews from real customers — no incentivised ratings, no fake testimonials.'},
-        {'bg': '#eef2ff', 'stat': 'AES-256','caption': 'Encrypted Data',  'icon_color': '#4f46e5', 'icon': 'lock',          'title': 'Bank-grade data security',         'body': 'Your information is encrypted end-to-end and never sold to third parties. Full control, always.'},
+        {
+            "bg": "#fff1f2",
+            "stat": "0",
+            "caption": "Spam Calls",
+            "icon_color": "#f43f5e",
+            "icon": "shield-check",
+            "title": "Privacy-first by design",
+            "body": "Only YOU can contact an agent. Agents can never call you first — your number is never sold or shared.",
+        },
+        {
+            "bg": "#ecfdf5",
+            "stat": "₹0",
+            "caption": "Platform Fee",
+            "icon_color": "#059669",
+            "icon": "indian-rupee",
+            "title": "100% free for buyers",
+            "body": "No charges, no hidden costs. Your premium stays the same — the agent earns from the insurer, never from you.",
+        },
+        {
+            "bg": "#f0f9ff",
+            "stat": "100%",
+            "caption": "Licensed Agents",
+            "icon_color": "#0284c7",
+            "icon": "badge-check",
+            "title": "Verified, licensed experts only",
+            "body": "Every agent is a licensed insurance professional, vetted before listing. No call-centre scripts, ever.",
+        },
+        {
+            "bg": "#fffbeb",
+            "stat": "1,000+",
+            "caption": "Padosi Agents",
+            "icon_color": "#d97706",
+            "icon": "map-pin",
+            "title": "A neighbour in every PIN code",
+            "body": "Discover trusted advisors within your locality who understand local hospitals, traffic and risks.",
+        },
+        {
+            "bg": "#f5f3ff",
+            "stat": "1L+",
+            "caption": "Families Covered",
+            "icon_color": "#7c3aed",
+            "icon": "users",
+            "title": "A network you can rely on",
+            "body": "Lakhs of Indian families have already found their PadosiAgent for buying, renewing and claims.",
+        },
+        {
+            "bg": "#fdf4ff",
+            "stat": "5.0★",
+            "caption": "Average Rating",
+            "icon_color": "#c026d3",
+            "icon": "star",
+            "title": "Loved by buyers across India",
+            "body": "Real reviews from real customers — no incentivised ratings, no fake testimonials.",
+        },
+        {
+            "bg": "#eef2ff",
+            "stat": "AES-256",
+            "caption": "Encrypted Data",
+            "icon_color": "#4f46e5",
+            "icon": "lock",
+            "title": "Bank-grade data security",
+            "body": "Your information is encrypted end-to-end and never sold to third parties. Full control, always.",
+        },
     ]
 
     default_steps = [
-        {'icon': 'search',           'accent': 'accent-primary',   'badge': '1', 'title': 'Search',    'desc': 'Find verified agents',    'tooltip': 'Find verified insurance experts by area or service.'},
-        {'icon': 'git-compare',      'accent': 'accent-secondary',  'badge': '2', 'title': 'Compare',   'desc': 'Review ratings',          'tooltip': 'Review ratings and profiles to find your perfect match.'},
-        {'icon': 'message-square',   'accent': 'accent-accent',     'badge': '3', 'title': 'Connect',   'desc': 'Call or WhatsApp',        'tooltip': 'Get in touch via Call or WhatsApp instantly.'},
-        {'icon': 'hand-heart',       'accent': 'accent-violet',     'badge': '4', 'title': 'Assist Me', 'desc': 'Personalized service',    'tooltip': 'Get professional support for policies, claims, and more.'},
+        {
+            "icon": "search",
+            "accent": "accent-primary",
+            "badge": "1",
+            "title": "Search",
+            "desc": "Find verified agents",
+            "tooltip": "Find verified insurance experts by area or service.",
+        },
+        {
+            "icon": "git-compare",
+            "accent": "accent-secondary",
+            "badge": "2",
+            "title": "Compare",
+            "desc": "Review ratings",
+            "tooltip": "Review ratings and profiles to find your perfect match.",
+        },
+        {
+            "icon": "message-square",
+            "accent": "accent-accent",
+            "badge": "3",
+            "title": "Connect",
+            "desc": "Call or WhatsApp",
+            "tooltip": "Get in touch via Call or WhatsApp instantly.",
+        },
+        {
+            "icon": "hand-heart",
+            "accent": "accent-violet",
+            "badge": "4",
+            "title": "Assist Me",
+            "desc": "Personalized service",
+            "tooltip": "Get professional support for policies, claims, and more.",
+        },
     ]
 
-    content = SiteSetting.get_value('homepage_content', {})
-    
-    # Fill defaults
-    if not content.get('dyk', {}).get('slides'):
-        content.setdefault('dyk', {})['slides'] = default_dyk_slides
-    if not content.get('quickpicks', {}).get('items'):
-        content.setdefault('quickpicks', {})['items'] = default_quick_picks
-    if not content.get('why_choose', {}).get('cards'):
-        content.setdefault('why_choose', {})['cards'] = default_why_cards
-    if not content.get('works', {}).get('steps'):
-        content.setdefault('works', {})['steps'] = default_steps
-    if 'testimonials' not in content:
-        content['testimonials'] = {'label': 'Testimonials', 'title': 'What Users Say About Their PadosiAgent', 'subtitle': 'Real experiences...', 'use_custom': False, 'visible': True, 'custom_list': []}
+    content = SiteSetting.get_value("homepage_content", {})
 
-    return render(request, 'admin/settings/homepage.html', {'content': content})
+    # Fill defaults
+    if not content.get("dyk", {}).get("slides"):
+        content.setdefault("dyk", {})["slides"] = default_dyk_slides
+    if not content.get("quickpicks", {}).get("items"):
+        content.setdefault("quickpicks", {})["items"] = default_quick_picks
+    if not content.get("why_choose", {}).get("cards"):
+        content.setdefault("why_choose", {})["cards"] = default_why_cards
+    if not content.get("works", {}).get("steps"):
+        content.setdefault("works", {})["steps"] = default_steps
+    if "testimonials" not in content:
+        content["testimonials"] = {
+            "label": "Testimonials",
+            "title": "What Users Say About Their PadosiAgent",
+            "subtitle": "Real experiences...",
+            "use_custom": False,
+            "visible": True,
+            "custom_list": [],
+        }
+
+    return render(request, "admin/settings/homepage.html", {"content": content})
+
 
 def update_homepage(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         # Reconstruct structured nested dictionary
         post_data = request.POST.dict()
         parsed = parse_nested_post(post_data)
-        
+
         # Get homepage content dictionary
-        content = parsed.get('homepage_content', {})
+        content = parsed.get("homepage_content", {})
 
         # Handle visibility/custom toggle defaults since unchecked checkboxes are not in POST
-        content.setdefault('hero', {})['visible'] = 'hero' in parsed.get('homepage_content', {}) and parsed['homepage_content']['hero'].get('visible') == '1'
-        content.setdefault('dyk', {})['visible'] = 'dyk' in parsed.get('homepage_content', {}) and parsed['homepage_content']['dyk'].get('visible') == '1'
-        content.setdefault('quickpicks', {})['visible'] = 'quickpicks' in parsed.get('homepage_content', {}) and parsed['homepage_content']['quickpicks'].get('visible') == '1'
-        content.setdefault('why_choose', {})['visible'] = 'why_choose' in parsed.get('homepage_content', {}) and parsed['homepage_content']['why_choose'].get('visible') == '1'
-        content.setdefault('works', {})['visible'] = 'works' in parsed.get('homepage_content', {}) and parsed['homepage_content']['works'].get('visible') == '1'
-        
+        content.setdefault("hero", {})["visible"] = (
+            "hero" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["hero"].get("visible") == "1"
+        )
+        content.setdefault("dyk", {})["visible"] = (
+            "dyk" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["dyk"].get("visible") == "1"
+        )
+        content.setdefault("quickpicks", {})["visible"] = (
+            "quickpicks" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["quickpicks"].get("visible") == "1"
+        )
+        content.setdefault("why_choose", {})["visible"] = (
+            "why_choose" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["why_choose"].get("visible") == "1"
+        )
+        content.setdefault("works", {})["visible"] = (
+            "works" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["works"].get("visible") == "1"
+        )
+
         # Testimonial parameters
-        content.setdefault('testimonials', {})['visible'] = 'testimonials' in parsed.get('homepage_content', {}) and parsed['homepage_content']['testimonials'].get('visible') == '1'
-        content['testimonials']['use_custom'] = 'testimonials' in parsed.get('homepage_content', {}) and parsed['homepage_content']['testimonials'].get('use_custom') == '1'
-        
+        content.setdefault("testimonials", {})["visible"] = (
+            "testimonials" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["testimonials"].get("visible") == "1"
+        )
+        content["testimonials"]["use_custom"] = (
+            "testimonials" in parsed.get("homepage_content", {})
+            and parsed["homepage_content"]["testimonials"].get("use_custom") == "1"
+        )
+
         # Sections visibility
-        content.setdefault('sections', {})
-        content['sections']['claim_assistance'] = 'sections' in content and content['sections'].get('claim_assistance') == '1'
-        content['sections']['policy_review'] = 'sections' in content and content['sections'].get('policy_review') == '1'
-        content['sections']['stats'] = 'sections' in content and content['sections'].get('stats') == '1'
-        content['sections']['why_choose'] = 'sections' in content and content['sections'].get('why_choose') == '1'
+        content.setdefault("sections", {})
+        content["sections"]["claim_assistance"] = (
+            "sections" in content and content["sections"].get("claim_assistance") == "1"
+        )
+        content["sections"]["policy_review"] = (
+            "sections" in content and content["sections"].get("policy_review") == "1"
+        )
+        content["sections"]["stats"] = (
+            "sections" in content and content["sections"].get("stats") == "1"
+        )
+        content["sections"]["why_choose"] = (
+            "sections" in content and content["sections"].get("why_choose") == "1"
+        )
 
         # Save setting and invalidates cache
-        SiteSetting.set_value('homepage_content', content, 'homepage')
-        AdminActivityLog.log('Update homepage content', 'SiteSetting', request=request)
-        messages.success(request, 'Homepage settings saved successfully. Changes are live immediately!')
-        
-    return redirect('admin_settings_homepage')
+        SiteSetting.set_value("homepage_content", content, "homepage")
+        AdminActivityLog.log("Update homepage content", "SiteSetting", request=request)
+        messages.success(
+            request,
+            "Homepage settings saved successfully. Changes are live immediately!",
+        )
+
+    return redirect("admin_settings_homepage")
+
 
 def hero_section(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     defaults = {
-        'heading': 'Find a {Trusted} Insurance Expert in your {Padosi}',
-        'trust_badges': [
-            {'icon': 'check-circle', 'label': 'Licensed'},
-            {'icon': 'shield',       'label': 'No Spam Calls'},
-            {'icon': 'trending-up',  'label': 'Zero Platform Fee'},
+        "heading": "Find a {Trusted} Insurance Expert in your {Padosi}",
+        "trust_badges": [
+            {"icon": "check-circle", "label": "Licensed"},
+            {"icon": "shield", "label": "No Spam Calls"},
+            {"icon": "trending-up", "label": "Zero Platform Fee"},
         ],
-        'stats': [
-            {'label': 'Expert Agents',    'target': 1000, 'suffix': '+',  'icon': 'users',   'large': True,  'decimal': False},
-            {'label': 'Cities Covered',   'target': 50,   'suffix': '+',  'icon': 'map-pin', 'large': False, 'decimal': False},
-            {'label': 'Rating',           'target': 4.8,  'suffix': '',   'icon': 'star',    'large': False, 'decimal': True},
-            {'label': 'Families Covered', 'target': 1,    'suffix': 'L+', 'icon': 'heart',   'large': False, 'decimal': False},
+        "stats": [
+            {
+                "label": "Expert Agents",
+                "target": 1000,
+                "suffix": "+",
+                "icon": "users",
+                "large": True,
+                "decimal": False,
+            },
+            {
+                "label": "Cities Covered",
+                "target": 50,
+                "suffix": "+",
+                "icon": "map-pin",
+                "large": False,
+                "decimal": False,
+            },
+            {
+                "label": "Rating",
+                "target": 4.8,
+                "suffix": "",
+                "icon": "star",
+                "large": False,
+                "decimal": True,
+            },
+            {
+                "label": "Families Covered",
+                "target": 1,
+                "suffix": "L+",
+                "icon": "heart",
+                "large": False,
+                "decimal": False,
+            },
         ],
-        'tiles': [
-            {'label': 'Health Insurance',   'icon': 'heart',      'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Health+Insurance&openFilter=1',   'tileClass': 'pa-tile-rose'},
-            {'label': 'Life Insurance',     'icon': 'shield',     'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Life+Insurance&openFilter=1',     'tileClass': 'pa-tile-sky'},
-            {'label': 'Vehicle Insurance',  'icon': 'car',        'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Motor+Insurance&openFilter=1',    'tileClass': 'pa-tile-amber'},
-            {'label': 'Business Insurance', 'icon': 'building-2', 'url': '/find-agents?ServiceType=New+Policy&InsuranceType=SME+Insurance&openFilter=1',      'tileClass': 'pa-tile-violet'},
+        "tiles": [
+            {
+                "label": "Health Insurance",
+                "icon": "heart",
+                "url": "/find-agents?ServiceType=New+Policy&InsuranceType=Health+Insurance&openFilter=1",
+                "tileClass": "pa-tile-rose",
+            },
+            {
+                "label": "Life Insurance",
+                "icon": "shield",
+                "url": "/find-agents?ServiceType=New+Policy&InsuranceType=Life+Insurance&openFilter=1",
+                "tileClass": "pa-tile-sky",
+            },
+            {
+                "label": "Vehicle Insurance",
+                "icon": "car",
+                "url": "/find-agents?ServiceType=New+Policy&InsuranceType=Motor+Insurance&openFilter=1",
+                "tileClass": "pa-tile-amber",
+            },
+            {
+                "label": "Business Insurance",
+                "icon": "building-2",
+                "url": "/find-agents?ServiceType=New+Policy&InsuranceType=SME+Insurance&openFilter=1",
+                "tileClass": "pa-tile-violet",
+            },
         ],
-        'slides': [
-            {'icon': 'indian-rupee',  'hero': '₹25,00,000 Cr',        'tag': 'Unclaimed Insurance',    'body': "Most families miss out because they don't have an agent.",   'isChart': False},
-            {'icon': 'users',         'hero': 'Agent > Chatbot',       'tag': 'Real Support Matters',   'body': 'Cheap product or hassle-free service? Agents deliver both.', 'isChart': False},
-            {'icon': 'trending-up',   'hero': 'Claim Rejections +34%', 'tag': 'As Online Sales Grow',   'body': '',                                                          'isChart': True},
-            {'icon': 'badge-percent', 'hero': 'Save 20-40%',           'tag': 'Better Premiums',        'body': "Agents find coverage algorithms can't.",                    'isChart': False},
-            {'icon': 'clock',         'hero': 'Claims 2x Faster',      'tag': 'With an Agent',          'body': 'No IVR loops. Real human follow-through.',                  'isChart': False},
-            {'icon': 'shield-check',  'hero': '9/10 Approved',         'tag': 'Agent-Backed Claims',    'body': 'Insurers settle 3x more with agent support.',               'isChart': False},
-            {'icon': 'users',         'hero': '1,000+ Agents',         'tag': 'In Your City',           'body': 'Your neighbour is already an agent. Meet face-to-face.',    'isChart': False},
+        "slides": [
+            {
+                "icon": "indian-rupee",
+                "hero": "₹25,00,000 Cr",
+                "tag": "Unclaimed Insurance",
+                "body": "Most families miss out because they don't have an agent.",
+                "isChart": False,
+            },
+            {
+                "icon": "users",
+                "hero": "Agent > Chatbot",
+                "tag": "Real Support Matters",
+                "body": "Cheap product or hassle-free service? Agents deliver both.",
+                "isChart": False,
+            },
+            {
+                "icon": "trending-up",
+                "hero": "Claim Rejections +34%",
+                "tag": "As Online Sales Grow",
+                "body": "",
+                "isChart": True,
+            },
+            {
+                "icon": "badge-percent",
+                "hero": "Save 20-40%",
+                "tag": "Better Premiums",
+                "body": "Agents find coverage algorithms can't.",
+                "isChart": False,
+            },
+            {
+                "icon": "clock",
+                "hero": "Claims 2x Faster",
+                "tag": "With an Agent",
+                "body": "No IVR loops. Real human follow-through.",
+                "isChart": False,
+            },
+            {
+                "icon": "shield-check",
+                "hero": "9/10 Approved",
+                "tag": "Agent-Backed Claims",
+                "body": "Insurers settle 3x more with agent support.",
+                "isChart": False,
+            },
+            {
+                "icon": "users",
+                "hero": "1,000+ Agents",
+                "tag": "In Your City",
+                "body": "Your neighbour is already an agent. Meet face-to-face.",
+                "isChart": False,
+            },
         ],
-        'cta_claim_text': 'Insurance Claims Support',
-        'cta_claim_url': '/find-agents?ServiceType=Claim%20Assistance&openFilter=1',
-        'cta_review_text': 'Insurance Audit',
-        'cta_review_url': '/find-agents?ServiceType=Policy%20Review&openFilter=1',
-        'claims_card_label': 'FIND INSURANCE EXPERTS NEAR ME FOR:',
-        'claims_card_heading': 'Claims, audits and policy review with local advisors',
-        'claims_card_text': 'Easy local guidance from verified agents, with real advisor stories and trusted help just a few minutes away.',
+        "cta_claim_text": "Insurance Claims Support",
+        "cta_claim_url": "/find-agents?ServiceType=Claim%20Assistance&openFilter=1",
+        "cta_review_text": "Insurance Audit",
+        "cta_review_url": "/find-agents?ServiceType=Policy%20Review&openFilter=1",
+        "claims_card_label": "FIND INSURANCE EXPERTS NEAR ME FOR:",
+        "claims_card_heading": "Claims, audits and policy review with local advisors",
+        "claims_card_text": "Easy local guidance from verified agents, with real advisor stories and trusted help just a few minutes away.",
     }
 
-    db = SiteSetting.get_value('hero_section', {})
+    db = SiteSetting.get_value("hero_section", {})
     hero = {**defaults, **(db if isinstance(db, dict) else {})}
-    
-    icon_options = ['heart', 'shield', 'car', 'building-2', 'users', 'map-pin', 'star',
-                    'check-circle', 'trending-up', 'badge-percent', 'clock', 'shield-check',
-                    'indian-rupee', 'lightbulb', 'search']
-    
-    tile_classes = ['pa-tile-rose', 'pa-tile-sky', 'pa-tile-amber', 'pa-tile-violet']
-    
+
+    icon_options = [
+        "heart",
+        "shield",
+        "car",
+        "building-2",
+        "users",
+        "map-pin",
+        "star",
+        "check-circle",
+        "trending-up",
+        "badge-percent",
+        "clock",
+        "shield-check",
+        "indian-rupee",
+        "lightbulb",
+        "search",
+    ]
+
+    tile_classes = ["pa-tile-rose", "pa-tile-sky", "pa-tile-amber", "pa-tile-violet"]
+
     import json
-    return render(request, 'admin/settings/hero_section.html', {
-        'hero': hero,
-        'iconOptions': icon_options,
-        'tileClasses': tile_classes,
-        'iconOptions_json': json.dumps(icon_options),
-        'tileClasses_json': json.dumps(tile_classes)
-    })
+
+    return render(
+        request,
+        "admin/settings/hero_section.html",
+        {
+            "hero": hero,
+            "iconOptions": icon_options,
+            "tileClasses": tile_classes,
+            "iconOptions_json": json.dumps(icon_options),
+            "tileClasses_json": json.dumps(tile_classes),
+        },
+    )
+
 
 def update_hero_section(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         post_data = request.POST.dict()
         parsed = parse_nested_post(post_data)
 
-        badges = parsed.get('trust_badges', [])
+        badges = parsed.get("trust_badges", [])
         # Ensure valid indexes
-        badges_list = [b for b in badges if b.get('icon')] if isinstance(badges, list) else []
+        badges_list = (
+            [b for b in badges if b.get("icon")] if isinstance(badges, list) else []
+        )
 
-        stats = parsed.get('stats', [])
+        stats = parsed.get("stats", [])
         stats_list = []
         if isinstance(stats, list):
             for stat in stats:
-                if stat.get('label'):
-                    stats_list.append({
-                        'label': stat['label'],
-                        'target': float(stat.get('target', 0)),
-                        'suffix': stat.get('suffix', ''),
-                        'icon': stat.get('icon', 'users'),
-                        'large': stat.get('large') == '1',
-                        'decimal': stat.get('decimal') == '1'
-                    })
+                if stat.get("label"):
+                    stats_list.append(
+                        {
+                            "label": stat["label"],
+                            "target": float(stat.get("target", 0)),
+                            "suffix": stat.get("suffix", ""),
+                            "icon": stat.get("icon", "users"),
+                            "large": stat.get("large") == "1",
+                            "decimal": stat.get("decimal") == "1",
+                        }
+                    )
 
-        tiles = parsed.get('tiles', [])
+        tiles = parsed.get("tiles", [])
         tiles_list = []
         if isinstance(tiles, list):
             for tile in tiles:
-                if tile.get('label'):
-                    tiles_list.append({
-                        'label': tile['label'],
-                        'icon': tile.get('icon', 'heart'),
-                        'url': tile.get('url', '#'),
-                        'tileClass': tile.get('tileClass', 'pa-tile-rose')
-                    })
+                if tile.get("label"):
+                    tiles_list.append(
+                        {
+                            "label": tile["label"],
+                            "icon": tile.get("icon", "heart"),
+                            "url": tile.get("url", "#"),
+                            "tileClass": tile.get("tileClass", "pa-tile-rose"),
+                        }
+                    )
 
-        slides = parsed.get('slides', [])
+        slides = parsed.get("slides", [])
         slides_list = []
         if isinstance(slides, list):
             for slide in slides:
-                if slide.get('hero'):
-                    slides_list.append({
-                        'icon': slide.get('icon', 'users'),
-                        'hero': slide['hero'],
-                        'tag': slide.get('tag', ''),
-                        'body': slide.get('body', ''),
-                        'isChart': slide.get('isChart') == '1'
-                    })
+                if slide.get("hero"):
+                    slides_list.append(
+                        {
+                            "icon": slide.get("icon", "users"),
+                            "hero": slide["hero"],
+                            "tag": slide.get("tag", ""),
+                            "body": slide.get("body", ""),
+                            "isChart": slide.get("isChart") == "1",
+                        }
+                    )
 
         payload = {
-            'heading': request.POST.get('heading', ''),
-            'trust_badges': badges_list,
-            'stats': stats_list,
-            'tiles': tiles_list,
-            'slides': slides_list,
-            'cta_claim_text': request.POST.get('cta_claim_text', ''),
-            'cta_claim_url': request.POST.get('cta_claim_url', ''),
-            'cta_review_text': request.POST.get('cta_review_text', ''),
-            'cta_review_url': request.POST.get('cta_review_url', ''),
-            'claims_card_label': request.POST.get('claims_card_label', ''),
-            'claims_card_heading': request.POST.get('claims_card_heading', ''),
-            'claims_card_text': request.POST.get('claims_card_text', ''),
+            "heading": request.POST.get("heading", ""),
+            "trust_badges": badges_list,
+            "stats": stats_list,
+            "tiles": tiles_list,
+            "slides": slides_list,
+            "cta_claim_text": request.POST.get("cta_claim_text", ""),
+            "cta_claim_url": request.POST.get("cta_claim_url", ""),
+            "cta_review_text": request.POST.get("cta_review_text", ""),
+            "cta_review_url": request.POST.get("cta_review_url", ""),
+            "claims_card_label": request.POST.get("claims_card_label", ""),
+            "claims_card_heading": request.POST.get("claims_card_heading", ""),
+            "claims_card_text": request.POST.get("claims_card_text", ""),
         }
 
-        SiteSetting.set_value('hero_section', payload, 'homepage')
-        AdminActivityLog.log('Updated Hero Section content', 'SiteSetting', request=request)
-        messages.success(request, 'Hero Section saved successfully!')
+        SiteSetting.set_value("hero_section", payload, "homepage")
+        AdminActivityLog.log(
+            "Updated Hero Section content", "SiteSetting", request=request
+        )
+        messages.success(request, "Hero Section saved successfully!")
 
-    return redirect('admin_settings_hero_section')
+    return redirect("admin_settings_hero_section")
 
 
 def general(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     social_links_default = {
-        'facebook': '',
-        'twitter': '',
-        'linkedin': '',
-        'instagram': ''
+        "facebook": "",
+        "twitter": "",
+        "linkedin": "",
+        "instagram": "",
     }
-    social_links = SiteSetting.get_value('social_links', social_links_default)
+    social_links = SiteSetting.get_value("social_links", social_links_default)
     if not isinstance(social_links, dict):
         social_links = social_links_default
 
@@ -311,57 +737,76 @@ def general(request):
         "Register using my exclusive link below to get special benefits:\n\n{LINK}\n\n"
         "Let me know if you have any questions!"
     )
-    wm_val = SiteSetting.get_value('wholesale_marketplace_enabled', False)
+    wm_val = SiteSetting.get_value("wholesale_marketplace_enabled", False)
     if isinstance(wm_val, str):
-        wm_enabled = wm_val.lower() in ('1', 'true', 'yes', 'on')
+        wm_enabled = wm_val.lower() in ("1", "true", "yes", "on")
     else:
         wm_enabled = bool(wm_val)
 
-    card_val = SiteSetting.get_value('agent_digital_card_enabled', False)
+    card_val = SiteSetting.get_value("agent_digital_card_enabled", False)
     if isinstance(card_val, str):
-        card_enabled = card_val.lower() in ('1', 'true', 'yes', 'on')
+        card_enabled = card_val.lower() in ("1", "true", "yes", "on")
     else:
         card_enabled = bool(card_val) if card_val is not None else False
 
-    wa_val = SiteSetting.get_value('wa_agent_bot_enabled', True)
+    wa_val = SiteSetting.get_value("wa_agent_bot_enabled", True)
     if isinstance(wa_val, str):
-        wa_bot_enabled = wa_val.lower() in ('1', 'true', 'yes', 'on')
+        wa_bot_enabled = wa_val.lower() in ("1", "true", "yes", "on")
     else:
         wa_bot_enabled = bool(wa_val) if wa_val is not None else True
 
     context = {
-        'site_name': SiteSetting.get_value('site_name', 'PadosiAgent'),
-        'site_logo': SiteSetting.get_value('site_logo', ''),
-        'site_favicon': SiteSetting.get_value('site_favicon', ''),
-        'contact_email': SiteSetting.get_value('contact_email', ''),
-        'contact_phone': SiteSetting.get_value('contact_phone', '+91 80000 00000'),
-        'contact_address': SiteSetting.get_value('contact_address', ''),
-        'social_links': social_links,
-        'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
-        'wholesale_marketplace_enabled': wm_enabled,
-        'agent_digital_card_enabled': card_enabled,
-        'wa_agent_bot_enabled': wa_bot_enabled,
-        'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
+        "site_name": SiteSetting.get_value("site_name", "PadosiAgent"),
+        "site_logo": SiteSetting.get_value("site_logo", ""),
+        "site_favicon": SiteSetting.get_value("site_favicon", ""),
+        "contact_email": SiteSetting.get_value("contact_email", ""),
+        "contact_phone": SiteSetting.get_value("contact_phone", "+91 80000 00000"),
+        "contact_address": SiteSetting.get_value("contact_address", ""),
+        "social_links": social_links,
+        "distributor_invite_message": SiteSetting.get_value(
+            "distributor_invite_message", default_message
+        ),
+        "wholesale_marketplace_enabled": wm_enabled,
+        "agent_digital_card_enabled": card_enabled,
+        "wa_agent_bot_enabled": wa_bot_enabled,
+        "google_site_verification": SiteSetting.get_value(
+            "google_site_verification", ""
+        ),
     }
 
-    return render(request, 'admin/settings/general.html', context)
+    return render(request, "admin/settings/general.html", context)
 
 
 # Keys each settings form may write. update_settings used to save ANY posted
 # key, so an admin with "settings" access could overwrite unrelated values such
 # as pricing_config (plan prices) by adding a field to the form.
 SETTINGS_FORM_KEYS = {
-    'general': {
-        'site_name', 'contact_email', 'contact_phone', 'contact_address',
-        'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
-        'agent_digital_card_enabled', 'wa_agent_bot_enabled', 'google_site_verification',
+    "general": {
+        "site_name",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "social_links",
+        "distributor_invite_message",
+        "wholesale_marketplace_enabled",
+        "agent_digital_card_enabled",
+        "wa_agent_bot_enabled",
+        "google_site_verification",
     },
-    'seo': {
-        'seo_meta_title', 'seo_meta_description', 'seo_keywords',
-        'seo_og_title', 'seo_og_description', 'og_default_image',
-        'google_site_verification',
+    "seo": {
+        "seo_meta_title",
+        "seo_meta_description",
+        "seo_keywords",
+        "seo_og_title",
+        "seo_og_description",
+        "og_default_image",
+        "google_site_verification",
     },
-    'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
+    "security": {
+        "rate_limit_clicks",
+        "rate_limit_timeframe",
+        "subscription_expiry_enforced",
+    },
 }
 
 
@@ -370,29 +815,44 @@ def toggle_wa_bot_service(request):
     """Quick AJAX ON/OFF toggle for the WhatsApp Agent Bot automation service."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+        return JsonResponse({"success": False, "message": "Unauthorized"}, status=403)
 
-    wa_raw = SiteSetting.get_value('wa_agent_bot_enabled', True)
-    current = wa_raw.lower() in ('1', 'true', 'yes', 'on') if isinstance(wa_raw, str) else bool(wa_raw) if wa_raw is not None else True
+    wa_raw = SiteSetting.get_value("wa_agent_bot_enabled", True)
+    current = (
+        wa_raw.lower() in ("1", "true", "yes", "on")
+        if isinstance(wa_raw, str)
+        else bool(wa_raw)
+        if wa_raw is not None
+        else True
+    )
     new_val = not current
-    SiteSetting.set_value('wa_agent_bot_enabled', '1' if new_val else '0', group='general')
-    AdminActivityLog.log(f"Toggled WhatsApp Bot to {'Enabled' if new_val else 'Disabled'}", 'SiteSetting', request=request)
-    status_str = 'Enabled' if new_val else 'Disabled'
-    return JsonResponse({
-        'success': True,
-        'enabled': new_val,
-        'message': f'WhatsApp Agent Automation is now {status_str}.'
-    })
+    SiteSetting.set_value(
+        "wa_agent_bot_enabled", "1" if new_val else "0", group="general"
+    )
+    AdminActivityLog.log(
+        f"Toggled WhatsApp Bot to {'Enabled' if new_val else 'Disabled'}",
+        "SiteSetting",
+        request=request,
+    )
+    status_str = "Enabled" if new_val else "Disabled"
+    return JsonResponse(
+        {
+            "success": True,
+            "enabled": new_val,
+            "message": f"WhatsApp Agent Automation is now {status_str}.",
+        }
+    )
 
 
 def update_settings(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
-        group = request.POST.get('group', 'general')
+    if request.method == "POST":
+        group = request.POST.get("group", "general")
         if group not in SETTINGS_FORM_KEYS:
-            group = 'general'
+            group = "general"
         allowed_keys = SETTINGS_FORM_KEYS[group]
 
         # Parse nested inputs like social_links[facebook]
@@ -400,127 +860,173 @@ def update_settings(request):
 
         # Save each standard parsed key
         for key, value in parsed_post.items():
-            if key in ['group', 'site_logo', 'site_favicon', 'og_default_image']:
+            if key in ["group", "site_logo", "site_favicon", "og_default_image"]:
                 continue
             if key not in allowed_keys:
                 continue
-            if key == 'google_site_verification' and isinstance(value, str):
+            if key == "google_site_verification" and isinstance(value, str):
                 m = re.search(r'content=["\']([^"\']+)["\']', value)
                 if m:
                     value = m.group(1)
-                value = value.strip().strip('"\'')
+                value = value.strip().strip("\"'")
             SiteSetting.set_value(key, value, group=group)
 
         # Handle boolean checkboxes for feature flags
-        if group == 'general':
-            wholesale_enabled = request.POST.get('wholesale_marketplace_enabled') in ('1', 'true', 'on')
-            SiteSetting.set_value('wholesale_marketplace_enabled', wholesale_enabled, group='general')
+        if group == "general":
+            wholesale_enabled = request.POST.get("wholesale_marketplace_enabled") in (
+                "1",
+                "true",
+                "on",
+            )
+            SiteSetting.set_value(
+                "wholesale_marketplace_enabled", wholesale_enabled, group="general"
+            )
 
-            card_enabled = request.POST.get('agent_digital_card_enabled') in ('1', 'true', 'on')
-            SiteSetting.set_value('agent_digital_card_enabled', card_enabled, group='general')
+            card_enabled = request.POST.get("agent_digital_card_enabled") in (
+                "1",
+                "true",
+                "on",
+            )
+            SiteSetting.set_value(
+                "agent_digital_card_enabled", card_enabled, group="general"
+            )
 
-            wa_bot_enabled = request.POST.get('wa_agent_bot_enabled') in ('1', 'true', 'on')
-            SiteSetting.set_value('wa_agent_bot_enabled', wa_bot_enabled, group='general')
-            
+            wa_bot_enabled = request.POST.get("wa_agent_bot_enabled") in (
+                "1",
+                "true",
+                "on",
+            )
+            SiteSetting.set_value(
+                "wa_agent_bot_enabled", wa_bot_enabled, group="general"
+            )
+
         # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid
-        upload_subfolder = 'og' if group == 'seo' else 'site'
+
+        upload_subfolder = "og" if group == "seo" else "site"
         fs = FileSystemStorage(
             location=os.path.join(settings.MEDIA_ROOT, upload_subfolder),
-            base_url=f'/media/{upload_subfolder}/'
+            base_url=f"/media/{upload_subfolder}/",
         )
-        
-        allowed_file_keys = set()
-        if group == 'general':
-            allowed_file_keys = {'site_logo', 'site_favicon'}
-        elif group == 'seo':
-            allowed_file_keys = {'og_default_image'}
 
-        allowed_image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'}
+        allowed_file_keys = set()
+        if group == "general":
+            allowed_file_keys = {"site_logo", "site_favicon"}
+        elif group == "seo":
+            allowed_file_keys = {"og_default_image"}
+
+        allowed_image_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico"}
         from apps.home.services.og_image_card import optimize_and_format_og_image
+
         for key, file_obj in request.FILES.items():
             orig_name, ext = os.path.splitext(file_obj.name)
             if key not in allowed_file_keys or ext.lower() not in allowed_image_exts:
-                messages.error(request, f'Rejected upload "{file_obj.name}": only PNG/JPG/JPEG/WEBP/GIF image files are allowed.')
+                messages.error(
+                    request,
+                    f'Rejected upload "{file_obj.name}": only PNG/JPG/JPEG/WEBP/GIF image files are allowed.',
+                )
                 continue
-            
-            if key == 'og_default_image':
+
+            if key == "og_default_image":
                 # Automatically format into a 1200x630 high-res card < 250KB for WhatsApp
-                card_style = request.POST.get('og_card_style', 'smart_fit')
-                file_url = optimize_and_format_og_image(file_obj, file_obj.name, style=card_style, folder='og')
+                card_style = request.POST.get("og_card_style", "smart_fit")
+                file_url = optimize_and_format_og_image(
+                    file_obj, file_obj.name, style=card_style, folder="og"
+                )
             else:
-                orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'file'
+                orig_name = re.sub(r"[^A-Za-z0-9_-]", "_", orig_name)[:60] or "file"
                 random_suffix = uuid.uuid4().hex[:8]
                 new_filename = f"{orig_name}_{random_suffix}{ext}"
                 filename = fs.save(new_filename, file_obj)
                 file_url = fs.url(filename)
-                
+
             SiteSetting.set_value(key, file_url, group=group)
-            
-        label = 'SEO' if group == 'seo' else group.capitalize()
-        AdminActivityLog.log(f'Updated {label} settings', 'SiteSetting', request=request)
-        messages.success(request, f'{label} settings updated successfully.')
-        
-        if group == 'seo':
-            return redirect('admin_settings_seo')
-        elif group == 'security':
-            return redirect('admin_settings_security')
-        
-    return redirect('admin_settings_general')
+
+        label = "SEO" if group == "seo" else group.capitalize()
+        AdminActivityLog.log(
+            f"Updated {label} settings", "SiteSetting", request=request
+        )
+        messages.success(request, f"{label} settings updated successfully.")
+
+        if group == "seo":
+            return redirect("admin_settings_seo")
+        elif group == "security":
+            return redirect("admin_settings_security")
+
+    return redirect("admin_settings_general")
 
 
 def seo(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     from apps.home.models.link_og_setting import LinkOgSetting
 
     context = {
-        'seo_meta_title': SiteSetting.get_value('seo_meta_title', 'Expert & Trusted Insurance Agent in your Padosi'),
-        'seo_meta_description': SiteSetting.get_value('seo_meta_description', ''),
-        'seo_keywords': SiteSetting.get_value('seo_keywords', 'insurance, agent, neighborhood, padosiagent, life insurance'),
-        'seo_og_title': SiteSetting.get_value('seo_og_title', ''),
-        'seo_og_description': SiteSetting.get_value('seo_og_description', ''),
-        'og_default_image': SiteSetting.get_value('og_default_image', ''),
-        'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
-        'link_rules': LinkOgSetting.objects.all().order_by('-updated_at'),
+        "seo_meta_title": SiteSetting.get_value(
+            "seo_meta_title", "Expert & Trusted Insurance Agent in your Padosi"
+        ),
+        "seo_meta_description": SiteSetting.get_value("seo_meta_description", ""),
+        "seo_keywords": SiteSetting.get_value(
+            "seo_keywords",
+            "insurance, agent, neighborhood, padosiagent, life insurance",
+        ),
+        "seo_og_title": SiteSetting.get_value("seo_og_title", ""),
+        "seo_og_description": SiteSetting.get_value("seo_og_description", ""),
+        "og_default_image": SiteSetting.get_value("og_default_image", ""),
+        "google_site_verification": SiteSetting.get_value(
+            "google_site_verification", ""
+        ),
+        "link_rules": LinkOgSetting.objects.all().order_by("-updated_at"),
     }
-    return render(request, 'admin/settings/seo.html', context)
+    return render(request, "admin/settings/seo.html", context)
 
 
 def link_og_save(request):
     """Create or update a custom OG image and meta rule for any specific link path."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     from apps.home.models.link_og_setting import LinkOgSetting
 
-    if request.method == 'POST':
-        rule_id = request.POST.get('rule_id', '').strip()
-        path = request.POST.get('path', '').strip()
-        title = request.POST.get('title', '').strip()
-        description = request.POST.get('description', '').strip()
-        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
+    if request.method == "POST":
+        rule_id = request.POST.get("rule_id", "").strip()
+        path = request.POST.get("path", "").strip()
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        is_active = request.POST.get("is_active") in ("1", "true", "on", True)
 
         if not path:
-            messages.error(request, 'URL Path is required (e.g. / or /agent/registration/).')
-            return redirect('admin_settings_seo')
+            messages.error(
+                request, "URL Path is required (e.g. / or /agent/registration/)."
+            )
+            return redirect("admin_settings_seo")
 
         clean_path = LinkOgSetting.normalize_path(path)
 
         # Handle file upload or image URL input
-        image_url = request.POST.get('image_url', '').strip()
-        card_style = request.POST.get('card_style', 'smart_fit')
-        if 'image_file' in request.FILES:
-            file_obj = request.FILES['image_file']
+        image_url = request.POST.get("image_url", "").strip()
+        card_style = request.POST.get("card_style", "smart_fit")
+        if "image_file" in request.FILES:
+            file_obj = request.FILES["image_file"]
             orig_name, ext = os.path.splitext(file_obj.name)
-            allowed_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
+            allowed_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
             if ext.lower() in allowed_exts:
-                from apps.home.services.og_image_card import optimize_and_format_og_image
-                image_url = optimize_and_format_og_image(file_obj, file_obj.name, style=card_style, folder='og')
+                from apps.home.services.og_image_card import (
+                    optimize_and_format_og_image,
+                )
+
+                image_url = optimize_and_format_og_image(
+                    file_obj, file_obj.name, style=card_style, folder="og"
+                )
             else:
-                messages.error(request, f'Invalid file format "{ext}". Allowed: PNG, JPG, JPEG, WEBP, GIF.')
-                return redirect('admin_settings_seo')
+                messages.error(
+                    request,
+                    f'Invalid file format "{ext}". Allowed: PNG, JPG, JPEG, WEBP, GIF.',
+                )
+                return redirect("admin_settings_seo")
 
         if rule_id:
             try:
@@ -532,84 +1038,109 @@ def link_og_save(request):
                 rule.description = description
                 rule.is_active = is_active
                 rule.save()
-                AdminActivityLog.log(f'Updated Link OG rule: {clean_path}', 'LinkOgSetting', request=request)
-                messages.success(request, f'OG rule for "{clean_path}" updated successfully.')
+                AdminActivityLog.log(
+                    f"Updated Link OG rule: {clean_path}",
+                    "LinkOgSetting",
+                    request=request,
+                )
+                messages.success(
+                    request, f'OG rule for "{clean_path}" updated successfully.'
+                )
             except LinkOgSetting.DoesNotExist:
-                messages.error(request, 'Rule not found.')
+                messages.error(request, "Rule not found.")
         else:
             if not image_url:
-                messages.error(request, 'Please upload an image or provide an image URL.')
-                return redirect('admin_settings_seo')
+                messages.error(
+                    request, "Please upload an image or provide an image URL."
+                )
+                return redirect("admin_settings_seo")
 
             rule, created = LinkOgSetting.objects.update_or_create(
                 path=clean_path,
                 defaults={
-                    'image': image_url,
-                    'title': title,
-                    'description': description,
-                    'is_active': is_active,
-                }
+                    "image": image_url,
+                    "title": title,
+                    "description": description,
+                    "is_active": is_active,
+                },
             )
-            AdminActivityLog.log(f'Created Link OG rule: {clean_path}', 'LinkOgSetting', request=request)
+            AdminActivityLog.log(
+                f"Created Link OG rule: {clean_path}", "LinkOgSetting", request=request
+            )
             messages.success(request, f'OG rule for "{clean_path}" saved successfully.')
 
-    return redirect('admin_settings_seo')
+    return redirect("admin_settings_seo")
 
 
+@require_POST
 def link_og_delete(request, rule_id):
     """Delete a custom Link OG rule."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     from apps.home.models.link_og_setting import LinkOgSetting
+
     try:
         rule = LinkOgSetting.objects.get(id=rule_id)
         path = rule.path
         rule.delete()
-        AdminActivityLog.log(f'Deleted Link OG rule: {path}', 'LinkOgSetting', request=request)
+        AdminActivityLog.log(
+            f"Deleted Link OG rule: {path}", "LinkOgSetting", request=request
+        )
         messages.success(request, f'OG rule for "{path}" deleted successfully.')
     except LinkOgSetting.DoesNotExist:
-        messages.error(request, 'Rule not found.')
+        messages.error(request, "Rule not found.")
 
-    return redirect('admin_settings_seo')
+    return redirect("admin_settings_seo")
 
 
+@require_POST
 def link_og_toggle(request, rule_id):
     """Toggle active status of a Link OG rule."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     from apps.home.models.link_og_setting import LinkOgSetting
+
     try:
         rule = LinkOgSetting.objects.get(id=rule_id)
         rule.is_active = not rule.is_active
         rule.save()
-        status_label = 'Activated' if rule.is_active else 'Deactivated'
-        AdminActivityLog.log(f'{status_label} Link OG rule: {rule.path}', 'LinkOgSetting', request=request)
-        messages.success(request, f'OG rule for "{rule.path}" is now {status_label.lower()}.')
+        status_label = "Activated" if rule.is_active else "Deactivated"
+        AdminActivityLog.log(
+            f"{status_label} Link OG rule: {rule.path}",
+            "LinkOgSetting",
+            request=request,
+        )
+        messages.success(
+            request, f'OG rule for "{rule.path}" is now {status_label.lower()}.'
+        )
     except LinkOgSetting.DoesNotExist:
-        messages.error(request, 'Rule not found.')
+        messages.error(request, "Rule not found.")
 
-    return redirect('admin_settings_seo')
+    return redirect("admin_settings_seo")
 
 
 def banner_popup_studio(request):
     """Admin Studio to design, preview & publish Top Announcement Banners and Exit-Intent Popups."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     banner_default = {
-        'is_active': False,
-        'message': '🎉 Special Festival Offer: Connect with Verified Insurance Agents in Your Padosi!',
-        'btn_text': 'Find Agents',
-        'btn_url': '/find-agents/',
-        'theme': 'emerald',
-        'bg_color': '#059669',
-        'text_color': '#ffffff',
-        'is_dismissible': True,
-        'target_page': 'all',
+        "is_active": False,
+        "message": "🎉 Special Festival Offer: Connect with Verified Insurance Agents in Your Padosi!",
+        "btn_text": "Find Agents",
+        "btn_url": "/find-agents/",
+        "theme": "emerald",
+        "bg_color": "#059669",
+        "text_color": "#ffffff",
+        "is_dismissible": True,
+        "target_page": "all",
     }
-    banner = SiteSetting.get_value('site_announcement_banner', banner_default)
+    banner = SiteSetting.get_value("site_announcement_banner", banner_default)
     if not isinstance(banner, dict):
         try:
             banner = json.loads(banner) if isinstance(banner, str) else banner_default
@@ -617,18 +1148,18 @@ def banner_popup_studio(request):
             banner = banner_default
 
     popup_default = {
-        'is_active': False,
-        'popup_type': 'lead_form',
-        'eyebrow': 'WAIT! BEFORE YOU GO',
-        'title': 'Need Free Guidance from a Local Insurance Advisor?',
-        'description': 'Tell us your pincode & insurance need. A verified licensed advisor will connect with you within 15 minutes. 100% free consultation!',
-        'btn_text': 'Request Free Callback',
-        'btn_url': '/find-agents/',
-        'timer_seconds': 15,
-        'dismiss_days': 3,
-        'target_page': 'all',
+        "is_active": False,
+        "popup_type": "lead_form",
+        "eyebrow": "WAIT! BEFORE YOU GO",
+        "title": "Need Free Guidance from a Local Insurance Advisor?",
+        "description": "Tell us your pincode & insurance need. A verified licensed advisor will connect with you within 15 minutes. 100% free consultation!",
+        "btn_text": "Request Free Callback",
+        "btn_url": "/find-agents/",
+        "timer_seconds": 15,
+        "dismiss_days": 3,
+        "target_page": "all",
     }
-    popup = SiteSetting.get_value('site_exit_popup', popup_default)
+    popup = SiteSetting.get_value("site_exit_popup", popup_default)
     if not isinstance(popup, dict):
         try:
             popup = json.loads(popup) if isinstance(popup, str) else popup_default
@@ -636,158 +1167,176 @@ def banner_popup_studio(request):
             popup = popup_default
 
     context = {
-        'banner': banner,
-        'popup': popup,
+        "banner": banner,
+        "popup": popup,
     }
-    return render(request, 'admin/settings/banner_popup_studio.html', context)
+    return render(request, "admin/settings/banner_popup_studio.html", context)
 
 
 def save_banner_settings(request):
     """Save top announcement banner settings."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
-        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
-        message = request.POST.get('message', '').strip()
-        btn_text = request.POST.get('btn_text', '').strip()
-        btn_url = request.POST.get('btn_url', '').strip()
-        theme = request.POST.get('theme', 'emerald').strip()
-        bg_color = request.POST.get('bg_color', '#059669').strip()
-        text_color = request.POST.get('text_color', '#ffffff').strip()
-        is_dismissible = request.POST.get('is_dismissible') in ('1', 'true', 'on', True)
-        target_page = request.POST.get('target_page', 'all').strip()
+    if request.method == "POST":
+        is_active = request.POST.get("is_active") in ("1", "true", "on", True)
+        message = request.POST.get("message", "").strip()
+        btn_text = request.POST.get("btn_text", "").strip()
+        btn_url = request.POST.get("btn_url", "").strip()
+        theme = request.POST.get("theme", "emerald").strip()
+        bg_color = request.POST.get("bg_color", "#059669").strip()
+        text_color = request.POST.get("text_color", "#ffffff").strip()
+        is_dismissible = request.POST.get("is_dismissible") in ("1", "true", "on", True)
+        target_page = request.POST.get("target_page", "all").strip()
 
         payload = {
-            'is_active': is_active,
-            'message': message,
-            'btn_text': btn_text,
-            'btn_url': btn_url,
-            'theme': theme,
-            'bg_color': bg_color,
-            'text_color': text_color,
-            'is_dismissible': is_dismissible,
-            'target_page': target_page,
+            "is_active": is_active,
+            "message": message,
+            "btn_text": btn_text,
+            "btn_url": btn_url,
+            "theme": theme,
+            "bg_color": bg_color,
+            "text_color": text_color,
+            "is_dismissible": is_dismissible,
+            "target_page": target_page,
         }
 
-        SiteSetting.set_value('site_announcement_banner', payload, 'general')
-        cache.delete('site_announcement_banner_data')
-        AdminActivityLog.log('Updated Top Announcement Banner settings', 'SiteSetting', request=request)
-        messages.success(request, 'Announcement Banner settings saved & published successfully!')
+        SiteSetting.set_value("site_announcement_banner", payload, "general")
+        cache.delete("site_announcement_banner_data")
+        AdminActivityLog.log(
+            "Updated Top Announcement Banner settings", "SiteSetting", request=request
+        )
+        messages.success(
+            request, "Announcement Banner settings saved & published successfully!"
+        )
 
-    return redirect('admin_settings_banner_popup')
+    return redirect("admin_settings_banner_popup")
 
 
 def save_popup_settings(request):
     """Save exit-intent lead popup settings."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
-        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
-        popup_type = request.POST.get('popup_type', 'lead_form').strip()
-        eyebrow = request.POST.get('eyebrow', '').strip()
-        title = request.POST.get('title', '').strip()
-        description = request.POST.get('description', '').strip()
-        btn_text = request.POST.get('btn_text', '').strip()
-        btn_url = request.POST.get('btn_url', '').strip()
+    if request.method == "POST":
+        is_active = request.POST.get("is_active") in ("1", "true", "on", True)
+        popup_type = request.POST.get("popup_type", "lead_form").strip()
+        eyebrow = request.POST.get("eyebrow", "").strip()
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        btn_text = request.POST.get("btn_text", "").strip()
+        btn_url = request.POST.get("btn_url", "").strip()
         try:
-            timer_seconds = int(request.POST.get('timer_seconds', 15))
+            timer_seconds = int(request.POST.get("timer_seconds", 15))
         except ValueError:
             timer_seconds = 15
         try:
-            dismiss_days = int(request.POST.get('dismiss_days', 3))
+            dismiss_days = int(request.POST.get("dismiss_days", 3))
         except ValueError:
             dismiss_days = 3
-        target_page = request.POST.get('target_page', 'all').strip()
+        target_page = request.POST.get("target_page", "all").strip()
 
         payload = {
-            'is_active': is_active,
-            'popup_type': popup_type,
-            'eyebrow': eyebrow,
-            'title': title,
-            'description': description,
-            'btn_text': btn_text,
-            'btn_url': btn_url,
-            'timer_seconds': timer_seconds,
-            'dismiss_days': dismiss_days,
-            'target_page': target_page,
+            "is_active": is_active,
+            "popup_type": popup_type,
+            "eyebrow": eyebrow,
+            "title": title,
+            "description": description,
+            "btn_text": btn_text,
+            "btn_url": btn_url,
+            "timer_seconds": timer_seconds,
+            "dismiss_days": dismiss_days,
+            "target_page": target_page,
         }
 
-        SiteSetting.set_value('site_exit_popup', payload, 'general')
-        cache.delete('site_exit_popup_data')
-        AdminActivityLog.log('Updated Exit-Intent Popup settings', 'SiteSetting', request=request)
-        messages.success(request, 'Exit-Intent Lead Popup settings saved & published successfully!')
+        SiteSetting.set_value("site_exit_popup", payload, "general")
+        cache.delete("site_exit_popup_data")
+        AdminActivityLog.log(
+            "Updated Exit-Intent Popup settings", "SiteSetting", request=request
+        )
+        messages.success(
+            request, "Exit-Intent Lead Popup settings saved & published successfully!"
+        )
 
-    return redirect('admin_settings_banner_popup')
+    return redirect("admin_settings_banner_popup")
 
 
+@require_POST
 def toggle_banner_popup(request, target):
     """Quick 1-click toggle for banner or popup active state."""
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if target == 'banner':
-        banner = SiteSetting.get_value('site_announcement_banner', {})
+    if target == "banner":
+        banner = SiteSetting.get_value("site_announcement_banner", {})
         if not isinstance(banner, dict):
             try:
                 banner = json.loads(banner)
             except Exception:
                 banner = {}
-        banner['is_active'] = not banner.get('is_active', False)
-        SiteSetting.set_value('site_announcement_banner', banner, 'general')
-        cache.delete('site_announcement_banner_data')
-        status = 'activated' if banner['is_active'] else 'deactivated'
-        messages.success(request, f'Announcement Banner is now {status}.')
-    elif target == 'popup':
-        popup = SiteSetting.get_value('site_exit_popup', {})
+        banner["is_active"] = not banner.get("is_active", False)
+        SiteSetting.set_value("site_announcement_banner", banner, "general")
+        cache.delete("site_announcement_banner_data")
+        status = "activated" if banner["is_active"] else "deactivated"
+        messages.success(request, f"Announcement Banner is now {status}.")
+    elif target == "popup":
+        popup = SiteSetting.get_value("site_exit_popup", {})
         if not isinstance(popup, dict):
             try:
                 popup = json.loads(popup)
             except Exception:
                 popup = {}
-        popup['is_active'] = not popup.get('is_active', False)
-        SiteSetting.set_value('site_exit_popup', popup, 'general')
-        cache.delete('site_exit_popup_data')
-        status = 'activated' if popup['is_active'] else 'deactivated'
-        messages.success(request, f'Exit-Intent Popup is now {status}.')
+        popup["is_active"] = not popup.get("is_active", False)
+        SiteSetting.set_value("site_exit_popup", popup, "general")
+        cache.delete("site_exit_popup_data")
+        status = "activated" if popup["is_active"] else "deactivated"
+        messages.success(request, f"Exit-Intent Popup is now {status}.")
 
-    return redirect('admin_settings_banner_popup')
-
+    return redirect("admin_settings_banner_popup")
 
 
 def security(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
     context = {
-        'rate_limit_clicks': SiteSetting.get_value('rate_limit_clicks', '10'),
-        'rate_limit_timeframe': SiteSetting.get_value('rate_limit_timeframe', '2'),
-        'subscription_expiry_enforced': str(SiteSetting.get_value('subscription_expiry_enforced', '0')),
+        "rate_limit_clicks": SiteSetting.get_value("rate_limit_clicks", "10"),
+        "rate_limit_timeframe": SiteSetting.get_value("rate_limit_timeframe", "2"),
+        "subscription_expiry_enforced": str(
+            SiteSetting.get_value("subscription_expiry_enforced", "0")
+        ),
     }
-    return render(request, 'admin/settings/security.html', context)
+    return render(request, "admin/settings/security.html", context)
 
 
 # Helper function to get physical path of template
 def _get_template_path(template_type):
     valid_types = {
-        'invoice': os.path.join(settings.BASE_DIR, 'templates', 'pdf', 'invoice.html'),
-        'email_credentials': os.path.join(settings.BASE_DIR, 'templates', 'emails', 'agent_credentials.html'),
-        'email_otp': os.path.join(settings.BASE_DIR, 'templates', 'emails', 'otp.html'),
+        "invoice": os.path.join(settings.BASE_DIR, "templates", "pdf", "invoice.html"),
+        "email_credentials": os.path.join(
+            settings.BASE_DIR, "templates", "emails", "agent_credentials.html"
+        ),
+        "email_otp": os.path.join(settings.BASE_DIR, "templates", "emails", "otp.html"),
     }
     if template_type not in valid_types:
         from django.http import Http404
+
         raise Http404("Invalid template type.")
     return valid_types[template_type]
+
 
 # Helper to initialize default template files if missing
 def _initialize_default_template(template_type, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if os.path.exists(path):
         return
-        
+
     defaults = {
-        'email_otp': """<!DOCTYPE html>
+        "email_otp": """<!DOCTYPE html>
 <html>
 <head>
     <title>Email Verification - PadosiAgent</title>
@@ -837,7 +1386,7 @@ def _initialize_default_template(template_type, path):
     </table>
 </body>
 </html>""",
-        'email_credentials': """<!DOCTYPE html>
+        "email_credentials": """<!DOCTYPE html>
 <html>
 <head>
     <title>Welcome to PadosiAgent - Registration Complete</title>
@@ -900,7 +1449,7 @@ def _initialize_default_template(template_type, path):
     </table>
 </body>
 </html>""",
-        'invoice': """<!DOCTYPE html>
+        "invoice": """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -976,45 +1525,53 @@ def _initialize_default_template(template_type, path):
         </tbody>
     </table>
 </body>
-</html>"""
+</html>""",
     }
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(defaults[template_type].strip())
 
 
 def templates(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    template_type = request.GET.get('type', 'invoice')
+    template_type = request.GET.get("type", "invoice")
     path = _get_template_path(template_type)
     _initialize_default_template(template_type, path)
-    
-    with open(path, 'r', encoding='utf-8') as f:
+
+    with open(path, "r", encoding="utf-8") as f:
         content = f.read()
-        
-    return render(request, 'admin/settings/templates.html', {
-        'content': content,
-        'type': template_type
-    })
+
+    return render(
+        request,
+        "admin/settings/templates.html",
+        {"content": content, "type": template_type},
+    )
 
 
 def update_templates(request):
     admin_id = _get_admin_from_session(request)
-    if not admin_id: return redirect('admin_login')
+    if not admin_id:
+        return redirect("admin_login")
 
-    if request.method == 'POST':
-        template_type = request.POST.get('type')
-        content = request.POST.get('file_content')
+    if request.method == "POST":
+        template_type = request.POST.get("type")
+        content = request.POST.get("file_content")
         path = _get_template_path(template_type)
-        
-        with open(path, 'w', encoding='utf-8') as f:
+        if not content or not content.strip():
+            messages.error(request, "Template content cannot be empty.")
+            return redirect(f"/admin/settings/templates/?type={template_type}")
+
+        with open(path, "w", encoding="utf-8") as f:
             f.write(content)
-            
-        messages.success(request, f"{template_type.replace('_', ' ').capitalize()} template updated successfully.")
+
+        messages.success(
+            request,
+            f"{template_type.replace('_', ' ').capitalize()} template updated successfully.",
+        )
         return redirect(f"/admin/settings/templates/?type={template_type}")
-    
+
     from django.http import Http404
+
     raise Http404()
-
-

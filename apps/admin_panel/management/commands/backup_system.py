@@ -6,6 +6,9 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
+BACKUP_TIMEOUT_SECONDS = 300
+
+
 class Command(BaseCommand):
     help = 'Creates a database backup using mysqldump and compresses it'
 
@@ -64,7 +67,16 @@ class Command(BaseCommand):
         
         try:
             with open(sql_filepath, 'w', encoding='utf-8') as f:
-                process = subprocess.run(dump_cmd, stdout=f, stderr=subprocess.PIPE, text=True, env=env)
+                # Bounded: this also runs inside an admin web request (System > Backups).
+                try:
+                    process = subprocess.run(dump_cmd, stdout=f, stderr=subprocess.PIPE, text=True, env=env,
+                                             timeout=BACKUP_TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    process = None
+            if process is None:
+                if sql_filepath.exists():
+                    sql_filepath.unlink()
+                raise CommandError(f"mysqldump timed out after {BACKUP_TIMEOUT_SECONDS}s")
                 
             if process.returncode != 0:
                 # Remove empty or corrupt file

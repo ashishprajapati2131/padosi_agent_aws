@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static admin_tags %}
 
 {% block title %}Personal Digital Visiting Card Studio — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Content Control › Personal Digital Visiting Card Studio{% endblock %}
@@ -762,21 +762,7 @@
                     {% if agents_page.has_other_pages %}
                     <div class="p-3 border-top d-flex justify-content-between align-items-center">
                         <span class="text-muted small">Page {{ agents_page.number }} of {{ agents_page.paginator.num_pages }}</span>
-                        <ul class="pagination pagination-sm mb-0">
-                            {% if agents_page.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ agents_page.previous_page_number }}&q={{ search_q }}&status={{ status_filter }}&visibility={{ visibility_filter }}">Previous</a>
-                            </li>
-                            {% endif %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ agents_page.number }}</span>
-                            </li>
-                            {% if agents_page.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ agents_page.next_page_number }}&q={{ search_q }}&status={{ status_filter }}&visibility={{ visibility_filter }}">Next</a>
-                            </li>
-                            {% endif %}
-                        </ul>
+                        {% admin_pagination agents_page %}
                     </div>
                     {% endif %}
                 </div>
@@ -964,20 +950,6 @@
 </div>
 
 <script>
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')

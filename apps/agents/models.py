@@ -281,6 +281,28 @@ class PromoCode(models.Model):
         return bool(self.is_free_trial)
 
 
+class AgentStatus(models.TextChoices):
+    """Values of agents.status. Not set as field choices (legacy rows may hold others)."""
+    INCOMPLETE = "incomplete"
+    PENDING_PAYMENT = "pending_payment"
+    PENDING_ACCOUNTS_PAYMENT = "pending_accounts_payment"
+    PENDING_APPROVAL = "pending_approval"
+    PENDING_ADMIN_APPROVAL = "pending_admin_approval"
+    EVENT_CHALLENGE = "event_challenge"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+    DELETED = "deleted"
+
+
+class PaymentStatus(models.TextChoices):
+    """Values of agent_subscriptions.payment_status."""
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+
 class Agent(models.Model):
     user = models.ForeignKey(
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True
@@ -2133,9 +2155,9 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
 @receiver(post_save, sender=AgentInsuranceSegment)
 @receiver(post_delete, sender=AgentInsuranceSegment)
 @receiver(
-    post_save, sender="admin_panel.AgentServicePincode"
+    post_save, sender="agents.AgentServicePincode"
 )  # service pincodes decide the card's city
-@receiver(post_delete, sender="admin_panel.AgentServicePincode")
+@receiver(post_delete, sender="agents.AgentServicePincode")
 def clear_og_image_on_segment_change(sender, instance, **kwargs):
     agent_id = getattr(instance, "agent_id", None)
     if agent_id:
@@ -2464,3 +2486,229 @@ class AccountDeletionRequest(models.Model):
             "agent_id": self.agent_id or (self.agent.id if self.agent else None),
             "agent_status": self.agent.status if self.agent else "",
         }
+
+
+# ---------------------------------------------------------------------------
+# Models moved here from apps.admin_panel.models (admin audit 2026-11-07, step 8).
+# They are core domain data used across apps; admin_panel re-exports them under the old
+# import paths. The move was state-only (no table changes): see agents 0042 / admin_panel 0016.
+# ---------------------------------------------------------------------------
+import random  # noqa: E402  (ReferralCode.generateForAgent)
+import string  # noqa: E402
+
+
+class LaravelUser(models.Model):
+    """Laravel `users` table (distributors, legacy admin/agent/client logins). Not Django auth."""
+    id = models.BigAutoField(primary_key=True)
+    fullname = models.CharField(max_length=191)
+    email = models.CharField(unique=True, max_length=191)
+    password = models.CharField(max_length=191)
+    custom_invite_message = models.TextField(blank=True, null=True)
+    remember_token = models.CharField(max_length=100, blank=True, null=True)
+    role = models.CharField(max_length=11)
+    status = models.CharField(max_length=9)
+    email_verified_at = models.DateTimeField(blank=True, null=True)
+    last_login_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'users'
+
+    def __str__(self):
+        return self.fullname
+
+
+class AgentServicePincode(models.Model):
+    agent = models.ForeignKey('agents.Agent', on_delete=models.CASCADE, related_name='servicePincodes', db_constraint=False)
+    service_pincode = models.CharField(max_length=10)
+    city_name = models.CharField(max_length=150)
+    selected_areas_json = models.JSONField(null=True, blank=True)
+    postal_data_json = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        managed = False
+        db_table = 'agent_service_pincodes'
+        unique_together = ('agent', 'service_pincode')
+
+    def __str__(self):
+        return f"{self.agent.id} - {self.service_pincode}"
+
+
+class ReferralCode(models.Model):
+    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='referral_codes', db_constraint=False)
+    distributor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='distributor_referral_codes', db_column='distributor_id')
+    code = models.CharField(max_length=255, unique=True)
+    is_active = models.BooleanField(default=True)
+    clicks = models.IntegerField(default=0)
+    total_referrals = models.IntegerField(default=0)
+    pending_referrals = models.IntegerField(default=0)
+    reward_discount_percent = models.IntegerField(default=0)
+    reward_claimed = models.BooleanField(default=False)
+    reward_type = models.CharField(max_length=255, blank=True, null=True)
+    reward_claimed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'referral_codes'
+        managed = False
+
+    def __str__(self):
+        return f"ReferralCode({self.code}, agent={self.agent})"
+
+    @staticmethod
+    def tiers():
+        return [
+            {'min': 5,  'max': 9,  'reward': 'discount_25', 'label': '25% Discount',               'discount': 25},
+            {'min': 10, 'max': 14, 'reward': 'discount_50', 'label': '50% Discount',               'discount': 50},
+            {'min': 15, 'max': 999999, 'reward': 'pro_plan_1rs', 'label': "Professional's Plan @ ₹1", 'discount': 100},
+        ]
+
+    def currentTier(self):
+        for tier in reversed(self.tiers()):
+            if self.total_referrals >= tier['min']:
+                return tier
+        return None
+
+    def nextTier(self):
+        for tier in self.tiers():
+            if self.total_referrals < tier['min']:
+                return tier
+        return None
+
+    @classmethod
+    def generateForAgent(cls, agent):
+        existing = cls.objects.filter(agent_id=agent.id).first()
+        if existing:
+            return existing
+
+        base_name = agent.fullname or 'AGENT'
+        clean_name = ''.join(c for c in base_name.upper() if c.isalnum())
+        base = clean_name[:4]
+        if len(base) < 2:
+            base = 'REF'
+
+        while True:
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            code = f"{base}{random_suffix}"
+            if not cls.objects.filter(code=code).exists():
+                break
+
+        # Laravel-managed table: timestamps are not auto-filled by Django, and a
+        # NOT NULL created_at made this insert fail inside payment activation.
+        from datetime import datetime
+        now = datetime.now()
+        ref_code = cls.objects.create(
+            agent=agent,
+            code=code,
+            is_active=True,
+            clicks=0,
+            total_referrals=0,
+            pending_referrals=0,
+            reward_discount_percent=0,
+            reward_claimed=False,
+            created_at=now,
+            updated_at=now,
+        )
+        return ref_code
+
+
+class ReferralUsage(models.Model):
+    referral_code = models.ForeignKey(ReferralCode, on_delete=models.CASCADE, related_name='usages', db_column='referral_code_id')
+    referrer_agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='referrals_sent', db_column='referrer_agent_id', db_constraint=False)
+    distributor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='distributor_referrals', db_column='distributor_id')
+    referred_agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='referral_usage_record', db_column='referred_agent_id', db_constraint=False)
+    referred_agent_name = models.CharField(max_length=255, blank=True, null=True)
+    referred_agent_email = models.EmailField(blank=True, null=True)
+    referred_agent_mobile = models.CharField(max_length=20, blank=True, null=True)
+    status = models.CharField(max_length=50, default='pending')
+    signed_up_at = models.DateTimeField(blank=True, null=True)
+    converted_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'referral_usages'
+        managed = False
+
+    def __str__(self):
+        return f"ReferralUsage(code={self.referral_code.code}, status={self.status})"
+
+
+class RegistrationLead(models.Model):
+    """One name+phone capture for the public popup and agent-registration gate."""
+
+    STATUS_QUICK_REGISTERED = 'quick_registered'
+    STATUS_FORM_STARTED = 'form_started'
+    STATUS_FORM_COMPLETED = 'form_completed'
+    STATUS_PAYMENT_COMPLETED = 'payment_completed'
+    STATUS_CONVERTED = 'converted'
+    STATUS_ABANDONED = 'abandoned'
+
+    STATUS_CHOICES = [
+        (STATUS_QUICK_REGISTERED, 'Quick Registered'),
+        (STATUS_FORM_STARTED, 'Form Started'),
+        (STATUS_FORM_COMPLETED, 'Form Completed'),
+        (STATUS_PAYMENT_COMPLETED, 'Payment Completed'),
+        (STATUS_CONVERTED, 'Converted'),
+        (STATUS_ABANDONED, 'Abandoned'),
+    ]
+
+    PAYMENT_NONE = 'none'
+    PAYMENT_PENDING = 'pending'
+    PAYMENT_COMPLETED = 'completed'
+    PAYMENT_FAILED = 'failed'
+    PAYMENT_CHOICES = [
+        (PAYMENT_NONE, 'Not started'),
+        (PAYMENT_PENDING, 'Pending'),
+        (PAYMENT_COMPLETED, 'Completed'),
+        (PAYMENT_FAILED, 'Failed'),
+    ]
+
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=15, unique=True, db_index=True)
+    status = models.CharField(
+        max_length=32,
+        choices=STATUS_CHOICES,
+        default=STATUS_QUICK_REGISTERED,
+        db_index=True,
+    )
+    form_filled = models.BooleanField(default=False)
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_CHOICES,
+        default=PAYMENT_NONE,
+        db_index=True,
+    )
+    source_url = models.CharField(max_length=500, blank=True, default='')
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.CharField(max_length=500, blank=True, default='')
+    ref_code = models.CharField(max_length=50, blank=True, default='')
+    draft_id = models.IntegerField(blank=True, null=True)
+    agent_id = models.IntegerField(blank=True, null=True, db_index=True)
+    converted_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'registration_leads'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.phone})'
+
+    @property
+    def status_label(self):
+        return dict(self.STATUS_CHOICES).get(self.status, self.status)
+
+    @property
+    def payment_label(self):
+        return dict(self.PAYMENT_CHOICES).get(self.payment_status, self.payment_status)
+
+    @property
+    def form_label(self):
+        return 'Filled' if self.form_filled else 'Not filled'

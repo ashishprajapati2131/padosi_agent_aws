@@ -207,9 +207,9 @@
 - **Password:** bcrypt via `password_hashing.py`
 - **Login flow:** `apps/admin_panel/views/admins.py` → raw SQL on `admins` table → session
 - **Session keys:** `admin_id`, `admin_name`, `admin_role`, `admin_permissions`
-- **Roles:** `superadmin`, `staff` (with JSON permissions)
-- **Decorator:** `apps/admin_panel/decorators.py` → `@admin_required`
-- **IP whitelist:** `ADMIN_WHITELIST_IPS` env var (middleware: `AdminIpWhitelistMiddleware` — commented out)
+- **Roles:** `super`, `staff` (with JSON permissions)
+- **Gate:** `AdminPermissionMiddleware` (`apps/admin_panel/middleware/rbac.py`), deny-by-default. Modules, permission keys, landing routes and the url_name → permission map live in **`apps/admin_panel/registry.py`**; a route missing there is Super Admin only. New admin module = add it to `registry.MODULES` + `ROUTE_PERMISSIONS`, then regenerate the RBAC snapshot. Session helpers: `apps/admin_panel/auth.py` (`_get_admin_from_session`, `is_super_admin`).
+- **IP whitelist:** `ADMIN_WHITELIST_IPS` env var (`AdminIpWhitelistMiddleware`, active in settings)
 - **Session isolation:** `IsolateAdminAgentSessionsMiddleware` prevents cookie conflicts
 
 ### 7.3 Insurance Portal Authentication
@@ -321,7 +321,7 @@ queue_invoice_and_welcome(agent_id, subscription_id)
 | **Gemini** | LLM fallback | `chatbot/llm_client.py` |
 | **OpenRouter** | LLM fallback | `chatbot/llm_client.py` |
 | **AMFI** | Mutual fund agent data scraper | `admin_panel/services/amfi_scraper.py` |
-| **IRDAI** | Insurance agent data scraper (Playwright) | `admin_panel/services/irdai_scraper.py`, `playwright_manager.py` |
+| **IRDAI** | Insurance agent data scraper (Playwright) | `admin_panel/services/irdai_scraper.py` |
 | **Google Sheets** | Invoice sync | `admin_panel/services/google_sheet_sync.py` |
 | **Postalpincode.in** | Pincode → city/state lookup | `home/views/pages.py` → `_get_or_create_pincode()` |
 
@@ -454,6 +454,10 @@ email_service.send_welcome(to_email, to_name, temp_password, plan_name, attachme
 ```bash
 python manage.py test apps.home      # Home app tests
 python manage.py test apps.agents    # Agent tests (multiple test_*.py files)
+python manage.py test apps.admin_panel   # Admin panel (plain pytest is blocked: no pytest-django)
+# Admin RBAC snapshot (apps/admin_panel/rbac_snapshot.json) fails on ANY change in who can open which /admin route.
+# After an intended change, regenerate and review the JSON diff:
+#   UPDATE_RBAC_SNAPSHOT=1 python manage.py test apps.admin_panel.test_rbac_snapshot
 python manage.py check              # Django system check (run before deploy)
 python manage.py makemigrations --check --dry-run  # Verify no pending migrations
 ```
@@ -597,6 +601,10 @@ FACEBOOK_APP_ID=  FACEBOOK_APP_SECRET=
 
 # Auth
 JWT_SECRET_KEY=
+
+# Cache (optional): set to use Redis instead of the file cache (needs `pip install redis`).
+# Recommended once the host offers Redis: every FileBasedCache write lists the whole cache/ dir.
+REDIS_URL=
 
 # Admin security
 ADMIN_WHITELIST_IPS=

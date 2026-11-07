@@ -745,42 +745,46 @@ def update_plans(request):
         else:
             follow_tiers.sort(key=lambda t: t['follows'])
 
-        pricing = {
-            'scratch_card_enabled': starter_scratch or prof_scratch,
-            'social_discount_active': 'social_discount_active' in request.POST or request.POST.get('social_discount_active') == 'on',
-            'social_discount_amount': float(request.POST.get('social_discount_amount', 200) or 200),
-            'starter': {
-                'name':            PLAN_LABELS['starter'],
-                'full_price':      int(request.POST.get('starter_full_price', 1999) or 1999),
-                'promo_price':     int(request.POST.get('starter_promo_price', 1499) or 1499),
-                'scratch_price':   int(request.POST.get('starter_scratch_price', 1299) or 1299),
-                'description':     request.POST.get('starter_description', 'Perfect for New Agents'),
-                'badge':           request.POST.get('starter_badge', 'STANDARD'),
-                'scratch_text':    (request.POST.get('starter_scratch_text') or 'SCRATCH').strip()[:24] or 'SCRATCH',
-                'scratch_enabled': starter_scratch,
-            },
-            'professional': {
-                'name':            PLAN_LABELS['professional'],
-                'full_price':      int(request.POST.get('professional_full_price', 9999) or 9999),
-                'promo_price':     int(request.POST.get('professional_promo_price', 7999) or 7999),
-                'scratch_price':   int(request.POST.get('prof_scratch_price', 7799) or 7799),
-                'description':     request.POST.get('professional_description', 'For Established Professionals'),
-                'badge':           request.POST.get('professional_badge', 'RECOMMENDED'),
-                'scratch_text':    (request.POST.get('professional_scratch_text') or 'SCRATCH').strip()[:24] or 'SCRATCH',
-                'scratch_enabled': prof_scratch,
-            },
-            'promo_discount_label': request.POST.get('promo_discount_label', 'Partner Promo Applied! Once in a lifetime offer!'),
-            'standard_label':       request.POST.get('standard_label', 'Get started with our standard partner plans'),
-            'choose_plan_heading':  (request.POST.get('choose_plan_heading') or 'Start your digital journey').strip()[:80] or 'Start your digital journey',
-            'comparison_price_display': (
-                (request.POST.get('comparison_price_display') or 'original').strip().lower()
-                if (request.POST.get('comparison_price_display') or 'original').strip().lower() in ('original', 'discounted')
-                else 'original'
-            ),
-            'scratch_popup': _parse_scratch_popup_from_post(request.POST),
-            'social_links':         social_links,
-            'follow_tiers':         follow_tiers,
-        }
+        try:
+            pricing = {
+                'scratch_card_enabled': starter_scratch or prof_scratch,
+                'social_discount_active': 'social_discount_active' in request.POST or request.POST.get('social_discount_active') == 'on',
+                'social_discount_amount': float(request.POST.get('social_discount_amount', 200) or 200),
+                'starter': {
+                    'name':            PLAN_LABELS['starter'],
+                    'full_price':      int(request.POST.get('starter_full_price', 1999) or 1999),
+                    'promo_price':     int(request.POST.get('starter_promo_price', 1499) or 1499),
+                    'scratch_price':   int(request.POST.get('starter_scratch_price', 1299) or 1299),
+                    'description':     request.POST.get('starter_description', 'Perfect for New Agents'),
+                    'badge':           request.POST.get('starter_badge', 'STANDARD'),
+                    'scratch_text':    (request.POST.get('starter_scratch_text') or 'SCRATCH').strip()[:24] or 'SCRATCH',
+                    'scratch_enabled': starter_scratch,
+                },
+                'professional': {
+                    'name':            PLAN_LABELS['professional'],
+                    'full_price':      int(request.POST.get('professional_full_price', 9999) or 9999),
+                    'promo_price':     int(request.POST.get('professional_promo_price', 7999) or 7999),
+                    'scratch_price':   int(request.POST.get('prof_scratch_price', 7799) or 7799),
+                    'description':     request.POST.get('professional_description', 'For Established Professionals'),
+                    'badge':           request.POST.get('professional_badge', 'RECOMMENDED'),
+                    'scratch_text':    (request.POST.get('professional_scratch_text') or 'SCRATCH').strip()[:24] or 'SCRATCH',
+                    'scratch_enabled': prof_scratch,
+                },
+                'promo_discount_label': request.POST.get('promo_discount_label', 'Partner Promo Applied! Once in a lifetime offer!'),
+                'standard_label':       request.POST.get('standard_label', 'Get started with our standard partner plans'),
+                'choose_plan_heading':  (request.POST.get('choose_plan_heading') or 'Start your digital journey').strip()[:80] or 'Start your digital journey',
+                'comparison_price_display': (
+                    (request.POST.get('comparison_price_display') or 'original').strip().lower()
+                    if (request.POST.get('comparison_price_display') or 'original').strip().lower() in ('original', 'discounted')
+                    else 'original'
+                ),
+                'scratch_popup': _parse_scratch_popup_from_post(request.POST),
+                'social_links':         social_links,
+                'follow_tiers':         follow_tiers,
+            }
+        except (TypeError, ValueError):
+            messages.error(request, "Prices and amounts must be whole numbers. Nothing was saved.")
+            return redirect("admin_content_plans")
 
         SiteSetting.set_value('pricing_config', pricing, 'pricing')
         AdminActivityLog.log('Updated agent pricing plans', 'SiteSetting', request=request)
@@ -840,60 +844,64 @@ def update_exclusive_config(request):
         # Sort follow_tiers descending by follows so we can easily pick the highest tier reached
         follow_tiers.sort(key=lambda x: x['follows'], reverse=True)
 
-        config = {
-            'is_active': request.POST.get('exc_is_active') == 'on',
-            'name': request.POST.get('exclusive_name', 'Exclusive Plan'),
-            'base_price': int(request.POST.get('exclusive_base_price', 199) or 199),
-            'discounted_price': int(request.POST.get('exclusive_discounted_price', 99) or 99),
-            'scratch_threshold_percent': int(request.POST.get('scratch_threshold_percent', 40) or 40),
-            'gift_title': request.POST.get('gift_title', 'Surprise! Special Plan Unlocked!'),
-            'gift_subtitle': request.POST.get('gift_subtitle', 'Follow our social handles to reveal your secret discounted price.'),
-            'discount_rule': request.POST.get('discount_rule', 'ALL_LINKS'),
-            'required_follow_count': int(request.POST.get('required_follow_count', 1) or 1),
-            'emoji_main': request.POST.get('emoji_main', '🎁'),
-            'emoji_top_left': request.POST.get('emoji_top_left', '🎊'),
-            'emoji_top_right': request.POST.get('emoji_top_right', '✨'),
-            'emoji_bottom_left': request.POST.get('emoji_bottom_left', '🎉'),
-            'title_prefix': request.POST.get('title_prefix', 'Surprise!'),
-            'title_main': request.POST.get('title_main', 'Exclusive Plan'),
-            'title_suffix': request.POST.get('title_suffix', 'Unlocked!'),
-            'old_price': int(request.POST.get('old_price', 1999) or 1999),
-            'total_seats': int(request.POST.get('total_seats', 1000) or 1000),
-            'base_claimed_seats': int(request.POST.get('base_claimed_seats', 964) or 964),
-            'urgency_line_1': request.POST.get('urgency_line_1', '🔥 Hurry! Offer valid only for the first {total_seats} users!'),
-            'urgency_line_2': request.POST.get('urgency_line_2', '🔥 <span style="color: #ef4444;">{claimed_seats}/{total_seats}</span> Claimed – <span style="color: #ef4444;">Only {spots_left} Spots Left!</span>'),
-            'before_discount_val': request.POST.get('before_discount_val', '85%'),
-            'after_discount_val': request.POST.get('after_discount_val', '95%'),
-            'discount_text_label': request.POST.get('discount_text_label', 'OFF'),
-            'extra_discount_msg': request.POST.get('extra_discount_msg', 'Extra Follower Discount Applied!'),
-            'features_header': request.POST.get('features_header', 'What You\'ll Get'),
-            'social_header': request.POST.get('social_header', 'Follow on'),
-            'checkout_btn_text': request.POST.get('checkout_btn_text', 'Claim Now'),
+        try:
+            config = {
+                'is_active': request.POST.get('exc_is_active') == 'on',
+                'name': request.POST.get('exclusive_name', 'Exclusive Plan'),
+                'base_price': int(request.POST.get('exclusive_base_price', 199) or 199),
+                'discounted_price': int(request.POST.get('exclusive_discounted_price', 99) or 99),
+                'scratch_threshold_percent': int(request.POST.get('scratch_threshold_percent', 40) or 40),
+                'gift_title': request.POST.get('gift_title', 'Surprise! Special Plan Unlocked!'),
+                'gift_subtitle': request.POST.get('gift_subtitle', 'Follow our social handles to reveal your secret discounted price.'),
+                'discount_rule': request.POST.get('discount_rule', 'ALL_LINKS'),
+                'required_follow_count': int(request.POST.get('required_follow_count', 1) or 1),
+                'emoji_main': request.POST.get('emoji_main', '🎁'),
+                'emoji_top_left': request.POST.get('emoji_top_left', '🎊'),
+                'emoji_top_right': request.POST.get('emoji_top_right', '✨'),
+                'emoji_bottom_left': request.POST.get('emoji_bottom_left', '🎉'),
+                'title_prefix': request.POST.get('title_prefix', 'Surprise!'),
+                'title_main': request.POST.get('title_main', 'Exclusive Plan'),
+                'title_suffix': request.POST.get('title_suffix', 'Unlocked!'),
+                'old_price': int(request.POST.get('old_price', 1999) or 1999),
+                'total_seats': int(request.POST.get('total_seats', 1000) or 1000),
+                'base_claimed_seats': int(request.POST.get('base_claimed_seats', 964) or 964),
+                'urgency_line_1': request.POST.get('urgency_line_1', '🔥 Hurry! Offer valid only for the first {total_seats} users!'),
+                'urgency_line_2': request.POST.get('urgency_line_2', '🔥 <span style="color: #ef4444;">{claimed_seats}/{total_seats}</span> Claimed – <span style="color: #ef4444;">Only {spots_left} Spots Left!</span>'),
+                'before_discount_val': request.POST.get('before_discount_val', '85%'),
+                'after_discount_val': request.POST.get('after_discount_val', '95%'),
+                'discount_text_label': request.POST.get('discount_text_label', 'OFF'),
+                'extra_discount_msg': request.POST.get('extra_discount_msg', 'Extra Follower Discount Applied!'),
+                'features_header': request.POST.get('features_header', 'What You\'ll Get'),
+                'social_header': request.POST.get('social_header', 'Follow on'),
+                'checkout_btn_text': request.POST.get('checkout_btn_text', 'Claim Now'),
             
-            # Advanced Text & Badge Labels
-            'plan_badge': request.POST.get('plan_badge', '👑'),
-            'badge_text': request.POST.get('badge_text', 'Top Pick!'),
-            'ribbon_text': request.POST.get('ribbon_text', 'Exclusive Deal'),
-            'ribbon_color': request.POST.get('ribbon_color', '#8A2BE2'),
-            'price_suffix': request.POST.get('price_suffix', '/mo'),
-            'total_value_amount': request.POST.get('total_value_amount', 15000),
-            'savings_text': request.POST.get('savings_text', '🔥 Save 80% with this super exclusive secret deal!'),
-            'old_price_tooltip': request.POST.get('old_price_tooltip', 'Actual market value of all these premium services combined.'),
-            'strikeout_price': request.POST.get('strikeout_price', 15000),
-            'discount_amount_label': request.POST.get('discount_amount_label', '14801'),
+                # Advanced Text & Badge Labels
+                'plan_badge': request.POST.get('plan_badge', '👑'),
+                'badge_text': request.POST.get('badge_text', 'Top Pick!'),
+                'ribbon_text': request.POST.get('ribbon_text', 'Exclusive Deal'),
+                'ribbon_color': request.POST.get('ribbon_color', '#8A2BE2'),
+                'price_suffix': request.POST.get('price_suffix', '/mo'),
+                'total_value_amount': request.POST.get('total_value_amount', 15000),
+                'savings_text': request.POST.get('savings_text', '🔥 Save 80% with this super exclusive secret deal!'),
+                'old_price_tooltip': request.POST.get('old_price_tooltip', 'Actual market value of all these premium services combined.'),
+                'strikeout_price': request.POST.get('strikeout_price', 15000),
+                'discount_amount_label': request.POST.get('discount_amount_label', '14801'),
             
-            # Action Button Setup
-            'locked_btn_text': request.POST.get('locked_btn_text', 'LOCKED'),
-            'locked_reason_text': request.POST.get('locked_reason_text', 'Follow Social Media to Unlock'),
+                # Action Button Setup
+                'locked_btn_text': request.POST.get('locked_btn_text', 'LOCKED'),
+                'locked_reason_text': request.POST.get('locked_reason_text', 'Follow Social Media to Unlock'),
             
-            # Locked Screen Instructions
-            'locked_heading': request.POST.get('locked_heading', 'Please Follow Us First'),
-            'locked_desc': request.POST.get('locked_desc', 'Please Follow'),
+                # Locked Screen Instructions
+                'locked_heading': request.POST.get('locked_heading', 'Please Follow Us First'),
+                'locked_desc': request.POST.get('locked_desc', 'Please Follow'),
             
-            'social_links': social_links,
-            'premium_features': premium_features,
-            'follow_tiers': follow_tiers,
-        }
+                'social_links': social_links,
+                'premium_features': premium_features,
+                'follow_tiers': follow_tiers,
+            }
+        except (TypeError, ValueError):
+            messages.error(request, "Prices, seats and counts must be whole numbers. Nothing was saved.")
+            return redirect("admin_content_plans")
         SiteSetting.set_value('exclusive_plan_config', config, 'pricing')
         AdminActivityLog.log('Updated exclusive gamified plan', 'SiteSetting', request=request)
         messages.success(request, 'Exclusive Gamified Plan updated successfully.')

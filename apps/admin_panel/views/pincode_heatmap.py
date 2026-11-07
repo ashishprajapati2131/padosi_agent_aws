@@ -132,7 +132,22 @@ def _build_pincode_heatmap_data():
     except Exception as e:
         logger.warning(f"[Heatmap] Failed fetching demand leads: {e}")
 
-    # Resolve coordinates and locality names for any cluster missing lat/lng
+    # Resolve coordinates and locality names for any cluster missing lat/lng.
+    # Bulk-load both tables once (was 2 queries per cluster). First row per pincode by pk,
+    # the same row .first() returned.
+    missing = [pin for pin, item in clusters.items() if not (item['lat'] and item['lng'])]
+    db_pins, cache_pins = {}, {}
+    try:
+        for row in Pincode.objects.filter(pincode__in=missing).order_by('pk'):
+            db_pins.setdefault(row.pincode, row)
+    except Exception:
+        pass
+    try:
+        for row in PincodeCache.objects.filter(pincode__in=missing).order_by('pk'):
+            cache_pins.setdefault(row.pincode, row)
+    except Exception:
+        pass
+
     for pin, item in list(clusters.items()):
         # Calculate supply / demand classification
         if item['count'] >= 5:
@@ -157,7 +172,7 @@ def _build_pincode_heatmap_data():
 
         # Check Pincode master table
         try:
-            db_pin = Pincode.objects.filter(pincode=pin).first()
+            db_pin = db_pins.get(pin)
             if db_pin and db_pin.latitude and db_pin.longitude:
                 item['lat'] = float(db_pin.latitude)
                 item['lng'] = float(db_pin.longitude)
@@ -170,7 +185,7 @@ def _build_pincode_heatmap_data():
 
         # Check PincodeCache
         try:
-            cache_pin = PincodeCache.objects.filter(pincode=pin).first()
+            cache_pin = cache_pins.get(pin)
             if cache_pin and cache_pin.latitude and cache_pin.longitude:
                 item['lat'] = float(cache_pin.latitude)
                 item['lng'] = float(cache_pin.longitude)

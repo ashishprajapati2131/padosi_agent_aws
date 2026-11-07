@@ -1,18 +1,14 @@
 import json
 import logging
-from datetime import datetime
 
-from django.db import connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
-from apps.agents.models import (
-    AccountDeletionRequest,
-    Agent,
-)
+from apps.agents.models import AccountDeletionRequest
 from apps.admin_panel.models import AdminActivityLog
+from apps.admin_panel.services import account_deletion_service
 from .dashboard import _get_admin_from_session
 
 logger = logging.getLogger(__name__)
@@ -120,48 +116,7 @@ def terminate_agent_account(request):
     except AccountDeletionRequest.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Account deletion request not found'}, status=404)
 
-    # Resolve Agent
-    agent = del_req.agent
-    if not agent:
-        agent = Agent.objects.filter(email__iexact=del_req.email).first()
-        if not agent and del_req.mobile:
-            agent = Agent.objects.filter(mobile=del_req.mobile).first()
-
-    now = datetime.now()
-
-    with transaction.atomic():
-        if agent:
-            # Hide public profile and card while keeping all records intact
-            try:
-                profile = getattr(agent, 'profile', None)
-                if profile:
-                    profile.is_profile_visible = False
-                    profile.is_card_visible = False
-                    profile.save(update_fields=['is_profile_visible', 'is_card_visible'])
-            except Exception as e:
-                logger.warning(f"Error updating visibility for agent {agent.id}: {e}")
-
-            # Mark agent status as deleted
-            agent.status = 'deleted'
-            agent.save(update_fields=['status'])
-
-            # Suspend user accounts to block login
-            if agent.email:
-                with connection.cursor() as cursor:
-                    cursor.execute("UPDATE users SET status = 'suspended' WHERE LOWER(email) = LOWER(%s)", [agent.email])
-
-            if agent.user:
-                agent.user.is_active = False
-                agent.user.save(update_fields=['is_active'])
-
-        # Finalize the deletion request record
-        del_req.status = 'COMPLETED'
-        del_req.processed_at = now
-        del_req.processed_by_admin_name = f"Admin #{admin_id}"
-        del_req.admin_notes = f"{del_req.admin_notes}\n[Admin Termination]: {admin_notes}".strip()
-        del_req.save()
-
-        # Log admin audit activity
+    def _log_action(agent, del_req):
         AdminActivityLog.log(
             'Account Terminated',
             'agent',
@@ -172,6 +127,8 @@ def terminate_agent_account(request):
             ),
             request=request
         )
+
+    account_deletion_service.terminate_account(del_req, admin_id, admin_notes, _log_action)
 
     return JsonResponse({
         'success': True,
@@ -207,48 +164,7 @@ def activate_agent_account(request):
     except AccountDeletionRequest.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Account deletion request not found'}, status=404)
 
-    # Resolve Agent
-    agent = del_req.agent
-    if not agent:
-        agent = Agent.objects.filter(email__iexact=del_req.email).first()
-        if not agent and del_req.mobile:
-            agent = Agent.objects.filter(mobile=del_req.mobile).first()
-
-    now = datetime.now()
-
-    with transaction.atomic():
-        if agent:
-            # Restore public profile and card
-            try:
-                profile = getattr(agent, 'profile', None)
-                if profile:
-                    profile.is_profile_visible = True
-                    profile.is_card_visible = True
-                    profile.save(update_fields=['is_profile_visible', 'is_card_visible'])
-            except Exception as e:
-                logger.warning(f"Error restoring visibility for agent {agent.id}: {e}")
-
-            # Mark agent status as active
-            agent.status = 'active'
-            agent.save(update_fields=['status'])
-
-            # Reactivate user account
-            if agent.email:
-                with connection.cursor() as cursor:
-                    cursor.execute("UPDATE users SET status = 'active' WHERE LOWER(email) = LOWER(%s)", [agent.email])
-
-            if agent.user:
-                agent.user.is_active = True
-                agent.user.save(update_fields=['is_active'])
-
-        # Reset deletion request status to PENDING or mark as reactivated
-        del_req.status = 'PENDING'
-        del_req.processed_at = now
-        del_req.processed_by_admin_name = f"Admin #{admin_id}"
-        del_req.admin_notes = f"{del_req.admin_notes}\n[Admin Reactivated]: {admin_notes}".strip()
-        del_req.save()
-
-        # Log admin audit activity
+    def _log_action(agent, del_req):
         AdminActivityLog.log(
             'Account Reactivated',
             'agent',
@@ -256,6 +172,8 @@ def activate_agent_account(request):
             details=f"Account reactivated for {del_req.email} (Ref: {del_req.reference_id}) by admin.",
             request=request
         )
+
+    account_deletion_service.activate_account(del_req, admin_id, admin_notes, _log_action)
 
     return JsonResponse({
         'success': True,
@@ -293,11 +211,7 @@ def reject_deletion_request(request):
     if not rejection_reason:
         rejection_reason = "Data mismatch in account credentials"
 
-    del_req.status = 'REJECTED'
-    del_req.rejection_reason = rejection_reason
-    del_req.processed_at = datetime.now()
-    del_req.processed_by_admin_name = f"Admin #{admin_id}"
-    del_req.save()
+    account_deletion_service.reject_request(del_req, admin_id, rejection_reason)
 
     AdminActivityLog.log(
         'Account Deletion Rejected',

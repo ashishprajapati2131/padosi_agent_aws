@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Finance & Accounts — PadosiAgent Admin{% endblock %}
 
@@ -343,23 +343,23 @@ const cfCtx = document.getElementById('cashflowChart').getContext('2d');
 new Chart(cfCtx, {
     type: 'bar',
     data: {
-        labels:   {{ cashflow_labels|safe }},
+        labels:   {{ cashflow_labels|safe_json }},
         datasets: [
             {
                 label: 'Collected (₹)',
-                data:  {{ cashflow_collected|safe }},
+                data:  {{ cashflow_collected|safe_json }},
                 backgroundColor: 'rgba(22,163,74,0.85)',
                 borderRadius: 5,
             },
             {
                 label: 'Pending (₹)',
-                data:  {{ cashflow_pending|safe }},
+                data:  {{ cashflow_pending|safe_json }},
                 backgroundColor: 'rgba(217,119,6,0.75)',
                 borderRadius: 5,
             },
             {
                 label: 'Failed (₹)',
-                data:  {{ cashflow_failed|safe }},
+                data:  {{ cashflow_failed|safe_json }},
                 backgroundColor: 'rgba(220,38,38,0.6)',
                 borderRadius: 5,
             }

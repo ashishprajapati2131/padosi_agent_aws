@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static json_tags %}
 {% load humanize %}
 
 {% block title %}Revenue Dashboard — PadosiAgent Admin{% endblock %}
@@ -241,10 +241,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Parse data from Django safely
-const chartLabels = {{ chart_labels|safe }};
-const chartProf = {{ chart_prof|safe }};
-const chartStarter = {{ chart_starter|safe }};
-const chartTrial = {{ chart_trial|safe }};
+const chartLabels = {{ chart_labels|safe_json }};
+const chartProf = {{ chart_prof|safe_json }};
+const chartStarter = {{ chart_starter|safe_json }};
+const chartTrial = {{ chart_trial|safe_json }};
 
 // Revenue Trend
 const revCtx = document.getElementById('revenueChart').getContext('2d');

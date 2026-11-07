@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Admin Dashboard — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}Dashboard Overview{% endblock %}
@@ -349,15 +349,15 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Growth Chart — data from mom_labels_json / mom_totals_json (mirrors Blade @json(collect($momData)->pluck(...)))
+// Growth Chart — data from mom_labels / mom_totals (mirrors Blade @json(collect($momData)->pluck(...)))
 const growthCtx = document.getElementById('growthChart').getContext('2d');
 new Chart(growthCtx, {
     type: 'line',
     data: {
-        labels: {{ mom_labels_json|safe }},
+        labels: {{ mom_labels|safe_json }},
         datasets: [{
             label: 'New Agents',
-            data: {{ mom_totals_json|safe }},
+            data: {{ mom_totals|safe_json }},
             borderColor: '#1d7d5d',
             backgroundColor: 'rgba(29, 125, 93, 0.1)',
             fill: true,
@@ -371,15 +371,15 @@ new Chart(growthCtx, {
     }
 });
 
-// Plan Distribution Chart — data from plan_keys_json / plan_values_json (mirrors Blade @json(array_keys/values($planBreakdown)))
+// Plan Distribution Chart — data from plan_keys / plan_values (mirrors Blade @json(array_keys/values($planBreakdown)))
 // 5 colours preserved exactly from Blade L311
 const planCtx = document.getElementById('planChart').getContext('2d');
 new Chart(planCtx, {
     type: 'doughnut',
     data: {
-        labels: {{ plan_keys_json|safe }},
+        labels: {{ plan_keys|safe_json }},
         datasets: [{
-            data: {{ plan_values_json|safe }},
+            data: {{ plan_values|safe_json }},
             backgroundColor: ['#1d7d5d', '#3b82f6', '#f59e0b', '#ec4899', '#6366f1']
         }]
     },

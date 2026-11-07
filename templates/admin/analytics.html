@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load json_tags %}
 
 {% block title %}Agent Performance Analytics — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Analytics › Agent Performance Rankings{% endblock %}
@@ -222,11 +223,11 @@ const leadsCtx = document.getElementById('leadsTimeChart').getContext('2d');
 new Chart(leadsCtx, {
     type: 'line',
     data: {
-        labels: {{ daily_leads_labels_json|safe }},
+        labels: {{ daily_leads_labels_json|safe_json }},
         datasets: [
             {
                 label: 'WhatsApp Leads',
-                data: {{ daily_leads_whatsapp_json|safe }},
+                data: {{ daily_leads_whatsapp_json|safe_json }},
                 borderColor: '#16a34a',
                 backgroundColor: 'rgba(22, 163, 74, 0.1)',
                 fill: true,
@@ -235,7 +236,7 @@ new Chart(leadsCtx, {
             },
             {
                 label: 'Call Leads',
-                data: {{ daily_leads_call_json|safe }},
+                data: {{ daily_leads_call_json|safe_json }},
                 borderColor: '#2563eb',
                 backgroundColor: 'rgba(37, 99, 235, 0.08)',
                 fill: true,

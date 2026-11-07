@@ -41,7 +41,7 @@ class RevenueStarterPlanTests(SimpleTestCase):
         count_sql = [sql for sql, _ in calls if sql.startswith('SELECT COUNT(*) FROM agents') and 'basic' in sql]
         self.assertEqual(len(count_sql), 1)
         self.assertIn("'starter'", count_sql[0])
-        mrr_params = [params for sql, params in calls if 'TIMESTAMPDIFF' in sql]
+        mrr_params = [params[:-1] for sql, params in calls if 'TIMESTAMPDIFF' in sql]  # last param = IST now
         self.assertEqual(mrr_params, [['professional'], ['basic', 'starter']])
         mrr_sql = [sql for sql, _ in calls if 'TIMESTAMPDIFF' in sql]
         self.assertIn('IN (%s)', mrr_sql[0])

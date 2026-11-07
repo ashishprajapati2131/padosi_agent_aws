@@ -534,3 +534,5 @@ ADMIN_WHITELIST_IPS = [ip.strip() for ip in _whitelist_ips_env.split(",") if ip.
 
 # Multi-Factor Authentication (MFA / 2FA) for Administrative Logins
 ADMIN_MFA_ENABLED = os.environ.get("ADMIN_MFA_ENABLED", "False").lower() in ("true", "1", "yes")
+# WAF auto-block alerts go here (was ignored: the env var was never read into settings).
+SECURITY_ALERT_EMAIL = os.environ.get("SECURITY_ALERT_EMAIL", "").strip()

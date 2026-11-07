@@ -30,13 +30,16 @@ from apps.wa_agent_bot.services.openwa_admin_service import (
     list_openwa_sessions,
 )
 from apps.agents.models import AgentSubscription
+from apps.agents.models import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
 
 def _log_admin_action(request, action, target_type, target_id, details=""):
     try:
-        AdminActivityLog.log(action, target_type, target_id, details=details, request=request)
+        AdminActivityLog.log(
+            action, target_type, target_id, details=details, request=request
+        )
     except Exception as e:
         logger.warning(f"AdminActivityLog failed: {e}")
 
@@ -49,123 +52,170 @@ def wa_bot_dashboard(request):
     """
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     # 1. Fetch live OpenWA status
     openwa_status = get_openwa_session_status()
     qr_data = None
     # OpenWA status names vary by version, so try for a QR whenever the server is up but not paired.
-    if openwa_status.get('online') and not openwa_status.get('is_connected'):
+    if openwa_status.get("online") and not openwa_status.get("is_connected"):
         qr_resp = get_openwa_qr_code()
-        if qr_resp.get('success'):
-            qr_data = qr_resp.get('qr_code')
+        if qr_resp.get("success"):
+            qr_data = qr_resp.get("qr_code")
 
     # 2. Master Bot Status
-    bot_enabled = SiteSetting.get_value('wa_agent_bot_enabled', True)
-    from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled, view_alert_settings
+    bot_enabled = SiteSetting.get_value("wa_agent_bot_enabled", True)
+    from apps.wa_agent_bot.services.notification_service import (
+        lead_alerts_enabled,
+        view_alert_settings,
+    )
 
     # 3. Overall Statistics & Funnel
     total_sessions = WaBotSession.objects.count()
     registered_sessions = WaBotSession.objects.filter(is_registered=True).count()
-    awaiting_payment = WaBotSession.objects.filter(state=WaBotSession.STATE_AWAITING_PAYMENT).count()
+    awaiting_payment = WaBotSession.objects.filter(
+        state=WaBotSession.STATE_AWAITING_PAYMENT
+    ).count()
     in_progress = total_sessions - registered_sessions
 
     # Conversion rate
-    conversion_rate = round((registered_sessions / total_sessions * 100), 1) if total_sessions > 0 else 0
+    conversion_rate = (
+        round((registered_sessions / total_sessions * 100), 1)
+        if total_sessions > 0
+        else 0
+    )
 
     # Total Revenue generated via bot subscriptions
-    bot_agents = WaBotSession.objects.filter(agent__isnull=False).values_list('agent_id', flat=True)
+    bot_agents = WaBotSession.objects.filter(agent__isnull=False).values_list(
+        "agent_id", flat=True
+    )
     revenue_agg = AgentSubscription.objects.filter(
-        agent_id__in=bot_agents,
-        payment_status='completed'
-    ).aggregate(total_rev=Sum('registration_amount'))
-    total_revenue = revenue_agg['total_rev'] or 0
+        agent_id__in=bot_agents, payment_status=PaymentStatus.COMPLETED
+    ).aggregate(total_rev=Sum("registration_amount"))
+    total_revenue = revenue_agg["total_rev"] or 0
 
     # Message Counts
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today = Q(created_at__gte=today_start)
     msg_counts = WaBotMessageLog.objects.aggregate(
-        total=Count('id'),
-        today=Count('id', filter=today),
-        today_in=Count('id', filter=today & Q(direction=WaBotMessageLog.DIRECTION_IN)),
-        today_out=Count('id', filter=today & Q(direction=WaBotMessageLog.DIRECTION_OUT)),
+        total=Count("id"),
+        today=Count("id", filter=today),
+        today_in=Count("id", filter=today & Q(direction=WaBotMessageLog.DIRECTION_IN)),
+        today_out=Count(
+            "id", filter=today & Q(direction=WaBotMessageLog.DIRECTION_OUT)
+        ),
     )
-    total_msgs, today_msgs = msg_counts['total'], msg_counts['today']
-    today_in, today_out = msg_counts['today_in'], msg_counts['today_out']
+    total_msgs, today_msgs = msg_counts["total"], msg_counts["today"]
+    today_in, today_out = msg_counts["today_in"], msg_counts["today_out"]
 
     # Step-by-Step Funnel
     state_counts = dict(
-        WaBotSession.objects.values('state').annotate(count=Count('id')).values_list('state', 'count')
+        WaBotSession.objects.values("state")
+        .annotate(count=Count("id"))
+        .values_list("state", "count")
     )
     funnel = [
-        {'step': '1. Welcome & Intro', 'key': 'welcome', 'count': state_counts.get('welcome', 0)},
-        {'step': '2. Basic Info (Name/Mobile/Email)', 'key': 'info', 'count': (
-            state_counts.get('ask_fullname', 0) + state_counts.get('ask_email', 0) + state_counts.get('ask_mobile', 0)
-        )},
-        {'step': '3. Location & Exp (State/Pincode)', 'key': 'loc', 'count': (
-            state_counts.get('ask_state', 0) + state_counts.get('ask_pincode', 0) + state_counts.get('ask_experience', 0)
-        )},
-        {'step': '4. Segments & Review', 'key': 'segments', 'count': (
-            state_counts.get('ask_segments', 0) + state_counts.get('confirm', 0)
-        )},
-        {'step': '5. Plan Selection & Payment', 'key': 'payment', 'count': (
-            state_counts.get('ask_plan', 0) + state_counts.get('awaiting_payment', 0)
-        )},
-        {'step': '6. Registered & Active', 'key': 'logged_in', 'count': (
-            state_counts.get('logged_in', 0) + registered_sessions
-        )},
+        {
+            "step": "1. Welcome & Intro",
+            "key": "welcome",
+            "count": state_counts.get("welcome", 0),
+        },
+        {
+            "step": "2. Basic Info (Name/Mobile/Email)",
+            "key": "info",
+            "count": (
+                state_counts.get("ask_fullname", 0)
+                + state_counts.get("ask_email", 0)
+                + state_counts.get("ask_mobile", 0)
+            ),
+        },
+        {
+            "step": "3. Location & Exp (State/Pincode)",
+            "key": "loc",
+            "count": (
+                state_counts.get("ask_state", 0)
+                + state_counts.get("ask_pincode", 0)
+                + state_counts.get("ask_experience", 0)
+            ),
+        },
+        {
+            "step": "4. Segments & Review",
+            "key": "segments",
+            "count": (
+                state_counts.get("ask_segments", 0) + state_counts.get("confirm", 0)
+            ),
+        },
+        {
+            "step": "5. Plan Selection & Payment",
+            "key": "payment",
+            "count": (
+                state_counts.get("ask_plan", 0)
+                + state_counts.get("awaiting_payment", 0)
+            ),
+        },
+        {
+            "step": "6. Registered & Active",
+            "key": "logged_in",
+            "count": (state_counts.get("logged_in", 0) + registered_sessions),
+        },
     ]
 
     # Recent 6 Sessions
-    recent_sessions = WaBotSession.objects.select_related('agent').order_by('-last_message_at')[:6]
+    recent_sessions = WaBotSession.objects.select_related("agent").order_by(
+        "-last_message_at"
+    )[:6]
 
     # Recent 8 Logs
-    recent_logs = WaBotMessageLog.objects.select_related('session').order_by('-created_at')[:8]
+    recent_logs = WaBotMessageLog.objects.select_related("session").order_by(
+        "-created_at"
+    )[:8]
 
     context = {
-        'openwa_status': openwa_status,
-        'qr_data': qr_data,
-        'bot_enabled': bot_enabled,
-        'lead_alerts_enabled': lead_alerts_enabled(),
-        'view_alerts': view_alert_settings(),
-        'stats': {
-            'total_sessions': total_sessions,
-            'registered': registered_sessions,
-            'awaiting_payment': awaiting_payment,
-            'in_progress': in_progress,
-            'conversion_rate': conversion_rate,
-            'total_revenue': total_revenue,
-            'total_msgs': total_msgs,
-            'today_msgs': today_msgs,
-            'today_in': today_in,
-            'today_out': today_out,
+        "openwa_status": openwa_status,
+        "qr_data": qr_data,
+        "bot_enabled": bot_enabled,
+        "lead_alerts_enabled": lead_alerts_enabled(),
+        "view_alerts": view_alert_settings(),
+        "stats": {
+            "total_sessions": total_sessions,
+            "registered": registered_sessions,
+            "awaiting_payment": awaiting_payment,
+            "in_progress": in_progress,
+            "conversion_rate": conversion_rate,
+            "total_revenue": total_revenue,
+            "total_msgs": total_msgs,
+            "today_msgs": today_msgs,
+            "today_in": today_in,
+            "today_out": today_out,
         },
-        'funnel': funnel,
-        'recent_sessions': recent_sessions,
-        'recent_logs': recent_logs,
-        'openwa_config': get_openwa_config(),
-        'current_webhook_url': request.build_absolute_uri('/wa-bot/webhook/'),
+        "funnel": funnel,
+        "recent_sessions": recent_sessions,
+        "recent_logs": recent_logs,
+        "openwa_config": get_openwa_config(),
+        "current_webhook_url": request.build_absolute_uri("/wa-bot/webhook/"),
     }
-    return render(request, 'admin/whatsapp/dashboard.html', context)
+    return render(request, "admin/whatsapp/dashboard.html", context)
 
 
 def wa_bot_sessions_list(request):
     """List of all WhatsApp bot agent sessions with search, filters, and actions."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    search_query = request.GET.get('q', '').strip()
-    state_filter = request.GET.get('state', '').strip()
+    search_query = request.GET.get("q", "").strip()
+    state_filter = request.GET.get("state", "").strip()
 
-    sessions_qs = WaBotSession.objects.select_related('agent').all().order_by('-last_message_at')
+    sessions_qs = (
+        WaBotSession.objects.select_related("agent").all().order_by("-last_message_at")
+    )
 
     if search_query:
         sessions_qs = sessions_qs.filter(
-            Q(phone_number__icontains=search_query) |
-            Q(agent__fullname__icontains=search_query) |
-            Q(agent__email__icontains=search_query)
+            Q(phone_number__icontains=search_query)
+            | Q(agent__fullname__icontains=search_query)
+            | Q(agent__email__icontains=search_query)
         )
 
     if state_filter:
@@ -173,42 +223,44 @@ def wa_bot_sessions_list(request):
 
     total_sessions = WaBotSession.objects.count()
     registered_count = WaBotSession.objects.filter(is_registered=True).count()
-    awaiting_count = WaBotSession.objects.filter(state=WaBotSession.STATE_AWAITING_PAYMENT).count()
+    awaiting_count = WaBotSession.objects.filter(
+        state=WaBotSession.STATE_AWAITING_PAYMENT
+    ).count()
     in_progress = total_sessions - registered_count
 
     paginator = Paginator(sessions_qs, 25)
-    page_number = request.GET.get('page', 1)
+    page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'page_obj': page_obj,
-        'search_query': search_query,
-        'state_filter': state_filter,
-        'stats': {
-            'total': total_sessions,
-            'registered': registered_count,
-            'awaiting_payment': awaiting_count,
-            'in_progress': in_progress,
+        "page_obj": page_obj,
+        "search_query": search_query,
+        "state_filter": state_filter,
+        "stats": {
+            "total": total_sessions,
+            "registered": registered_count,
+            "awaiting_payment": awaiting_count,
+            "in_progress": in_progress,
         },
-        'bot_enabled': SiteSetting.get_value('wa_agent_bot_enabled', True),
+        "bot_enabled": SiteSetting.get_value("wa_agent_bot_enabled", True),
     }
-    return render(request, 'admin/whatsapp/sessions.html', context)
+    return render(request, "admin/whatsapp/sessions.html", context)
 
 
 def wa_bot_logs_list(request):
     """Audit trail of incoming and outgoing WhatsApp messages."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    phone_filter = ''.join(c for c in request.GET.get('phone', '') if c.isdigit())
-    dir_filter = request.GET.get('direction', '').strip()
-    status_filter = request.GET.get('status', '').strip()
-    category_filter = request.GET.get('category', '').strip()
-    search_query = request.GET.get('q', '').strip()
+    phone_filter = "".join(c for c in request.GET.get("phone", "") if c.isdigit())
+    dir_filter = request.GET.get("direction", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    category_filter = request.GET.get("category", "").strip()
+    search_query = request.GET.get("q", "").strip()
 
     # The list reads phone_number off the log row, so no join to sessions is needed.
-    logs_qs = WaBotMessageLog.objects.order_by('-created_at')
+    logs_qs = WaBotMessageLog.objects.order_by("-created_at")
 
     if phone_filter:
         logs_qs = logs_qs.filter(phone_number__contains=phone_filter)
@@ -223,29 +275,35 @@ def wa_bot_logs_list(request):
 
     # One aggregate query instead of a COUNT per stat card.
     stats = WaBotMessageLog.objects.aggregate(
-        total=Count('id'),
-        incoming=Count('id', filter=Q(direction=WaBotMessageLog.DIRECTION_IN)),
-        outgoing=Count('id', filter=Q(direction=WaBotMessageLog.DIRECTION_OUT, status=WaBotMessageLog.STATUS_SENT)),
-        failed=Count('id', filter=Q(status=WaBotMessageLog.STATUS_FAILED)),
-        lead_alerts=Count('id', filter=Q(category='lead_alert')),
+        total=Count("id"),
+        incoming=Count("id", filter=Q(direction=WaBotMessageLog.DIRECTION_IN)),
+        outgoing=Count(
+            "id",
+            filter=Q(
+                direction=WaBotMessageLog.DIRECTION_OUT,
+                status=WaBotMessageLog.STATUS_SENT,
+            ),
+        ),
+        failed=Count("id", filter=Q(status=WaBotMessageLog.STATUS_FAILED)),
+        lead_alerts=Count("id", filter=Q(category="lead_alert")),
     )
 
     paginator = Paginator(logs_qs, 50)
-    page_number = request.GET.get('page', 1)
+    page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'page_obj': page_obj,
-        'phone_filter': phone_filter,
-        'dir_filter': dir_filter,
-        'status_filter': status_filter,
-        'category_filter': category_filter,
-        'category_choices': WaBotMessageLog.CATEGORY_CHOICES,
-        'search_query': search_query,
-        'stats': stats,
-        'bot_enabled': SiteSetting.get_value('wa_agent_bot_enabled', True),
+        "page_obj": page_obj,
+        "phone_filter": phone_filter,
+        "dir_filter": dir_filter,
+        "status_filter": status_filter,
+        "category_filter": category_filter,
+        "category_choices": WaBotMessageLog.CATEGORY_CHOICES,
+        "search_query": search_query,
+        "stats": stats,
+        "bot_enabled": SiteSetting.get_value("wa_agent_bot_enabled", True),
     }
-    return render(request, 'admin/whatsapp/logs.html', context)
+    return render(request, "admin/whatsapp/logs.html", context)
 
 
 def wa_bot_security_status(request):
@@ -256,80 +314,100 @@ def wa_bot_security_status(request):
     """
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
-    from apps.agents.services.razorpay_checkout import razorpay_credentials, razorpay_webhook_secret
+    from apps.agents.services.razorpay_checkout import (
+        razorpay_credentials,
+        razorpay_webhook_secret,
+    )
 
     openwa_cfg = get_openwa_config()
-    webhook_secret = os.environ.get('WA_BOT_WEBHOOK_SECRET', '')
+    webhook_secret = os.environ.get("WA_BOT_WEBHOOK_SECRET", "")
     rzp_secret = razorpay_webhook_secret()
     rzp_key, _ = razorpay_credentials()
 
     security_checks = [
         {
-            'title': 'Razorpay Webhook Signature Verification',
-            'status': 'SECURE' if bool(rzp_secret) else 'WARNING',
-            'desc': 'Verifies HMAC-SHA256 signature on payment_link.paid events' if rzp_secret else 'Webhook secret not set in .env (development mode active)',
-            'icon': 'fa-solid fa-shield-check text-success' if rzp_secret else 'fa-solid fa-triangle-exclamation text-warning',
+            "title": "Razorpay Webhook Signature Verification",
+            "status": "SECURE" if bool(rzp_secret) else "WARNING",
+            "desc": "Verifies HMAC-SHA256 signature on payment_link.paid events"
+            if rzp_secret
+            else "Webhook secret not set in .env (development mode active)",
+            "icon": "fa-solid fa-shield-check text-success"
+            if rzp_secret
+            else "fa-solid fa-triangle-exclamation text-warning",
         },
         {
-            'title': 'OpenWA Webhook HMAC Auth',
-            'status': 'ACTIVE' if bool(webhook_secret) else 'INFO',
-            'desc': 'Inbound messages verified via X-Webhook-Signature' if webhook_secret else 'Optional secret not configured; OpenWA sends to secure internal port',
-            'icon': 'fa-solid fa-lock text-success' if webhook_secret else 'fa-solid fa-info-circle text-info',
+            "title": "OpenWA Webhook HMAC Auth",
+            "status": "ACTIVE" if bool(webhook_secret) else "INFO",
+            "desc": "Inbound messages verified via X-Webhook-Signature"
+            if webhook_secret
+            else "Optional secret not configured; OpenWA sends to secure internal port",
+            "icon": "fa-solid fa-lock text-success"
+            if webhook_secret
+            else "fa-solid fa-info-circle text-info",
         },
         {
-            'title': 'Rate Limiter & Anti-Flood Protection',
-            'status': 'ACTIVE',
-            'desc': 'Maximum 10 messages per minute per phone number via Django Cache',
-            'icon': 'fa-solid fa-gauge-high text-success',
+            "title": "Rate Limiter & Anti-Flood Protection",
+            "status": "ACTIVE",
+            "desc": "Maximum 10 messages per minute per phone number via Django Cache",
+            "icon": "fa-solid fa-gauge-high text-success",
         },
         {
-            'title': 'Plain-Text Password Suppression',
-            'status': 'ENFORCED',
-            'desc': 'Passwords are never exposed in plaintext on public web pages; dispatched exclusively via private WhatsApp & Email',
-            'icon': 'fa-solid fa-eye-slash text-success',
+            "title": "Plain-Text Password Suppression",
+            "status": "ENFORCED",
+            "desc": "Passwords are never exposed in plaintext on public web pages; dispatched exclusively via private WhatsApp & Email",
+            "icon": "fa-solid fa-eye-slash text-success",
         },
         {
-            'title': 'OpenWA API Key Authorization',
-            'status': 'AUTHENTICATED' if bool(openwa_cfg.get('api_key')) else 'UNSECURED',
-            'desc': 'Outbound REST API protected with Operator X-API-Key' if openwa_cfg.get('api_key') else 'No API Key configured on OpenWA server',
-            'icon': 'fa-solid fa-key text-success' if openwa_cfg.get('api_key') else 'fa-solid fa-triangle-exclamation text-danger',
+            "title": "OpenWA API Key Authorization",
+            "status": "AUTHENTICATED"
+            if bool(openwa_cfg.get("api_key"))
+            else "UNSECURED",
+            "desc": "Outbound REST API protected with Operator X-API-Key"
+            if openwa_cfg.get("api_key")
+            else "No API Key configured on OpenWA server",
+            "icon": "fa-solid fa-key text-success"
+            if openwa_cfg.get("api_key")
+            else "fa-solid fa-triangle-exclamation text-danger",
         },
         {
-            'title': 'Payment Spoofing Guard',
-            'status': 'ENFORCED',
-            'desc': 'Payment callbacks require verified captured status via Razorpay API before subscription activation',
-            'icon': 'fa-solid fa-fingerprint text-success',
+            "title": "Payment Spoofing Guard",
+            "status": "ENFORCED",
+            "desc": "Payment callbacks require verified captured status via Razorpay API before subscription activation",
+            "icon": "fa-solid fa-fingerprint text-success",
         },
     ]
 
     context = {
-        'security_checks': security_checks,
-        'bot_enabled': SiteSetting.get_value('wa_agent_bot_enabled', True),
-        'openwa_cfg': openwa_cfg,
+        "security_checks": security_checks,
+        "bot_enabled": SiteSetting.get_value("wa_agent_bot_enabled", True),
+        "openwa_cfg": openwa_cfg,
     }
-    return render(request, 'admin/whatsapp/security.html', context)
+    return render(request, "admin/whatsapp/security.html", context)
 
 
 # ── Action Endpoints (AJAX / POST) ──────────────────────────────────────────
+
 
 @require_POST
 def wa_bot_toggle_service(request):
     """Toggle the master bot on/off."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    current = SiteSetting.get_value('wa_agent_bot_enabled', True)
+    current = SiteSetting.get_value("wa_agent_bot_enabled", True)
     if isinstance(current, str):
-        current = current.lower() in ('true', '1', 'yes')
+        current = current.lower() in ("true", "1", "yes")
 
     new_val = not bool(current)
-    SiteSetting.set_value('wa_agent_bot_enabled', new_val)
+    SiteSetting.set_value("wa_agent_bot_enabled", new_val)
 
-    _log_admin_action(request, 'toggle_wa_bot', 'System', 0, f"Bot enabled set to {new_val}")
-    return JsonResponse({'success': True, 'enabled': new_val})
+    _log_admin_action(
+        request, "toggle_wa_bot", "System", 0, f"Bot enabled set to {new_val}"
+    )
+    return JsonResponse({"success": True, "enabled": new_val})
 
 
 @require_POST
@@ -337,14 +415,24 @@ def wa_bot_toggle_lead_alerts(request):
     """Feature flag: WhatsApp agents when they receive a new lead."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    from apps.wa_agent_bot.services.notification_service import LEAD_ALERT_SETTING, lead_alerts_enabled
+    from apps.wa_agent_bot.services.notification_service import (
+        LEAD_ALERT_SETTING,
+        lead_alerts_enabled,
+    )
+
     new_val = not lead_alerts_enabled()
     SiteSetting.set_value(LEAD_ALERT_SETTING, new_val)
 
-    _log_admin_action(request, 'toggle_wa_lead_alerts', 'System', 0, f"Lead WhatsApp alerts set to {new_val}")
-    return JsonResponse({'success': True, 'enabled': new_val})
+    _log_admin_action(
+        request,
+        "toggle_wa_lead_alerts",
+        "System",
+        0,
+        f"Lead WhatsApp alerts set to {new_val}",
+    )
+    return JsonResponse({"success": True, "enabled": new_val})
 
 
 @require_POST
@@ -352,25 +440,43 @@ def wa_bot_save_view_alerts(request):
     """Card-view / profile-view WhatsApp alerts: on/off switches and how many top cards get the card alert."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    from apps.wa_agent_bot.services.notification_service import MAX_VIEW_ALERT_TOP_N, VIEW_ALERTS_SETTING
+    from apps.wa_agent_bot.services.notification_service import (
+        MAX_VIEW_ALERT_TOP_N,
+        VIEW_ALERTS_SETTING,
+    )
+
     try:
-        data = json.loads(request.body or b'{}')
-        top_n = int(data.get('top_n', 3))
+        data = json.loads(request.body or b"{}")
+        top_n = int(data.get("top_n", 3))
     except (ValueError, TypeError):
-        return JsonResponse({'success': False, 'error': 'Top cards must be a number'}, status=400)
+        return JsonResponse(
+            {"success": False, "error": "Top cards must be a number"}, status=400
+        )
     if not 1 <= top_n <= MAX_VIEW_ALERT_TOP_N:
-        return JsonResponse({'success': False, 'error': f'Top cards must be 1 to {MAX_VIEW_ALERT_TOP_N}'}, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": f"Top cards must be 1 to {MAX_VIEW_ALERT_TOP_N}",
+            },
+            status=400,
+        )
 
     conf = {
-        'card_enabled': bool(data.get('card_enabled')),
-        'profile_enabled': bool(data.get('profile_enabled')),
-        'top_n': top_n,
+        "card_enabled": bool(data.get("card_enabled")),
+        "profile_enabled": bool(data.get("profile_enabled")),
+        "top_n": top_n,
     }
     SiteSetting.set_value(VIEW_ALERTS_SETTING, conf)
-    _log_admin_action(request, 'save_wa_view_alerts', 'System', 0, f"View WhatsApp alerts set to {conf}")
-    return JsonResponse({'success': True, **conf})
+    _log_admin_action(
+        request,
+        "save_wa_view_alerts",
+        "System",
+        0,
+        f"View WhatsApp alerts set to {conf}",
+    )
+    return JsonResponse({"success": True, **conf})
 
 
 @require_POST
@@ -378,13 +484,13 @@ def wa_bot_session_action(request):
     """Trigger lifecycle actions on OpenWA session (start, stop, restart, logout)."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    action = request.POST.get('action', '').strip().lower()
+    action = request.POST.get("action", "").strip().lower()
     success, msg = control_openwa_session(action)
 
-    _log_admin_action(request, f'openwa_{action}', 'OpenWA_Session', 0, msg)
-    return JsonResponse({'success': success, 'message': msg})
+    _log_admin_action(request, f"openwa_{action}", "OpenWA_Session", 0, msg)
+    return JsonResponse({"success": success, "message": msg})
 
 
 @require_GET
@@ -392,19 +498,21 @@ def wa_bot_get_qr_ajax(request):
     """Return fresh live QR code for AJAX polling."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
     res = get_openwa_qr_code()
     status_res = get_openwa_session_status()
-    return JsonResponse({
-        'success': res.get('success', False),
-        'qr_code': res.get('qr_code', ''),
-        'status': status_res.get('status', 'unknown'),
-        'is_connected': status_res.get('is_connected', False),
-        'is_qr_ready': status_res.get('is_qr_ready', False),
-        'phone': status_res.get('phone'),
-        'error': status_res.get('error') or res.get('error'),
-    })
+    return JsonResponse(
+        {
+            "success": res.get("success", False),
+            "qr_code": res.get("qr_code", ""),
+            "status": status_res.get("status", "unknown"),
+            "is_connected": status_res.get("is_connected", False),
+            "is_qr_ready": status_res.get("is_qr_ready", False),
+            "phone": status_res.get("phone"),
+            "error": status_res.get("error") or res.get("error"),
+        }
+    )
 
 
 @require_POST
@@ -412,17 +520,21 @@ def wa_bot_send_test_message(request):
     """Send an administrator test message via OpenWA."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    phone = request.POST.get('phone', '').strip()
-    text = request.POST.get('text', '').strip()
+    phone = request.POST.get("phone", "").strip()
+    text = request.POST.get("text", "").strip()
 
     if not phone or not text:
-        return JsonResponse({'success': False, 'error': 'Phone number and message text are required'})
+        return JsonResponse(
+            {"success": False, "error": "Phone number and message text are required"}
+        )
 
     success, msg = send_admin_test_whatsapp(phone, text)
-    _log_admin_action(request, 'send_wa_test_message', 'WhatsAppMessage', 0, f"To: {phone} — {msg}")
-    return JsonResponse({'success': success, 'message': msg})
+    _log_admin_action(
+        request, "send_wa_test_message", "WhatsAppMessage", 0, f"To: {phone} — {msg}"
+    )
+    return JsonResponse({"success": success, "message": msg})
 
 
 @require_POST
@@ -430,7 +542,7 @@ def wa_bot_reset_session(request, session_id):
     """Reset a specific agent's onboarding session back to welcome state."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
     session = get_object_or_404(WaBotSession, pk=session_id)
     session.state = WaBotSession.STATE_WELCOME
@@ -438,8 +550,19 @@ def wa_bot_reset_session(request, session_id):
     session.session_context = {}
     session.save()
 
-    _log_admin_action(request, 'reset_wa_session', 'WaBotSession', session.pk, f"Reset phone {session.phone_number}")
-    return JsonResponse({'success': True, 'message': f"Session for {session.phone_number} reset to Welcome state"})
+    _log_admin_action(
+        request,
+        "reset_wa_session",
+        "WaBotSession",
+        session.pk,
+        f"Reset phone {session.phone_number}",
+    )
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f"Session for {session.phone_number} reset to Welcome state",
+        }
+    )
 
 
 @require_POST
@@ -447,22 +570,91 @@ def wa_bot_resend_credentials(request, session_id):
     """Resend credentials to both WhatsApp and Email for a registered agent."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
     session = get_object_or_404(WaBotSession, pk=session_id)
     agent = session.agent
     if not agent:
-        return JsonResponse({'success': False, 'error': 'No Agent record linked to this session'})
+        return JsonResponse(
+            {"success": False, "error": "No Agent record linked to this session"}
+        )
 
-    from apps.wa_agent_bot.services.payment_service import activate_agent_subscription_after_payment
-    sub = AgentSubscription.objects.filter(agent=agent).order_by('-id').first()
+    # Resend only. Calling the payment activation here marked unpaid checkouts as
+    # completed (free paid plan) and sent nothing for already-paid ones.
+    sub = (
+        AgentSubscription.objects.filter(
+            agent=agent, payment_status=PaymentStatus.COMPLETED
+        )
+        .order_by("-id")
+        .first()
+    )
     if not sub:
-        return JsonResponse({'success': False, 'error': 'No subscription found for this agent'})
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "No paid subscription for this agent; credentials are sent after payment.",
+            }
+        )
 
-    # Trigger welcome delivery
-    success, msg = activate_agent_subscription_after_payment(sub.id)
-    _log_admin_action(request, 'resend_wa_credentials', 'Agent', agent.id, f"Resent credentials to {session.phone_number} & {agent.email}")
-    return JsonResponse({'success': True, 'message': f"Credentials dispatched to WhatsApp ({session.phone_number}) and Email ({agent.email})!"})
+    reg_data = (
+        session.registration_data if isinstance(session.registration_data, dict) else {}
+    )
+    password = session.generated_password or reg_data.get("temp_password")
+    if not password:
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "No stored temporary password. Ask the agent to use Forgot Password.",
+            }
+        )
+
+    from apps.agents.services.brevo import email_service
+    from apps.wa_agent_bot.services.message_sender import send_text_message
+    from apps.wa_agent_bot.services.message_templates import render as render_template
+    from apps.wa_agent_bot.services.site_url import bot_site_url
+
+    welcome_msg = render_template(
+        "welcome",
+        agent_name=agent.fullname,
+        login_url=f"{bot_site_url()}/agent-login/",
+        email=agent.email,
+        password=password,
+        plan=sub.selected_plan,
+    )
+    wa_ok = bool(
+        send_text_message(
+            session.phone_number, welcome_msg, category="welcome", session=session
+        ).get("success")
+    )
+    try:
+        email_ok = bool(agent.email) and email_service.send_welcome(
+            agent.email, agent.fullname, password, sub.selected_plan
+        )
+    except Exception:
+        logger.exception("Resend credentials email failed for agent %s", agent.id)
+        email_ok = False
+
+    _log_admin_action(
+        request,
+        "resend_wa_credentials",
+        "Agent",
+        agent.id,
+        f"Resent credentials: WhatsApp {session.phone_number}={'ok' if wa_ok else 'failed'}, "
+        f"email {agent.email}={'ok' if email_ok else 'failed'}",
+    )
+    if not (wa_ok or email_ok):
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Sending failed on both WhatsApp and Email. Check the WhatsApp server and Brevo settings.",
+            }
+        )
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f"WhatsApp: {'sent' if wa_ok else 'FAILED'} ({session.phone_number}) · Email: {'sent' if email_ok else 'FAILED'} ({agent.email})",
+        }
+    )
 
 
 @require_POST
@@ -470,33 +662,43 @@ def wa_bot_save_config(request):
     """Save OpenWA Server URL, Session ID, and API Key to SiteSetting."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    base_url = request.POST.get('base_url', '').strip()
-    session_id = request.POST.get('session_id', '').strip()
-    api_key = request.POST.get('api_key', '').strip()
+    base_url = request.POST.get("base_url", "").strip()
+    session_id = request.POST.get("session_id", "").strip()
+    api_key = request.POST.get("api_key", "").strip()
 
     if not base_url or not session_id:
-        return JsonResponse({'success': False, 'error': 'OpenWA Server URL and Session ID are required'})
+        return JsonResponse(
+            {"success": False, "error": "OpenWA Server URL and Session ID are required"}
+        )
 
-    SiteSetting.set_value('wa_bot_openwa_base_url', base_url)
-    SiteSetting.set_value('wa_bot_openwa_session_id', session_id)
+    SiteSetting.set_value("wa_bot_openwa_base_url", base_url)
+    SiteSetting.set_value("wa_bot_openwa_session_id", session_id)
     if api_key:
-        SiteSetting.set_value('wa_bot_openwa_api_key', api_key)
+        SiteSetting.set_value("wa_bot_openwa_api_key", api_key)
 
     # Immediately test connection
     status = get_openwa_session_status()
-    is_online = status.get('online', False)
+    is_online = status.get("online", False)
     msg = f"Configuration saved! Remote server is {'ONLINE' if is_online else 'OFFLINE / UNREACHABLE'}"
 
-    _log_admin_action(request, 'update_openwa_config', 'System', 0, f"URL: {base_url}, Session: {session_id}")
-    return JsonResponse({
-        'success': True,
-        'message': msg,
-        'online': is_online,
-        'latency_ms': status.get('latency_ms', 0),
-        'session_status': status.get('status', 'unknown'),
-    })
+    _log_admin_action(
+        request,
+        "update_openwa_config",
+        "System",
+        0,
+        f"URL: {base_url}, Session: {session_id}",
+    )
+    return JsonResponse(
+        {
+            "success": True,
+            "message": msg,
+            "online": is_online,
+            "latency_ms": status.get("latency_ms", 0),
+            "session_status": status.get("status", "unknown"),
+        }
+    )
 
 
 @require_POST
@@ -504,19 +706,23 @@ def wa_bot_sync_webhook(request):
     """Automatically register or update the webhook on the remote OpenWA server."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    webhook_url = request.POST.get('webhook_url', '').strip()
+    webhook_url = request.POST.get("webhook_url", "").strip()
     if not webhook_url:
-        webhook_url = request.build_absolute_uri('/wa-bot/webhook/')
+        webhook_url = request.build_absolute_uri("/wa-bot/webhook/")
 
     success, message = sync_openwa_webhook(webhook_url)
-    _log_admin_action(request, 'sync_openwa_webhook', 'OpenWA_Webhook', 0, f"Webhook: {webhook_url} — {message}")
-    return JsonResponse({
-        'success': success,
-        'message': message,
-        'webhook_url': webhook_url
-    })
+    _log_admin_action(
+        request,
+        "sync_openwa_webhook",
+        "OpenWA_Webhook",
+        0,
+        f"Webhook: {webhook_url} — {message}",
+    )
+    return JsonResponse(
+        {"success": success, "message": message, "webhook_url": webhook_url}
+    )
 
 
 @require_GET
@@ -524,93 +730,136 @@ def wa_bot_list_remote_sessions(request):
     """Fetch all sessions configured on the OpenWA server to auto-populate the UI."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
 
-    base_url = request.GET.get('base_url', '').strip() or None
-    api_key = request.GET.get('api_key', '').strip() or None
+    base_url = request.GET.get("base_url", "").strip() or None
+    api_key = request.GET.get("api_key", "").strip() or None
 
-    success, sessions, err = list_openwa_sessions(override_base_url=base_url, override_api_key=api_key)
-    return JsonResponse({
-        'success': success,
-        'sessions': sessions,
-        'error': err,
-    })
-
-
+    success, sessions, err = list_openwa_sessions(
+        override_base_url=base_url, override_api_key=api_key
+    )
+    return JsonResponse(
+        {
+            "success": success,
+            "sessions": sessions,
+            "error": err,
+        }
+    )
 
 
 def wa_bot_messages(request):
     """Edit WhatsApp notification templates and keyword auto-replies."""
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     from apps.wa_agent_bot.services import message_templates as mt
 
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action in ('save_template', 'reset_template'):
-            key = request.POST.get('key', '')
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action in ("save_template", "reset_template"):
+            key = request.POST.get("key", "")
             if key not in mt.TEMPLATES:
-                messages.error(request, 'Unknown template.')
-                return redirect('admin_wa_messages')
+                messages.error(request, "Unknown template.")
+                return redirect("admin_wa_messages")
             overrides = dict(mt.get_overrides())
-            if action == 'reset_template':
+            if action == "reset_template":
                 overrides.pop(key, None)
-                messages.success(request, f"'{mt.TEMPLATES[key]['label']}' reset to the default text.")
+                messages.success(
+                    request,
+                    f"'{mt.TEMPLATES[key]['label']}' reset to the default text.",
+                )
             else:
-                text = request.POST.get('text', '').replace('\r\n', '\n').strip()
-                errors = mt.template_errors(key, text) if text else ['Message cannot be empty.']
+                text = request.POST.get("text", "").replace("\r\n", "\n").strip()
+                errors = (
+                    mt.template_errors(key, text)
+                    if text
+                    else ["Message cannot be empty."]
+                )
                 if errors:
                     for err in errors:
                         messages.error(request, err)
                     return redirect(f"{request.path}#tpl-{key}")
                 overrides[key] = text
                 messages.success(request, f"'{mt.TEMPLATES[key]['label']}' saved.")
-            SiteSetting.set_value(mt.TEMPLATES_SETTING, overrides, group='whatsapp')
-            _log_admin_action(request, f'wa_{action}', 'WhatsAppTemplate', 0, key)
+            SiteSetting.set_value(mt.TEMPLATES_SETTING, overrides, group="whatsapp")
+            _log_admin_action(request, f"wa_{action}", "WhatsAppTemplate", 0, key)
             return redirect(f"{request.path}#tpl-{key}")
 
-        if action == 'save_keywords':
+        if action == "save_keywords":
             rules, seen = [], set()
             for keyword, reply, match, active in zip(
-                request.POST.getlist('keyword'), request.POST.getlist('reply'),
-                request.POST.getlist('match'), request.POST.getlist('active'),
+                request.POST.getlist("keyword"),
+                request.POST.getlist("reply"),
+                request.POST.getlist("match"),
+                request.POST.getlist("active"),
             ):
-                keyword, reply = keyword.strip()[:100], reply.replace('\r\n', '\n').strip()[:mt.MAX_TEMPLATE_LEN]
+                keyword, reply = (
+                    keyword.strip()[:100],
+                    reply.replace("\r\n", "\n").strip()[: mt.MAX_TEMPLATE_LEN],
+                )
                 if not keyword and not reply:
                     continue  # blank row
                 if not keyword or not reply:
-                    messages.error(request, f"Each keyword needs both a keyword and a reply ('{keyword or reply[:30]}').")
+                    messages.error(
+                        request,
+                        f"Each keyword needs both a keyword and a reply ('{keyword or reply[:30]}').",
+                    )
                     return redirect(f"{request.path}#keywords")
                 if keyword.lower() in seen:
                     messages.error(request, f"Keyword '{keyword}' is listed twice.")
                     return redirect(f"{request.path}#keywords")
                 seen.add(keyword.lower())
-                rules.append({'keyword': keyword, 'reply': reply,
-                              'match': 'contains' if match == 'contains' else 'exact', 'active': active == '1'})
+                rules.append(
+                    {
+                        "keyword": keyword,
+                        "reply": reply,
+                        "match": "contains" if match == "contains" else "exact",
+                        "active": active == "1",
+                    }
+                )
             if len(rules) > mt.MAX_KEYWORDS:
-                messages.error(request, f'At most {mt.MAX_KEYWORDS} keywords are allowed.')
+                messages.error(
+                    request, f"At most {mt.MAX_KEYWORDS} keywords are allowed."
+                )
                 return redirect(f"{request.path}#keywords")
-            SiteSetting.set_value(mt.KEYWORDS_SETTING, rules, group='whatsapp')
-            _log_admin_action(request, 'wa_save_keywords', 'WhatsAppKeyword', 0, f'{len(rules)} keyword(s)')
-            messages.success(request, f'{len(rules)} keyword auto-repl{"y" if len(rules) == 1 else "ies"} saved.')
+            SiteSetting.set_value(mt.KEYWORDS_SETTING, rules, group="whatsapp")
+            _log_admin_action(
+                request,
+                "wa_save_keywords",
+                "WhatsAppKeyword",
+                0,
+                f"{len(rules)} keyword(s)",
+            )
+            messages.success(
+                request,
+                f"{len(rules)} keyword auto-repl{'y' if len(rules) == 1 else 'ies'} saved.",
+            )
             return redirect(f"{request.path}#keywords")
 
-        messages.error(request, 'Unknown action.')
-        return redirect('admin_wa_messages')
+        messages.error(request, "Unknown action.")
+        return redirect("admin_wa_messages")
 
     overrides = mt.get_overrides()
     templates = [
-        {'key': key, 'label': spec['label'], 'placeholders': spec['placeholders'],
-         'text': overrides.get(key) or spec['default'], 'customized': key in overrides}
+        {
+            "key": key,
+            "label": spec["label"],
+            "placeholders": spec["placeholders"],
+            "text": overrides.get(key) or spec["default"],
+            "customized": key in overrides,
+        }
         for key, spec in mt.TEMPLATES.items()
     ]
-    return render(request, 'admin/whatsapp/messages.html', {
-        'templates': templates,
-        'keywords': mt.get_keyword_replies(),
-        'max_len': mt.MAX_TEMPLATE_LEN,
-    })
+    return render(
+        request,
+        "admin/whatsapp/messages.html",
+        {
+            "templates": templates,
+            "keywords": mt.get_keyword_replies(),
+            "max_len": mt.MAX_TEMPLATE_LEN,
+        },
+    )
 
 
 MAX_BROADCAST_LEN = 4000
@@ -648,13 +897,23 @@ def _agents_with_place(qs):
 
     agents = list(qs)
     pins = {a.agent_pincode for a in agents if a.agent_pincode}
-    rows = {r.pincode: r for r in Pincode.objects.filter(pincode__in=pins)} if pins else {}
+    rows = (
+        {r.pincode: r for r in Pincode.objects.filter(pincode__in=pins)} if pins else {}
+    )
     for a in agents:
         row = rows.get(a.agent_pincode)
         profile = getattr(a, "profile", None) if hasattr(a, "profile") else None
-        state = ((profile.state if profile else "") or (row.state if row else "") or "").strip().title()
+        state = (
+            ((profile.state if profile else "") or (row.state if row else "") or "")
+            .strip()
+            .title()
+        )
         a.plan_label = (a.plan_type or "").strip().title() or "No plan"
-        a.state_label = state if state and state.lower() not in ("other", "na", "n/a", "none") else "Unknown"
+        a.state_label = (
+            state
+            if state and state.lower() not in ("other", "na", "n/a", "none")
+            else "Unknown"
+        )
         a.city_label = _city_from_pincode_row(row) or "Unknown"
         a.profile_url = profile_link(a)
         a.card_url = card_image_url(a)
@@ -750,7 +1009,11 @@ def wa_bot_broadcast(request):
         return redirect("admin_wa_broadcast")
 
     active = [WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]
-    agents = _agents_with_place(Agent.objects.filter(status="active").select_related("profile").order_by("fullname"))
+    agents = _agents_with_place(
+        Agent.objects.filter(status="active")
+        .select_related("profile")
+        .order_by("fullname")
+    )
     return render(
         request,
         "admin/whatsapp/broadcast.html",
@@ -770,7 +1033,9 @@ def wa_bot_broadcast(request):
             .first()
             or "",
             "max_len": MAX_BROADCAST_LEN,
-            "paldi_count": Agent.objects.filter(event_referral_participant__isnull=False).count(),
+            "paldi_count": Agent.objects.filter(
+                event_referral_participant__isnull=False
+            ).count(),
             "max_rows": broadcast.MAX_SHEET_ROWS,
             "templates": broadcast.get_templates(),
             "sender": broadcast.sender_status(),
@@ -815,22 +1080,28 @@ def wa_bot_broadcast_progress(request):
     except Exception:
         logger.exception("[WA-Broadcast] sending from the page failed")
     rows = _broadcast_rows(
-        WaBroadcast.objects.filter(status__in=[WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]).order_by("id")
+        WaBroadcast.objects.filter(
+            status__in=[WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]
+        ).order_by("id")
     )
-    return JsonResponse({
-        "success": True,
-        "sender": broadcast.sender_status(),
-        "broadcasts": [
-            {
-                "id": b.pk,
-                "status": b.status,
-                "last_error": b.last_error,
-                "next_send_at": b.next_send_at.strftime("%d %b %H:%M:%S") if b.next_send_at else "",
-                **b.c,
-            }
-            for b in rows
-        ],
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "sender": broadcast.sender_status(),
+            "broadcasts": [
+                {
+                    "id": b.pk,
+                    "status": b.status,
+                    "last_error": b.last_error,
+                    "next_send_at": b.next_send_at.strftime("%d %b %H:%M:%S")
+                    if b.next_send_at
+                    else "",
+                    **b.c,
+                }
+                for b in rows
+            ],
+        }
+    )
 
 
 @require_POST
@@ -843,12 +1114,18 @@ def wa_bot_broadcast_templates(request):
     op, name = request.POST.get("op"), request.POST.get("name", "")
     try:
         if op == "save":
-            items = broadcast.save_template(name, request.POST.get("text", ""), MAX_BROADCAST_LEN)
+            items = broadcast.save_template(
+                name, request.POST.get("text", ""), MAX_BROADCAST_LEN
+            )
         elif op == "delete":
             items = broadcast.delete_template(name)
         else:
-            return JsonResponse({"success": False, "error": "Unknown action"}, status=400)
+            return JsonResponse(
+                {"success": False, "error": "Unknown action"}, status=400
+            )
     except ValueError as e:
         return JsonResponse({"success": False, "error": str(e)})
-    _log_admin_action(request, f"wa_broadcast_template_{op}", "WaBroadcastTemplate", 0, name[:60])
+    _log_admin_action(
+        request, f"wa_broadcast_template_{op}", "WaBroadcastTemplate", 0, name[:60]
+    )
     return JsonResponse({"success": True, "templates": items})

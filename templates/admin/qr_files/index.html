@@ -1,4 +1,5 @@
 ﻿{% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block breadcrumb_title %}QR Code File Generator{% endblock %}
 
@@ -203,27 +204,7 @@
                     <div class="d-flex justify-content-center mt-3">
                         {% if files.has_other_pages %}
                         <div class="card-footer bg-white border-top py-3 w-100">
-                            <ul class="pagination pagination-sm mb-0 justify-content-center">
-                                {% if files.has_previous %}
-                                    <li class="page-item"><a class="page-link" href="?page={{ files.previous_page_number }}&search={{ search|default:'' }}&type={{ selected_type|default:'' }}">Previous</a></li>
-                                {% else %}
-                                    <li class="page-item disabled"><span class="page-link">Previous</span></li>
-                                {% endif %}
-
-                                {% for i in files.paginator.page_range %}
-                                    {% if files.number == i %}
-                                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-                                    {% elif i > files.number|add:'-3' and i < files.number|add:'3' %}
-                                        <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search|default:'' }}&type={{ selected_type|default:'' }}">{{ i }}</a></li>
-                                    {% endif %}
-                                {% endfor %}
-
-                                {% if files.has_next %}
-                                    <li class="page-item"><a class="page-link" href="?page={{ files.next_page_number }}&search={{ search|default:'' }}&type={{ selected_type|default:'' }}">Next</a></li>
-                                {% else %}
-                                    <li class="page-item disabled"><span class="page-link">Next</span></li>
-                                {% endif %}
-                            </ul>
+                            {% admin_pagination files %}
                         </div>
                         {% endif %}
                     </div>

@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block title %}Distributor Details — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}Distributor Profile{% endblock %}
@@ -152,27 +153,7 @@
             
             {% if page_obj.has_other_pages %}
             <div class="card-footer bg-white border-top py-3">
-                <ul class="pagination pagination-sm mb-0">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">Previous</span></li>
-                    {% endif %}
-
-                    {% for i in page_obj.paginator.page_range %}
-                        {% if page_obj.number == i %}
-                            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">Next</span></li>
-                    {% endif %}
-                </ul>
+                {% admin_pagination page_obj %}
             </div>
             {% endif %}
         </div>
