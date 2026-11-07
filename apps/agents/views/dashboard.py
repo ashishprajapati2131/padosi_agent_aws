@@ -3397,10 +3397,26 @@ def agent_upgrade_plan(request):
             plan_amount = prof_base
             plan_name = PLAN_LABELS["professional"]
 
-        # Check duplicate paid subscription
-        already_paid = AgentSubscription.objects.filter(
-            agent=agent, payment_status="completed", selected_plan=plan_name
-        ).first()
+        # Check duplicate paid subscription: trial/festive agents are never blocked from buying a 1-year plan.
+        # Only a real captured Razorpay payment for this exact plan that is still active blocks checkout.
+        already_paid = None
+        if not is_trial_or_unpaid:
+            from django.utils import timezone
+            from apps.agents.services.account_auth import is_real_razorpay_id
+
+            for sub in AgentSubscription.objects.filter(
+                agent=agent,
+                payment_status="completed",
+                status="active",
+                selected_plan=plan_name,
+                expires_at__gt=timezone.now(),
+            ):
+                if float(sub.registration_amount or 0) > 0 and (
+                    is_real_razorpay_id(sub.razorpay_payment_id, "pay_")
+                    or is_real_razorpay_id(sub.razorpay_order_id, "order_")
+                ):
+                    already_paid = sub
+                    break
 
         if already_paid:
             return JsonResponse(

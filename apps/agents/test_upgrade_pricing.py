@@ -89,7 +89,8 @@ class UpgradePricingTests(TestCase):
         self.assertEqual(amount, 188700)
 
     def test_event_challenge_agent_can_buy_starter_plan(self):
-        """Event challenge (festive grant) agents can purchase the Starter plan."""
+        """Event challenge (festive grant) agents can purchase the Starter plan,
+        even if sync_agent_plan_from_admin_slug gave them a 0-rupee Starter subscription."""
         from apps.event_referral.models import EventReferralCampaign, EventReferralParticipant
 
         campaign = EventReferralCampaign.objects.create(
@@ -107,11 +108,20 @@ class UpgradePricingTests(TestCase):
         self.agent.plan_type = 'basic'
         self.agent.status = 'event_challenge'
         self.agent.save()
-        AgentSubscription.objects.filter(agent=self.agent).delete()
+        # Festive grant subscription with amount=0 and no razorpay ID
+        AgentSubscription.objects.filter(agent=self.agent).update(
+            selected_plan="Starter's Plan",
+            registration_amount=0,
+            payment_status="completed",
+            razorpay_order_id=None,
+            razorpay_payment_id=None,
+        )
         resp, amount = self._upgrade(plan='starter')
         self.assertEqual(resp.status_code, 200, resp.content)
-        # No discount (not on free_trial), full base ₹1,999 + GST = ₹2,359 → 235900 paise
+        # Full base ₹1,999 + 18% GST = ₹2,359 → 235900 paise
         self.assertEqual(amount, 235900)
+        self.assertFalse(resp.json().get('already_completed', False))
+        self.assertEqual(resp.json().get('order_id'), 'order_UPGPRICE000002')
 
     def test_starter_full_price_no_discount(self):
         """Starter plan at full price: base ₹1,999 + 18% GST = ₹2,359 → 235900 paise."""

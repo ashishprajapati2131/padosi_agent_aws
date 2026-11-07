@@ -3974,11 +3974,30 @@ def _activate_paid_subscription(
             agent.upgrade_discount_percent = int(upgrade_discount)
             sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
 
-        if is_upgrade and agent.status == "active":
+        is_festive_or_trial_agent = (
+            agent.status in ("event_challenge", "trial", "pending_approval")
+            or agent.isOnFreeTrial()
+            or getattr(agent, "event_referral_participant", None) is not None
+        )
+        if is_festive_or_trial_agent:
+            agent.status = "pending_approval"
+            agent.plan_type = plan_type
+        elif is_upgrade and agent.status == "active":
             agent.plan_type = plan_type
         else:
             agent.status = "pending_approval"
             agent.plan_type = plan_type
+
+        # Clear festive/temporary trial grant since the agent has now paid for a full subscription
+        try:
+            p = getattr(agent, "event_referral_participant", None)
+            if p and p.grant_expires_at:
+                p.grant_expires_at = None
+                p.save(update_fields=["grant_expires_at", "updated_at"])
+        except Exception as e:
+            logger.warning(
+                f"Failed to clear grant_expires_at after payment for agent {agent.id}: {e}"
+            )
 
         agent.registration_step = 2
         agent.save()
