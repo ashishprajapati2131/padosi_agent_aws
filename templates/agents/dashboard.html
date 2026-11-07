@@ -140,6 +140,78 @@
     margin: 0;
     max-width: 560px;
 }
+.text-center .event-referral-panel-text {
+    margin-left: auto;
+    margin-right: auto;
+}
+.event-referral-festive-card {
+    border-radius: 16px !important;
+    overflow: hidden;
+    border: 1px solid rgba(251, 191, 36, 0.4) !important;
+    box-shadow: 0 4px 20px rgba(15, 118, 110, 0.2), 0 0 18px rgba(245, 158, 11, 0.12) !important;
+}
+.event-referral-festive-card .event-referral-panel {
+    background: radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.24) 0%, rgba(15, 118, 110, 0.95) 60%), linear-gradient(135deg, #094e47 0%, #0f766e 50%, #115e59 100%) !important;
+    position: relative;
+    color: #fff;
+    padding: 26px 28px !important;
+}
+.festive-grant-content {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+.festive-grant-diyas {
+    font-size: 2.2rem;
+    line-height: 1;
+    letter-spacing: 0.4rem;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.45));
+}
+.festive-grant-title {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    margin-top: 6px;
+    margin-bottom: 12px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.festive-grant-text {
+    color: #f0fdf4;
+    font-size: 15.5px;
+    line-height: 1.65;
+    margin-bottom: 0;
+    font-weight: 400;
+}
+.festive-grant-subtext {
+    color: rgba(236, 253, 245, 0.9);
+    font-size: 14.5px;
+}
+.festive-grant-highlight {
+    background: rgba(254, 240, 138, 0.22);
+    color: #fef08a;
+    border: 1px solid rgba(254, 240, 138, 0.45);
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    display: inline-block;
+}
+.festive-grant-divider {
+    width: 140px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    margin: 16px auto 14px auto;
+}
+.festive-grant-greeting {
+    color: #fde68a;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
 .event-referral-timer-box {
     background: rgba(255, 255, 255, 0.18);
     min-width: 140px;
@@ -221,6 +293,10 @@
         width: 100%;
         text-align: center;
     }
+    .festive-grant-diyas { font-size: 1.75rem; letter-spacing: 0.2rem; }
+    .festive-grant-title { font-size: 1.25rem; }
+    .festive-grant-text { font-size: 14px; }
+    .festive-grant-greeting { font-size: 13px; }
     #event-referral-mobile-refs { display: block !important; }
 }
 #event-referral-mobile-refs { display: none; }
@@ -703,18 +779,25 @@
         </div>
         {% endif %}
         {% if event_referral_participant and not admin_lock_preview %}
-        <div class="card border-0 shadow-sm mb-4" id="event-referral-challenge-panel" style="border-radius:16px; overflow:hidden;">
+        <div class="card border-0 shadow-sm mb-4 {% if event_referral_participant.grant_expires_at %}event-referral-festive-card{% endif %}" id="event-referral-challenge-panel" style="border-radius:16px; overflow:hidden;">
             <div class="card-body p-4 event-referral-panel">
                 {% if event_referral_participant.grant_expires_at %}
                 {# Festive free-trial grant: no referral push, just the greeting. #}
-                <div class="text-center">
-                    <div style="font-size:2rem; line-height:1;" aria-hidden="true">🪔✨🪔</div>
-                    <h5 class="font-weight-bold text-white mt-2 mb-2">Diwali to Dev Diwali — Basic plan is on us!</h5>
-                    <p class="mb-2 event-referral-panel-text">
-                        This festive season, enjoy every Basic plan feature <strong class="text-white">free till {{ event_referral_participant.grant_expires_at|date:"j M Y" }}</strong>.
-                        Light up your profile, collect reviews and welcome new families as their trusted Padosi.
+                <div class="festive-grant-content text-center mx-auto">
+                    <div class="festive-grant-diyas" aria-hidden="true">🪔&nbsp;✨&nbsp;🪔</div>
+                    <h5 class="festive-grant-title font-weight-bold text-white mt-2 mb-2">Diwali to Dev Diwali — Basic plan is on us!</h5>
+                    <p class="festive-grant-text">
+                        <span class="d-block mb-1">
+                            This festive season, enjoy every Basic plan feature <span class="text-nowrap"><strong class="festive-grant-highlight">free till {{ event_referral_participant.grant_expires_at|date:"j M Y" }}</strong>.</span>
+                        </span>
+                        <span class="d-block festive-grant-subtext">
+                            Light up your profile, collect reviews and welcome new families as their trusted Padosi.
+                        </span>
                     </p>
-                    <p class="mb-0 event-referral-panel-text">Happy Diwali, Saal Mubarak &amp; Happy Dev Diwali from Team PadosiAgent 🙏</p>
+                    <div class="festive-grant-divider"></div>
+                    <div class="festive-grant-greeting">
+                        Happy Diwali, Saal Mubarak &amp; Happy Dev Diwali from Team PadosiAgent 🙏
+                    </div>
                 </div>
                 {% else %}
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 event-referral-panel-head">
