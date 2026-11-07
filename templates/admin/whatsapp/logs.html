@@ -193,20 +193,12 @@
 </div>
 
 <!-- Modal: View Full Message -->
-<div class="modal fade" id="fullMsgModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="msgModalTitle">Message Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+{% admin_modal "fullMsgModal" title="Message Details" title_id="msgModalTitle" centered=True %}
             <div class="modal-body">
                 <div class="p-3 bg-light rounded-3 mb-3 font-monospace small" style="white-space: pre-wrap; word-break: break-all;" id="msgModalBody"></div>
                 <div class="text-muted small" id="msgModalMeta"></div>
             </div>
-        </div>
-    </div>
-</div>
+{% endadmin_modal %}
 
 <script>
     function viewFullMessage(content, phone, dir, timestamp) {

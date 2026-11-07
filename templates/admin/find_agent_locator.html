@@ -1279,16 +1279,6 @@
         showToast('Copied coordinates: ' + text);
     }
 
-    function showToast(msg) {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: msg,
-            showConfirmButton: false,
-            timer: 2000
-        });
-    }
 
     function escapeHtml(str) {
         if (!str) return '';

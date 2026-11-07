@@ -25,3 +25,12 @@ class AdminPaginationTagTests(SimpleTestCase):
 
     def test_single_page_renders_nothing(self):
         self.assertEqual(self.render({}, 1, total=5).strip(), "")
+
+    def test_overrides_force_a_param(self):
+        page = Paginator(range(100), 10).get_page(2)
+        request = RequestFactory().get("/admin/blacklisted-agents/", {"q": "x", "tab": "other"})
+        html = Template('{% load admin_tags %}{% admin_pagination page tab="master" %}').render(
+            Context({"page": page, "request": request}))
+        self.assertIn("tab=master", html)
+        self.assertNotIn("tab=other", html)
+        self.assertIn("q=x", html)

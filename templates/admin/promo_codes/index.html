@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block title %}Promo Codes — Admin{% endblock %}
 
@@ -105,13 +106,7 @@
 </div>
 
 <!-- Add/Edit Promo Modal -->
-<div class="modal fade" id="addPromoModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title fw-bold" id="modalTitle">Create Promo Code</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
-            </div>
+{% admin_modal "addPromoModal" title="Create Promo Code" title_id="modalTitle" %}
             <form action="{% url 'admin_promo_code_store' %}" method="POST" id="promoForm">
                 {% csrf_token %}
                 <div class="modal-body bg-light">
@@ -166,9 +161,7 @@
                     <button type="submit" class="btn btn-primary px-4" id="btnSubmitPromo">Save Promo Code</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
+{% endadmin_modal %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block title %}API Logs — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}System / API Logs{% endblock %}
@@ -97,33 +98,7 @@
     {% if logs.paginator and logs.has_other_pages %}
     <div class="mt-4 d-flex justify-content-center">
         <nav>
-            <ul class="pagination mb-0">
-                {% if logs.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?service={{ serviceFilter }}&page={{ logs.previous_page_number }}">&laquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                {% endif %}
-
-                {% for num in logs.paginator.page_range %}
-                    {% if logs.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?service={{ serviceFilter }}&page={{ num }}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if logs.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?service={{ serviceFilter }}&page={{ logs.next_page_number }}">&raquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                {% endif %}
-            </ul>
+            {% admin_pagination logs %}
         </nav>
     </div>
     {% endif %}
@@ -137,19 +112,11 @@
 </style>
 
 <!-- Modal for viewing JSON data -->
-<div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
-      <div class="modal-header border-bottom-0">
-        <h5 class="modal-title">API Request / Response Data</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
+{% admin_modal "logModal" title="API Request / Response Data" size="lg" %}
       <div class="modal-body p-0">
           <pre id="logDataViewer" style="background: #0f172a; color: #a5b4fc; padding: 20px; border-radius: 0 0 8px 8px; max-height: 500px; overflow-y: auto; font-size: 13px; margin: 0;"></pre>
       </div>
-    </div>
-  </div>
-</div>
+{% endadmin_modal %}
 
 {% endblock %}
 

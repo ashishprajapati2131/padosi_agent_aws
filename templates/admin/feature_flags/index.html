@@ -696,18 +696,6 @@
     </div>
 </div>
 
-<!-- Floating Toast Container for Real-time Feedback -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
-    <div id="liveToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body d-flex align-items-center gap-2" id="toastMessage">
-                <i class="fa-solid fa-circle-check"></i>
-                <span>Action executed successfully.</span>
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-</div>
 
 {% endblock %}
 
@@ -726,16 +714,6 @@ function getCsrfToken() {
         || '{{ csrf_token }}';
 }
 
-function showToast(message, isSuccess = true) {
-    const toastEl = document.getElementById('liveToast');
-    const toastMsg = document.getElementById('toastMessage');
-    toastEl.className = `toast align-items-center text-white border-0 shadow-lg ${isSuccess ? 'bg-success' : 'bg-danger'}`;
-    const icon = document.createElement('i');
-    icon.className = `fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2`;
-    toastMsg.replaceChildren(icon, document.createTextNode(' ' + message));
-    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    toast.show();
-}
 
 function copyToClipboard(text, elem) {
     navigator.clipboard.writeText(text).then(() => {

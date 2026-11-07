@@ -184,13 +184,7 @@
 </div>
 
 <!-- Message Modal -->
-<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Full Message</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+{% admin_modal "messageModal" title="Full Message" %}
             <div class="modal-body">
                 <div id="modal-sender" class="mb-2"></div>
                 <div id="modal-subject" class="mb-3 fw-bold text-dark"></div>
@@ -200,9 +194,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
+{% endadmin_modal %}
 
 <!-- Ticket Modal (module #8) -->
 <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
