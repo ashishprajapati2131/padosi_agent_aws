@@ -17,8 +17,7 @@ Full details: `ADMIN_PANEL_AUDIT_2026-11-07.md`. Do these on the production serv
 - [ ] Restart the app.
 
 ## 3. Right after deploy
-- [x] **Done 2026-11-07:** all 8 indexes exist on the shared database (`idx_agents_status_created`, `idx_agents_pincode`, `idx_agents_plan_trial`, `idx_subs_agent_payment`, `idx_subs_payment_expires`, `idx_leads_status`, `idx_leads_created`, `idx_reviews_agent_approved`); a re-run reports all `ok`.
-- [ ] (Only if a different production database) `python manage.py ensure_admin_indexes`: review the list of MISSING indexes.
+- [ ] `python manage.py ensure_admin_indexes`: review the list of MISSING indexes. (Done on the local DB 2026-11-07; production is a separate DB and still showed 8 missing.)
 - [ ] `python manage.py ensure_admin_indexes --apply`: creates only the missing ones. On large tables run it at a quiet hour.
 - [ ] Optional: `python manage.py remove_stale_contenttypes`, to clear the old `admin_panel.*` content types of the moved models.
 
