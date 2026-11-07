@@ -1,0 +1,27 @@
+
+.notif-tab-btn { transition: all 0.2s; }
+.notif-tab-btn:hover { color: var(--primary) !important; }
+
+.target-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 50px;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted, #64748b);
+    user-select: none;
+    background: var(--bg-card, #fff);
+}
+.target-pill:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.target-pill.selected {
+    background: var(--primary-light, #eff6ff);
+    border-color: var(--primary);
+    color: var(--primary);
+}

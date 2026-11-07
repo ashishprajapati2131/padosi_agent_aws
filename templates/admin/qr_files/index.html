@@ -1,5 +1,5 @@
 ﻿{% extends 'admin/base.html' %}
-{% load admin_tags %}
+{% load admin_tags static %}
 
 {% block breadcrumb_title %}QR Code File Generator{% endblock %}
 
@@ -314,24 +314,7 @@
 </div>
 
 
-<style>
-    .upload-dropzone {
-        border-color: var(--primary) !important;
-        background-color: var(--bg-card);
-        cursor: pointer;
-        transition: border-color 0.2s, background-color 0.2s;
-    }
-    .upload-dropzone:hover, .upload-dropzone.dragover {
-        background-color: var(--primary-light) !important;
-        border-color: var(--primary) !important;
-    }
-    .bg-success-light {
-        background-color: rgba(16, 185, 129, 0.15) !important;
-    }
-    body.dark-mode .bg-success-light {
-        background-color: rgba(16, 185, 129, 0.25) !important;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/qr_files/index.1.css' %}">
 {% endblock %}
 
 {% block extra_js %}

@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load static %}
 
 {% block title %}Add New Distributor — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}Add Distributor{% endblock %}
@@ -81,19 +82,5 @@
     </div>
 </div>
 
-<script>
-    function togglePassword(inputId, iconId) {
-        const passInput = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            passInput.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    }
-</script>
+<script src="{% static 'admin_panel/inline/distributors/create.1.js' %}"></script>
 {% endblock %}

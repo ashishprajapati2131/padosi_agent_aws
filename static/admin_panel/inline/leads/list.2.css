@@ -1,0 +1,19 @@
+
+    /* Table Styling Fixes */
+    .table thead th {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .table tbody td {
+        vertical-align: middle;
+        padding-top: 15px;
+        padding-bottom: 15px;
+    }
+    .lead-status-select:focus {
+        border-color: var(--primary);
+    }
+    

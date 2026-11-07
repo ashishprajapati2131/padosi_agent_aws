@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load static %}
 
 {% block title %}WhatsApp Messages &amp; Auto-Replies — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Messages{% endblock %}
@@ -102,13 +103,5 @@
     </div>
 </div>
 
-<script>
-    function addKeywordRow() {
-        const row = document.getElementById('keywordRowTemplate').content.cloneNode(true);
-        document.getElementById('keywordRows').appendChild(row);
-    }
-    function removeKeywordRow(btn) {
-        btn.closest('.keyword-row').remove();
-    }
-</script>
+<script src="{% static 'admin_panel/inline/whatsapp/messages.1.js' %}"></script>
 {% endblock %}

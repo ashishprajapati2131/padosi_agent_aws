@@ -1,0 +1,8 @@
+
+    .pagination { margin-bottom: 0; flex-wrap: wrap; justify-content: center; gap: 5px; }
+    .pagination .page-item .page-link { border-radius: 8px; padding: 8px 16px; color: var(--primary); border: 1px solid var(--border-color); font-weight: 500; transition: all 0.2s; }
+    .pagination .page-item.active .page-link { background-color: var(--primary); border-color: var(--primary); color: white; }
+    .pagination .page-item.disabled .page-link { color: var(--text-muted); background-color: var(--bg-body); }
+    .table thead th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; vertical-align: middle; white-space: nowrap; color: var(--text-muted); }
+    .table tbody td { vertical-align: middle; padding-top: 15px; padding-bottom: 15px; }
+    

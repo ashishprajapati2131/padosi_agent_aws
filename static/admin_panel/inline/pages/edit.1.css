@@ -1,0 +1,27 @@
+
+.form-card {
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+.form-card-header {
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-hover);
+}
+.content-area {
+    min-height: 320px;
+    font-family: monospace;
+    font-size: 13px;
+    resize: vertical;
+}
+.char-counter {
+    font-size: 11px;
+    color: var(--text-muted);
+}

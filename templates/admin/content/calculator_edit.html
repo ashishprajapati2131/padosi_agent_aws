@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load static %}
 
 {% block title %}Edit {{ calc.title }} — Calculators{% endblock %}
 {% block breadcrumb_title %}Content Control › Calculators › Edit{% endblock %}
@@ -166,10 +167,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.getElementById('add-faq').addEventListener('click', function () {
-    const tpl = document.getElementById('faq-template');
-    document.getElementById('faq-list').appendChild(tpl.content.cloneNode(true));
-});
-</script>
+<script src="{% static 'admin_panel/inline/content/calculator_edit.1.js' %}"></script>
 {% endblock %}

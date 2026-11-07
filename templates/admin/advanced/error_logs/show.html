@@ -5,23 +5,7 @@
 {% block breadcrumb_title %}Error Logs › Details{% endblock %}
 
 {% block extra_css %}
-<style>
-    .traceback-container {
-        background-color: #0f172a;
-        color: #f1f5f9;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 13px;
-        padding: 20px;
-        border-radius: 8px;
-        overflow-x: auto;
-        max-height: 600px;
-    }
-    .badge-critical { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .badge-error { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-    .badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-    .badge-debug { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/advanced/error_logs/show.1.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -129,27 +113,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    function copyTraceback() {
-        const codeElement = document.getElementById('tracebackCode');
-        if (!codeElement) return;
-
-        navigator.clipboard.writeText(codeElement.textContent)
-            .then(() => {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Copied to clipboard!',
-                        showConfirmButton: false,
-                        timer: 1500
-                    });
-                } else {
-                    alert('Copied to clipboard!');
-                }
-            })
-            .catch(err => console.error('Could not copy text: ', err));
-    }
-</script>
+<script src="{% static 'admin_panel/inline/advanced/error_logs/show.1.js' %}"></script>
 {% endblock %}

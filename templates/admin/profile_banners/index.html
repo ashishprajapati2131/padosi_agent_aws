@@ -4,73 +4,7 @@
 {% block breadcrumb_title %}Profile Banners{% endblock %}
 
 {% block extra_css %}
-<style>
-.banner-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    overflow: hidden;
-    background: #ffffff;
-    transition: all 0.25s ease;
-}
-.banner-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-    border-color: #cbd5e1;
-}
-.banner-card-img-wrap {
-    height: 140px;
-    background: #0f172a;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.banner-card-img-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-.banner-card:hover .banner-card-img-wrap img {
-    transform: scale(1.03);
-}
-.banner-badge-order {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(4px);
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 6px;
-}
-.banner-badge-status {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-}
-.feature-flag-card {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-}
-.dropzone-box {
-    border: 2px dashed #cbd5e1;
-    border-radius: 12px;
-    background: #f8fafc;
-    padding: 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.dropzone-box:hover, .dropzone-box.dragover {
-    border-color: #0d9488;
-    background: #f0fdfa;
-}
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/profile_banners/index.1.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -315,23 +249,5 @@
     </div>
 </div>
 
-<script>
-function previewSelectedBanner(input) {
-    if (input.files && input.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('imagePreview').src = e.target.result;
-            document.getElementById('imagePreviewContainer').classList.remove('d-none');
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function clearSelectedBanner() {
-    var input = document.getElementById('bannerImageInput');
-    input.value = '';
-    document.getElementById('imagePreview').src = '';
-    document.getElementById('imagePreviewContainer').classList.add('d-none');
-}
-</script>
+<script src="{% static 'admin_panel/inline/profile_banners/index.1.js' %}"></script>
 {% endblock %}

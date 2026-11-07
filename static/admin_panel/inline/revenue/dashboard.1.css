@@ -1,0 +1,17 @@
+
+    .rev-card {
+        background: var(--bg-card, #ffffff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 16px;
+        padding: 24px;
+        transition: all 0.2s;
+    }
+    .rev-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+    .rev-val { font-size: 28px; font-weight: 800; color: var(--text-primary, #1e293b); line-height: 1.1; }
+    .rev-label { font-size: 12px; font-weight: 600; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
+    .rev-sub { font-size: 12px; color: var(--text-muted, #64748b); margin-top: 4px; }
+    .rev-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .growth-up   { color: #16a34a; font-weight: 700; font-size: 13px; }
+    .growth-down { color: #dc2626; font-weight: 700; font-size: 13px; }
+    .plan-bar { height: 8px; border-radius: 100px; background: var(--border-color, #e2e8f0); overflow: hidden; }
+    .plan-bar-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }

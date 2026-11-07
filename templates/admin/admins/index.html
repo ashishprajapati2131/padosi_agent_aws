@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load admin_tags %}
+{% load admin_tags static %}
 {% block title %}Admin Management — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}System › Admin Management{% endblock %}
 
@@ -114,11 +114,5 @@
     </div>
 </div>
 
-<style>
-.pagination { margin-bottom: 0px; flex-wrap: wrap; justify-content: center; gap: 5px; }
-.pagination .page-item .page-link { border-radius: 8px; padding: 8px 16px; color: #1d7d5d; border: 1px solid #e2e8f0; font-weight: 500; transition: all 0.2s; }
-.pagination .page-item.active .page-link { background-color: #1d7d5d; border-color: #1d7d5d; color: white; }
-.pagination .page-item.disabled .page-link { color: #64748b; background-color: #f8fafc; }
-.pagination svg { width: 1.25rem !important; height: 1.25rem !important; }
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/admins/index.1.css' %}">
 {% endblock %}

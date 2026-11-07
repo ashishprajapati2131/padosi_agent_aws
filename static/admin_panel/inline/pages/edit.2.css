@@ -1,0 +1,20 @@
+
+.ck-editor__editable { min-height: 400px; font-family: 'Plus Jakarta Sans', sans-serif; }
+.ck.ck-editor { border-radius: 8px !important; overflow: hidden; }
+.raw-code-editor {
+    font-family: 'Fira Code', 'Courier New', Courier, monospace !important;
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+    line-height: 1.6 !important;
+    padding: 20px !important;
+    border-radius: 12px !important;
+    border: 1px solid #3c3c3c !important;
+    resize: vertical;
+    font-size: 14px !important;
+    min-height: 450px !important;
+    outline: none !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+}
+.raw-code-editor:focus {
+    border-color: var(--primary) !important;
+}

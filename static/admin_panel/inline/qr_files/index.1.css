@@ -1,0 +1,17 @@
+
+    .upload-dropzone {
+        border-color: var(--primary) !important;
+        background-color: var(--bg-card);
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+    }
+    .upload-dropzone:hover, .upload-dropzone.dragover {
+        background-color: var(--primary-light) !important;
+        border-color: var(--primary) !important;
+    }
+    .bg-success-light {
+        background-color: rgba(16, 185, 129, 0.15) !important;
+    }
+    body.dark-mode .bg-success-light {
+        background-color: rgba(16, 185, 129, 0.25) !important;
+    }

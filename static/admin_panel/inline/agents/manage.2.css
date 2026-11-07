@@ -1,0 +1,8 @@
+
+.log-filter-btn { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; background:#fff; color:#64748b; cursor:pointer; transition:.2s; }
+.log-filter-btn:hover { background:#f8fafc; }
+.log-filter-btn.active { background:#1e293b; color:#fff; border-color:#1e293b; }
+.toggle { width:40px; height:22px; border-radius:11px; background:#cbd5e1; position:relative; cursor:pointer; border:none; transition:.2s; }
+.toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
+.toggle.on { background:#22c55e; }
+.toggle.on::after { left:20px; }

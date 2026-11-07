@@ -1,0 +1,28 @@
+
+    /* Pagination Fixes */
+    .pagination {
+        margin-bottom: 0px;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+    }
+    .pagination .page-item .page-link {
+        border-radius: 8px !important;
+        padding: 8px 16px;
+        color: var(--primary);
+        border: 1px solid var(--border-color);
+        font-weight: 500;
+        transition: all 0.2s;
+        margin: 0 2px;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    .pagination .page-item.disabled .page-link {
+        color: var(--text-muted);
+        background-color: var(--bg-body);
+        pointer-events: none;
+    }
+    

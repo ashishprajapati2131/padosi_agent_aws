@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load admin_tags %}
+{% load admin_tags static %}
 
 {% block title %}API Logs — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}System / API Logs{% endblock %}
@@ -104,12 +104,7 @@
     {% endif %}
 </div>
 
-<style>
-.pagination { margin-bottom: 0; flex-wrap: wrap; justify-content: center; gap: 5px; }
-.pagination .page-item .page-link { border-radius: 8px; padding: 8px 16px; color: var(--primary); border: 1px solid var(--border-color); font-weight: 500; transition: all 0.2s; }
-.pagination .page-item.active .page-link { background-color: var(--primary); border-color: var(--primary); color: white; }
-.pagination .page-item.disabled .page-link { color: var(--text-muted); background-color: var(--bg-body); }
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/system/api_logs.1.css' %}">
 
 <!-- Modal for viewing JSON data -->
 {% admin_modal "logModal" title="API Request / Response Data" size="lg" %}
@@ -121,12 +116,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    function viewLogPayload(id) {
-        const data = $('#payload-' + id).val();
-        $('#logDataViewer').text(data);
-        const modal = new bootstrap.Modal(document.getElementById('logModal'));
-        modal.show();
-    }
-</script>
+<script src="{% static 'admin_panel/inline/system/api_logs.1.js' %}"></script>
 {% endblock %}

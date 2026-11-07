@@ -1,24 +1,9 @@
 {% extends 'admin/base.html' %}
-{% load json_tags admin_tags %}
+{% load json_tags admin_tags static %}
 {% block title %}Free Trial Management{% endblock %}
 
 {% block content %}
-<style>
-.ft-stat-card { border-radius:14px; padding:20px; display:flex; align-items:center; gap:16px; }
-.ft-stat-icon { width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-.nav-tabs-ft .nav-link { border:none; padding:10px 18px; border-radius:10px 10px 0 0; color:#6b7280; font-weight:600; font-size:14px; cursor:pointer; }
-.nav-tabs-ft .nav-link.active { background:linear-gradient(135deg,#1e3a6e,#2563eb); color:#fff; }
-.nav-tabs-ft .nav-link:hover:not(.active) { background:#f1f5f9; }
-.ft-tab-panel { background:#fff; border-radius:0 14px 14px 14px; border:1px solid #e5e7eb; padding:24px; }
-.promo-badge { font-size:10px; padding:2px 7px; border-radius:20px; font-weight:700; letter-spacing:.5px; }
-.tier-card { border-radius:14px; padding:18px; border:2px solid transparent; transition:.2s; }
-.tier-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.08); }
-.tier-1 { background:linear-gradient(135deg,#fef3c7,#fffbeb); border-color:#f59e0b; }
-.tier-2 { background:linear-gradient(135deg,#dbeafe,#eff6ff); border-color:#3b82f6; }
-.tier-3 { background:linear-gradient(135deg,#d1fae5,#ecfdf5); border-color:#10b981; }
-.history-row:hover { background:#f8fafc; }
-.btn-xs { padding:2px 7px; font-size:11px; }
-</style>
+<link rel="stylesheet" href="{% static 'admin_panel/inline/free_trial/index.1.css' %}">
 
 <div class="container-fluid py-4">
 
@@ -109,15 +94,7 @@
     <li><button type="button" class="nav-link" onclick="switchFtTab(this,'tab-config')">⚙️ Config</button></li>
   </ul>
 
-  <script>
-  function switchFtTab(btn, paneId) {
-    document.querySelectorAll('#ftTabs button').forEach(function(b){ b.classList.remove('active'); });
-    document.querySelectorAll('#ftTabContent > div').forEach(function(p){ p.style.display='none'; });
-    btn.classList.add('active');
-    var p = document.getElementById(paneId);
-    if (p) p.style.display = 'block';
-  }
-  </script>
+  <script src="{% static 'admin_panel/inline/free_trial/index.1.js' %}"></script>
 
   <div class="ft-tab-panel" id="ftTabContent">
 

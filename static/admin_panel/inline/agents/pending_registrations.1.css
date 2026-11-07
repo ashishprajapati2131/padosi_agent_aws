@@ -1,0 +1,71 @@
+
+    .wait-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 20px;
+        font-size: 11px; font-weight: 600;
+    }
+    .wait-urgent   { background: #fee2e2; color: #991b1b; }
+    .wait-medium   { background: #fef3c7; color: #92400e; }
+    .wait-fresh    { background: #dcfce7; color: #15803d; }
+
+    .sort-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-color); color: var(--text-muted); background: var(--bg-card); text-decoration: none; transition: all 0.15s; }
+    .sort-btn.active, .sort-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .agent-row { transition: background 0.15s; }
+    .agent-row:hover { background: var(--menu-hover-bg) !important; }
+
+    .step-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-muted); }
+
+    .stat-mini { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+    .stat-mini-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .stat-mini-val { font-size: 22px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+    .stat-mini-lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; margin-top: 3px; }
+
+    .timeline-dot {
+        width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .agent-photo { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; border: 2px solid var(--border-color); flex-shrink: 0; }
+    .agent-initials { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; flex-shrink: 0; background: linear-gradient(135deg, var(--primary), #3b82f6); }
+
+    .contact-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; transition: all 0.15s; border: 1px solid var(--border-color); }
+    .contact-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .btn-call { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+    .btn-call:hover { background: #bbf7d0; color: #166534; }
+    .btn-email { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+    .btn-email:hover { background: #bfdbfe; color: #1e40af; }
+
+    /* Payment status badges */
+    .payment-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 20px;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+    }
+    .payment-initiated { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .payment-failed    { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .payment-none      { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+
+    /* Verify button */
+    .btn-verify {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 8px;
+        font-size: 11px; font-weight: 700;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: #fff; border: none; cursor: pointer;
+        transition: all 0.2s; box-shadow: 0 1px 3px rgba(5,150,105,0.3);
+    }
+    .btn-verify:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.4); }
+    .btn-verify:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-verify .spinner-border { width: 14px; height: 14px; border-width: 2px; }
+
+    /* Toast notification */
+    .verify-toast {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        min-width: 350px; max-width: 500px;
+        padding: 16px 20px; border-radius: 12px;
+        font-size: 13px; font-weight: 600;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        display: none; animation: slideIn 0.3s ease;
+    }
+    .verify-toast.success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .verify-toast.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }

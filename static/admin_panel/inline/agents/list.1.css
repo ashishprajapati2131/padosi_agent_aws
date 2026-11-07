@@ -1,0 +1,18 @@
+
+    /* Prevent Actions and Badge dropdowns from being clipped when table has few rows */
+    .table-card {
+        overflow: visible !important;
+    }
+    .table-card .table-responsive {
+        overflow: visible;
+        min-height: 280px;
+    }
+    @media (max-width: 991.98px) {
+        .table-card .table-responsive {
+            overflow-x: auto;
+        }
+    }
+    .table-card .dropdown-menu {
+        z-index: 1050 !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    }

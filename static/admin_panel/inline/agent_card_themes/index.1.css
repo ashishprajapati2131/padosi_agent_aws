@@ -1,0 +1,15 @@
+
+.act-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff}
+.act-theme{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #f1f5f9}
+.act-theme:last-child{border-bottom:0}
+.act-swatch{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;flex-shrink:0}
+.act-theme-name{font-weight:700;color:#0f172a;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-section{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin:18px 0 8px}
+.act-color{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.act-color input[type=color]{width:42px;height:32px;padding:2px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+.act-color label.flex-grow-1{font-size:13px;color:#334155;margin:0}
+.act-color .form-check{margin:0;font-size:12px;color:#64748b}
+.act-preview-wrap{background:#f1f5f9;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
+.act-preview-mobile{width:390px;max-width:100%;height:470px;border:0;display:block;margin:0 auto;background:#f1f5f9}
+.act-preview-desktop-box{overflow:hidden;position:relative}
+.act-preview-desktop{width:1060px;height:320px;border:0;transform-origin:0 0;position:absolute;left:0;top:0}

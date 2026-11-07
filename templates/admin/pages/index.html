@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load static %}
 
 {% block title %}CMS Pages — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}Pages{% endblock %}
@@ -142,17 +143,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.querySelectorAll('.delete-page-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var pageId    = this.dataset.pageId;
-        var pageTitle = this.dataset.pageTitle;
-
-        if (!confirm('Delete page "' + pageTitle + '"?\n\nThis is permanent and cannot be undone.')) return;
-
-        var form = document.getElementById('delete-form-' + pageId);
-        if (form) form.submit();
-    });
-});
-</script>
+<script src="{% static 'admin_panel/inline/pages/index.1.js' %}"></script>
 {% endblock %}
