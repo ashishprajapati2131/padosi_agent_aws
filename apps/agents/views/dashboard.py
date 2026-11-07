@@ -575,29 +575,31 @@ def agent_dashboard(request):
     pricing_config = SiteSetting.get_value(
         "pricing_config",
         {
-            "starter": {"name": PLAN_LABELS["starter"], "full_price": 2359},
-            "professional": {"name": PLAN_LABELS["professional"], "full_price": 8258},
+            "starter": {"name": PLAN_LABELS["starter"], "full_price": 1999},
+            "professional": {"name": PLAN_LABELS["professional"], "full_price": 9999},
         },
     )
 
-    starter_full = float(pricing_config.get("starter", {}).get("full_price", 2359))
-    prof_full = float(pricing_config.get("professional", {}).get("full_price", 8258))
+    # full_price is the BASE price excl. GST (₹1,999 / ₹9,999).
+    starter_base_price = float(pricing_config.get("starter", {}).get("full_price", 1999))
+    prof_base_price = float(pricing_config.get("professional", {}).get("full_price", 9999))
 
+    # Undiscounted totals incl. 18% GST (for strikethrough display)
+    starter_full = round(starter_base_price + starter_base_price * 0.18)
+    prof_full = round(prof_base_price + prof_base_price * 0.18)
+
+    # Apply trial discount to base price
     discount_factor = (100 - discount_pct) / 100
-    starter_final = round(starter_full * discount_factor)
-    starter_base = round(starter_final / 1.18, 0)
-    starter_disc = starter_base + round(starter_base * 0.18, 0)
+    starter_base = round(starter_base_price * discount_factor)
+    starter_disc = round(starter_base + starter_base * 0.18)
 
-    prof_final = round(prof_full * discount_factor)
     if agent.referral_reward_type == "pro_plan_1rs":
-        prof_final = 1
-        discount_pct = 99.99
-
-    prof_base = round(prof_final / 1.18, 0)
-    if agent.referral_reward_type == "pro_plan_1rs":
+        prof_base = 1
         prof_disc = 1.00
+        discount_pct = 99.99
     else:
-        prof_disc = prof_base + round(prof_base * 0.18, 0)
+        prof_base = round(prof_base_price * discount_factor)
+        prof_disc = round(prof_base + prof_base * 0.18)
 
     from django.conf import settings
 
@@ -1871,7 +1873,7 @@ def render_edit_profile(request, agent, is_admin_view=False):
             {
                 "professional": {
                     "name": PLAN_LABELS["professional"],
-                    "full_price": 8258,
+                    "full_price": 9999,
                 },
             },
         )
@@ -1880,8 +1882,10 @@ def render_edit_profile(request, agent, is_admin_view=False):
         prof_desc = prof_cfg.get(
             "description", "Maximum visibility and premium tools for top agents."
         )
-        prof_full = float(prof_cfg.get("full_price", 8258))
-        prof_base = int(round(prof_full / 1.18, 0))
+        # full_price is the BASE price excl. GST
+        prof_base_price = float(prof_cfg.get("full_price", 9999))
+        prof_base = int(round(prof_base_price))
+        prof_full = int(round(prof_base_price + prof_base_price * 0.18))
         professional_plan_features = _PROFESSIONAL_PLAN_UI_FEATURES
     else:
         review_upgrade_price = None
@@ -3332,35 +3336,42 @@ def agent_upgrade_plan(request):
         pricing_config = SiteSetting.get_value(
             "pricing_config",
             {
-                "starter": {"name": PLAN_LABELS["starter"], "full_price": 2359},
+                "starter": {"name": PLAN_LABELS["starter"], "full_price": 1999},
                 "professional": {
                     "name": PLAN_LABELS["professional"],
-                    "full_price": 8258,
+                    "full_price": 9999,
                 },
             },
         )
 
-        starter_full = float(pricing_config.get("starter", {}).get("full_price", 2359))
-        prof_full = float(
-            pricing_config.get("professional", {}).get("full_price", 8258)
+        # full_price is the BASE price excl. GST (₹1,999 / ₹9,999).
+        starter_base_price = float(
+            pricing_config.get("starter", {}).get("full_price", 1999)
+        )
+        prof_base_price = float(
+            pricing_config.get("professional", {}).get("full_price", 9999)
         )
 
-        starter_final = starter_full
+        # Apply promo discount to base price (excl. GST)
+        starter_after_promo = starter_base_price
         if promo_obj and promo_obj.is_valid("basic"):
-            starter_final = starter_full - promo_obj.calculate_discount(starter_full)
+            starter_after_promo = starter_base_price - promo_obj.calculate_discount(
+                starter_base_price
+            )
 
         discount_factor = (100 - discount_pct) / 100
-        starter_final = round(starter_final * discount_factor)
-        starter_base = round(starter_final / 1.18, 0)
-        starter_disc = starter_base + round(starter_base * 0.18, 0)
+        starter_base = round(starter_after_promo * discount_factor)
+        starter_disc = round(starter_base + starter_base * 0.18)
 
-        prof_final = prof_full
+        prof_after_promo = prof_base_price
         if promo_obj and promo_obj.is_valid("professional"):
-            prof_final = prof_full - promo_obj.calculate_discount(prof_full)
+            prof_after_promo = prof_base_price - promo_obj.calculate_discount(
+                prof_base_price
+            )
 
-        prof_final = round(prof_final * discount_factor)
+        prof_base = round(prof_after_promo * discount_factor)
         if agent.referral_reward_type == "pro_plan_1rs":
-            prof_final = 1
+            prof_base = 1
             discount_pct = 99.99
 
         from apps.agents.services.review_growth import get_review_upgrade_pricing
@@ -3372,12 +3383,10 @@ def agent_upgrade_plan(request):
         if review_upgrade:
             prof_base = review_upgrade["checkout_base_excl_gst"]
             prof_disc = review_upgrade["checkout_total_incl_gst"]
+        elif agent.referral_reward_type == "pro_plan_1rs":
+            prof_disc = 1.00
         else:
-            prof_base = round(prof_final / 1.18, 0)
-            if agent.referral_reward_type == "pro_plan_1rs":
-                prof_disc = 1.00
-            else:
-                prof_disc = prof_base + round(prof_base * 0.18, 0)
+            prof_disc = round(prof_base + prof_base * 0.18)
 
         if plan_type == "starter":
             total_amount = starter_disc

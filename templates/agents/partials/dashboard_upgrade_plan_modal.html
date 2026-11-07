@@ -24,7 +24,7 @@
                         {% endif %}
                         <span class="pa-dash-plan-term">1st Year Only</span>
                     </div>
-                    <div class="text-muted" style="font-size:11px;font-weight:600;">+ 18% GST applicable at checkout</div>
+                    <div class="text-muted" style="font-size:11px;font-weight:600;">+ 18% GST applicable at checkout (Total: ₹{{ profDisc|default:profFull|default:11799|floatformat:0 }})</div>
                     <div class="pa-dash-plan-subtitle">{{ prof_desc|default:"Unlock every remaining dashboard section instantly." }}</div>
                 </div>
                 <div class="pa-dash-plan-includes">
@@ -42,7 +42,7 @@
                 </div>
                 <button type="button" class="pa-dash-plan-select-btn" id="dashProfUpgradePayBtn"
                     onclick="initiateDashboardProfessionalUpgrade()">
-                    <i class="fas fa-crown"></i> Select Professional's Plan
+                    <i class="fas fa-crown"></i> Select Professional's Plan (₹{{ profDisc|default:profFull|default:11799|floatformat:0 }})
                 </button>
                 <div class="pa-dash-plan-footer-note">Secure payment via Razorpay</div>
             </div>
@@ -71,7 +71,7 @@
                                 <span class="badge bg-secondary text-white px-2.5 py-1" style="font-size: 11px; font-weight: 700; letter-spacing: 0.03em;">STANDARD</span>
                                 <span class="text-muted small fw-bold">1 Year Plan</span>
                             </div>
-                            <h5 class="fw-bold mb-1 text-dark">Starter's Plan</h5>
+                            <h5 class="fw-bold mb-1 text-dark">Starter's Plan (Basic)</h5>
                             <p class="text-muted small mb-3">Essential digital identity and local client discovery.</p>
 
                             <div class="mb-3 py-2 px-3 rounded-3" style="background: #ffffff; border: 1px solid #edf2f7;">
@@ -95,7 +95,7 @@
                             <button type="button" class="btn btn-outline-primary w-100 fw-bold py-2.5 mt-auto shadow-sm" id="btnChoiceStarter"
                                 onclick="initiateUpgradePayment('starter', {{ starterDisc|default:starterFull|floatformat:0 }}, this)"
                                 style="border-radius: 12px; font-size: 14.5px;">
-                                Upgrade to Starter
+                                <i class="fas fa-check-circle me-1.5"></i> Buy Basic / Starter Plan (₹{{ starterDisc|default:starterFull|floatformat:0 }})
                             </button>
                         </div>
                     </div>
@@ -136,7 +136,7 @@
                             <button type="button" class="btn btn-success w-100 fw-bold py-2.5 mt-auto text-white shadow" id="btnChoiceProf"
                                 onclick="initiateUpgradePayment('professional', {{ profDisc|default:profFull|floatformat:0 }}, this)"
                                 style="border-radius: 12px; font-size: 14.5px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
-                                <i class="fas fa-crown me-1.5"></i> Upgrade to Professional
+                                <i class="fas fa-crown me-1.5"></i> Upgrade to Professional (₹{{ profDisc|default:profFull|floatformat:0 }})
                             </button>
                         </div>
                     </div>

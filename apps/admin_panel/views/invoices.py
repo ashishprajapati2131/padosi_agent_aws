@@ -429,10 +429,10 @@ def create_manual_invoice(request):
     if "trial" in plan_name_lower:
         full_price = 0
     elif "starter" in plan_name_lower or "basic" in plan_name_lower:
-        full_price = float(pricing_config.get("starter", {}).get("full_price", 2359))
+        full_price = float(pricing_config.get("starter", {}).get("full_price", 1999))
     elif "professional" in plan_name_lower:
         full_price = float(
-            pricing_config.get("professional", {}).get("full_price", 8258)
+            pricing_config.get("professional", {}).get("full_price", 9999)
         )
 
     discount_percent = 0

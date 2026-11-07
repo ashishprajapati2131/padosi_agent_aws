@@ -232,14 +232,14 @@ class DashboardService:
             days_left = max(0, delta.days)
 
         discount_pct = 0
-        starter_full = 2359
-        prof_full = 8258
+        starter_full = 1999
+        prof_full = 9999
         # Configured prices apply to every agent, not only trial agents (the
         # website shows and charges them to everyone).
         pricing_config = self.setting_repo.get_json_value("pricing_config", {})
         if pricing_config:
-            starter_full = pricing_config.get("starter", {}).get("full_price", 2359)
-            prof_full = pricing_config.get("professional", {}).get("full_price", 8258)
+            starter_full = pricing_config.get("starter", {}).get("full_price", 1999)
+            prof_full = pricing_config.get("professional", {}).get("full_price", 9999)
 
         if is_on_trial:
             admin_default = int(

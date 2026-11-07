@@ -41,7 +41,7 @@ class MobilePlanPricingMatchesWebsiteTests(SimpleTestCase):
             SubscriptionPlan(name='Professional', slug='professional', sort_order=2, actual_price=9900.0,
                              discounted_price=1499.0, is_active=True),
             SiteSetting(key='pricing_config', group='pricing', value=json.dumps({
-                'starter': {'full_price': 2359}, 'professional': {'full_price': 8258}})),
+                'starter': {'full_price': 1999}, 'professional': {'full_price': 9999}})),
             SiteSetting(key='trial_upgrade_discount', group='pricing', value='20'),
         ])
         self.db.commit()
