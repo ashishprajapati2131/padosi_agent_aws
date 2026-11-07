@@ -705,6 +705,18 @@
         {% if event_referral_participant and not admin_lock_preview %}
         <div class="card border-0 shadow-sm mb-4" id="event-referral-challenge-panel" style="border-radius:16px; overflow:hidden;">
             <div class="card-body p-4 event-referral-panel">
+                {% if event_referral_participant.grant_expires_at %}
+                {# Festive free-trial grant: no referral push, just the greeting. #}
+                <div class="text-center">
+                    <div style="font-size:2rem; line-height:1;" aria-hidden="true">🪔✨🪔</div>
+                    <h5 class="font-weight-bold text-white mt-2 mb-2">Diwali to Dev Diwali — Basic plan is on us!</h5>
+                    <p class="mb-2 event-referral-panel-text">
+                        This festive season, enjoy every Basic plan feature <strong class="text-white">free till {{ event_referral_participant.grant_expires_at|date:"j M Y" }}</strong>.
+                        Light up your profile, collect reviews and welcome new families as their trusted Padosi.
+                    </p>
+                    <p class="mb-0 event-referral-panel-text">Happy Diwali, Saal Mubarak &amp; Happy Dev Diwali from Team PadosiAgent 🙏</p>
+                </div>
+                {% else %}
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 event-referral-panel-head">
                     <div class="flex-grow-1" style="min-width: 0;">
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
@@ -748,6 +760,7 @@
                         <i class="fas fa-chart-bar mr-1"></i>Public leaderboard
                     </a>
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
@@ -1011,7 +1024,8 @@
             </ul>
         </div>
 
-        {% if champ_campaign %}
+        {# Hidden once the campaign has ended, and for festive free-trial agents. #}
+        {% if champ_campaign and champ_campaign.days_left > 0 and not event_referral_participant.grant_expires_at %}
         <!-- NATIONAL REFERRAL CHAMPIONSHIP HIGHLIGHT CARD (Simplified UI) -->
         <div class="px-2 mb-4">
             <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 18px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #ffffff; border: 1px solid rgba(255,255,255,0.12);">

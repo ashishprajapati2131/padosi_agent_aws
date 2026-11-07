@@ -679,6 +679,7 @@ def wa_bot_broadcast(request):
         add_link = request.POST.get("add_link") == "1"
         send_card = request.POST.get("send_card") == "1"
         ids = [int(i) for i in request.POST.getlist("agent_ids") if str(i).isdigit()]
+        paldi_all = request.POST.get("paldi_all") == "1"
         upload = request.FILES.get("sheet")
         rate_count = _int_in(request.POST.get("rate_count"), 1, 1000, 49)
         rate_hours = _float_in(request.POST.get("rate_hours"), 0.1, 168, 4)
@@ -709,11 +710,11 @@ def wa_bot_broadcast(request):
                 )
                 return redirect("admin_wa_broadcast")
 
-        agents = (
-            Agent.objects.filter(status="active", id__in=ids)
-            .select_related("profile")
-            .order_by("id")
-        )
+        who = Q(status="active", id__in=ids)
+        if paldi_all:
+            # Every Paldi participant, whatever their status (most are pending approval).
+            who |= Q(event_referral_participant__isnull=False)
+        agents = Agent.objects.filter(who).select_related("profile").order_by("id")
         recipients = broadcast.build_recipients(
             agents=agents, sheet_rows=sheet_rows, add_link=add_link
         )
@@ -737,7 +738,8 @@ def wa_bot_broadcast(request):
             "wa_broadcast_created",
             "WaBroadcast",
             b.pk,
-            f"{len(recipients)} recipients ({len(ids)} agents selected, {len(sheet_rows)} sheet rows), "
+            f"{len(recipients)} recipients ({len(ids)} agents selected{', all Paldi agents' if paldi_all else ''}, "
+            f"{len(sheet_rows)} sheet rows), "
             f"{rate_count} msgs / {rate_hours} h, min gap {min_gap}s: {message[:200]}",
         )
         messages.success(
@@ -768,6 +770,7 @@ def wa_bot_broadcast(request):
             .first()
             or "",
             "max_len": MAX_BROADCAST_LEN,
+            "paldi_count": Agent.objects.filter(event_referral_participant__isnull=False).count(),
             "max_rows": broadcast.MAX_SHEET_ROWS,
             "templates": broadcast.get_templates(),
             "sender": broadcast.sender_status(),

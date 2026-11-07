@@ -209,6 +209,8 @@ def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
     seen, out = set(), []
 
     def add(phone, name, agent):
+        if agent is not None and agent.status != "active":
+            agent = None  # profile is not public until approval: send no link or card
         if phone and phone not in seen:
             seen.add(phone)
             out.append(

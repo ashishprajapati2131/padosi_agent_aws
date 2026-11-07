@@ -465,6 +465,15 @@ class BroadcastViewTests(TestCase):
         self.assertTrue(b.send_card)
         self.assertIn("/og-image/", b.recipients.get().image_url)
 
+    def test_post_paldi_all_reaches_pending_agents_without_link(self):
+        from apps.event_referral.models import EventReferralCampaign, EventReferralParticipant
+
+        campaign = EventReferralCampaign.objects.create(is_enabled=True, required_paid_referrals=2, window_hours=48)
+        EventReferralParticipant.create_for_agent(self.inactive, campaign)
+        self._call(wa_bot_broadcast, self._req("post", {"message": "Happy Diwali {name}", "paldi_all": "1"}))
+        r = WaBroadcast.objects.get().recipients.get()
+        self.assertEqual((r.phone, r.link, r.image_url), ("9999999999", "", ""))
+
     def test_post_clamps_unsafe_speed(self):
         data = {
             "message": "Hi",

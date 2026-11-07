@@ -195,6 +195,17 @@
             </div>
 
             <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-white fw-bold small">Paldi event agents</div>
+                <div class="card-body">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="paldi_all" value="1" id="paldiAll" data-count="{{ paldi_count }}">
+                        <label class="form-check-label small" for="paldiAll">Send to all <strong>{{ paldi_count }}</strong> Paldi event agents</label>
+                    </div>
+                    <div class="small text-muted mt-1">Includes agents still pending approval. Only approved (active) agents get their profile link and card.</div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
                 <div class="card-header bg-white fw-bold small">4. Or upload a data sheet (optional)</div>
                 <div class="card-body">
                     <label for="sheet" class="visually-hidden">Data sheet</label>
@@ -318,7 +329,8 @@
     const msg = $('message');
     const boxes = Array.from(document.querySelectorAll('.agent-cb'));
     const visible = () => boxes.filter(b => b.closest('tr').style.display !== 'none');
-    const selected = () => boxes.filter(b => b.checked).length;
+    // shortcut: a Paldi agent also ticked in the list is counted twice here; the server sends once.
+    const selected = () => boxes.filter(b => b.checked).length + ($('paldiAll').checked ? +$('paldiAll').dataset.count : 0);
 
     const fmt = h => h < 1 ? Math.round(h * 60) + ' min' : (h < 48 ? h.toFixed(1) + ' hours' : (h / 24).toFixed(1) + ' days');
     const estimate = () => {
@@ -438,6 +450,7 @@
     renderTemplates();
     ['rateCount', 'rateHours', 'minGap', 'sheet'].forEach(id => $(id).addEventListener('input', estimate));
     $('sheet').addEventListener('change', estimate);
+    $('paldiAll').addEventListener('change', refresh);
     boxes.forEach(b => b.addEventListener('change', refresh));
     $('selectAll').addEventListener('change', () => { visible().forEach(b => b.checked = $('selectAll').checked); refresh(); });
     const filters = Array.from(document.querySelectorAll('.agent-filter'));
