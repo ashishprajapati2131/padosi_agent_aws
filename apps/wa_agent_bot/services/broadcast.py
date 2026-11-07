@@ -201,15 +201,29 @@ def parse_sheet(upload):
 def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
     """
     Merge agents and sheet rows into [{'phone', 'name', 'link'}], one per number.
-    A sheet number that belongs to an active agent also gets that agent's profile link.
+    A sheet number that belongs to an active agent or event participant also gets that agent's profile link and card.
     """
+    from django.db.models import Q
     from apps.agents.models import Agent
 
     base = base or site_base()
     seen, out = set(), []
 
+    def _is_card_eligible(agent):
+        if not agent:
+            return False
+        # Active agents, event trial/challenge agents, and event participants get their card & profile link
+        if getattr(agent, "status", "") in ("active", "event_challenge"):
+            return True
+        try:
+            if hasattr(agent, "event_referral_participant") and agent.event_referral_participant is not None:
+                return True
+        except Exception:
+            pass
+        return False
+
     def add(phone, name, agent):
-        if agent is not None and agent.status != "active":
+        if agent is not None and not _is_card_eligible(agent):
             agent = None  # profile is not public until approval: send no link or card
         if phone and phone not in seen:
             seen.add(phone)
@@ -229,7 +243,9 @@ def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
     if sheet_rows:
         by_phone = {}
         if add_link:
-            for a in Agent.objects.filter(status="active").select_related("profile"):
+            for a in Agent.objects.filter(
+                Q(status__in=["active", "event_challenge"]) | Q(event_referral_participant__isnull=False)
+            ).select_related("profile"):
                 by_phone.setdefault(phone10(a.mobile), a)
         for name, phone in sheet_rows:
             agent = by_phone.get(phone)

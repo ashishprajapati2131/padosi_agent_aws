@@ -198,10 +198,15 @@
                 <div class="card-header bg-white fw-bold small">Paldi event agents</div>
                 <div class="card-body">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="paldi_all" value="1" id="paldiAll" data-count="{{ paldi_count }}">
+                        <input class="form-check-input" type="checkbox" name="paldi_all" value="1" id="paldiAll" data-count="{{ paldi_count }}"
+                            {% if paldi_sample_data %}
+                            data-sample-name="{{ paldi_sample_data.name }}"
+                            data-sample-link="{{ paldi_sample_data.link }}"
+                            data-sample-card="{{ paldi_sample_data.card }}"
+                            {% endif %}>
                         <label class="form-check-label small" for="paldiAll">Send to all <strong>{{ paldi_count }}</strong> Paldi event agents</label>
                     </div>
-                    <div class="small text-muted mt-1">Includes agents still pending approval. Only approved (active) agents get their profile link and card.</div>
+                    <div class="small text-muted mt-1">Includes all Paldi event agents. Each agent gets their own personalized card and profile link.</div>
                 </div>
             </div>
 
@@ -369,14 +374,25 @@
     const sampleRow = () => (boxes.find(b => b.checked) || visible()[0] || boxes[0] || {closest: () => null}).closest('tr');
     const preview = () => {
         $('charCount').textContent = msg.value.length;
-        const row = sampleRow();
-        const name = row ? row.dataset.name : 'Ramesh Patel';
-        const link = $('addLink').checked ? (row ? row.dataset.link : 'https://padosiagent.com/gj/ramesh-patel/') : '';
+        const paldiEl = $('paldiAll');
+        const paldiChecked = paldiEl && paldiEl.checked;
+        const anyBoxChecked = boxes.some(b => b.checked);
+        let name, link, cardUrl;
+        if (paldiChecked && !anyBoxChecked && paldiEl.dataset.sampleName) {
+            name = paldiEl.dataset.sampleName;
+            link = $('addLink').checked ? (paldiEl.dataset.sampleLink || '') : '';
+            cardUrl = paldiEl.dataset.sampleCard || '';
+        } else {
+            const row = sampleRow();
+            name = row ? row.dataset.name : 'Ramesh Patel';
+            link = $('addLink').checked ? (row ? row.dataset.link : 'https://padosiagent.com/gj/ramesh-patel/') : '';
+            cardUrl = row ? row.dataset.card : '';
+        }
         $('previewFor').textContent = 'for ' + name;
         const text = compose(msg.value, name, link);
-        const card = $('sendCard').checked && $('addLink').checked && row && row.dataset.card && text.length <= 1024;
+        const card = $('sendCard').checked && $('addLink').checked && cardUrl && text.length <= 1024;
         $('previewCard').style.display = card ? 'block' : 'none';
-        if (card && $('previewCard').getAttribute('src') !== row.dataset.card) $('previewCard').src = row.dataset.card;
+        if (card && $('previewCard').getAttribute('src') !== cardUrl) $('previewCard').src = cardUrl;
         $('previewBubble').style.borderRadius = card ? '0 0 8px 8px' : '8px';
         $('previewBubble').innerHTML = msg.value.trim()
             ? waFormat(text) + ($('sendCard').checked && text.length > 1024 ? '<div class="text-danger mt-1">Longer than 1024 characters: goes as text without the card photo.</div>' : '')

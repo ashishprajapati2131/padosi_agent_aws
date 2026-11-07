@@ -971,9 +971,9 @@ def wa_bot_broadcast(request):
 
         who = Q(status="active", id__in=ids)
         if paldi_all:
-            # Every Paldi participant, whatever their status (most are pending approval).
+            # Every Paldi participant, whatever their status.
             who |= Q(event_referral_participant__isnull=False)
-        agents = Agent.objects.filter(who).select_related("profile").order_by("id")
+        agents = Agent.objects.filter(who).select_related("profile", "event_referral_participant").order_by("id")
         recipients = broadcast.build_recipients(
             agents=agents, sheet_rows=sheet_rows, add_link=add_link
         )
@@ -1014,6 +1014,19 @@ def wa_bot_broadcast(request):
         .select_related("profile")
         .order_by("fullname")
     )
+    paldi_sample = (
+        Agent.objects.filter(event_referral_participant__isnull=False)
+        .select_related("profile")
+        .order_by("id")
+        .first()
+    )
+    paldi_sample_data = None
+    if paldi_sample:
+        paldi_sample_data = {
+            "name": paldi_sample.fullname,
+            "link": broadcast.profile_link(paldi_sample),
+            "card": broadcast.card_image_url(paldi_sample),
+        }
     return render(
         request,
         "admin/whatsapp/broadcast.html",
@@ -1036,6 +1049,7 @@ def wa_bot_broadcast(request):
             "paldi_count": Agent.objects.filter(
                 event_referral_participant__isnull=False
             ).count(),
+            "paldi_sample_data": paldi_sample_data,
             "max_rows": broadcast.MAX_SHEET_ROWS,
             "templates": broadcast.get_templates(),
             "sender": broadcast.sender_status(),
