@@ -209,7 +209,7 @@ The sidebar entry, permission checkbox, middleware enforcement, default redirect
 
 **Performance follow-up (2026-11-07): P5, P17, P19–P23 done; P3 ready to switch on.**
 - P5: broadcasts deliver in the background (see B15).
-- P17: new `python manage.py ensure_admin_indexes` checks `information_schema` and reports, or with `--apply` creates, only the missing indexes. It covers agents (status+created_at, pincode, plan_type+trial_ends_at), agent_subscriptions (agent_id+payment_status, payment_status+expires_at), agent_leads (lead_status, created_at), agent_reviews (agent_id+is_approved) and contact_submissions (status+created_at). An existing index with the same leading columns counts as present, so nothing is duplicated. **To do on the server:** run it without `--apply`, review the list, then run it with `--apply`.
+- P17: new `python manage.py ensure_admin_indexes` checks `information_schema` and reports, or with `--apply` creates, only the missing indexes. It covers agents (status+created_at, pincode, plan_type+trial_ends_at), agent_subscriptions (agent_id+payment_status, payment_status+expires_at), agent_leads (lead_status, created_at), agent_reviews (agent_id+is_approved) and contact_submissions (status+created_at). An existing index with the same leading columns counts as present, so nothing is duplicated. **Done 2026-11-07:** all 8 indexes now exist on the shared (local = production) database; a re-run reports every entry `ok`.
 - P19: the WAF security alert email is sent from a background thread, not inside the 403 response.
 - P20: WAF patterns are compiled once at import.
 - P21: for a non-agent Django user who holds an admin cookie, the "is this an agent" lookup is cached for 5 min (it ran on every request).
