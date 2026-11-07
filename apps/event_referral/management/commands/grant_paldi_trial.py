@@ -32,6 +32,12 @@ class Command(BaseCommand):
             action="store_true",
             help="Write changes. Without it, only prints counts.",
         )
+        parser.add_argument(
+            "--email-granted",
+            action="store_true",
+            help="Also email agents who already hold this exact trial (same plan and end). "
+            "Sends again on every run with --apply.",
+        )
 
     def handle(self, *args, **opts):
         try:
@@ -43,7 +49,7 @@ class Command(BaseCommand):
         if until <= datetime.now():
             raise CommandError("--until is in the past")
 
-        granted = paid = won = emailed = 0
+        granted = paid = won = emailed = already = 0
         failed = []
         qs = EventReferralParticipant.objects.select_related("agent").order_by("id")
         for p in qs.iterator():
@@ -54,6 +60,16 @@ class Command(BaseCommand):
             # temporary grant would replace it and take it away on expiry.
             if p.status == EventReferralParticipant.STATUS_WON:
                 won += 1
+                same_trial = (
+                    p.grant_plan_slug == opts["plan"] and p.grant_expires_at == until
+                )
+                if opts["email_granted"] and same_trial:
+                    already += 1
+                    if opts["apply"]:
+                        if self._email(p.agent, opts["plan"], until):
+                            emailed += 1
+                        else:
+                            failed.append(p.agent.email or f"agent #{p.agent_id}")
                 continue
             granted += 1
             if opts["apply"]:
@@ -71,6 +87,10 @@ class Command(BaseCommand):
                 f"Skipped: {paid} paid, {won} already won. Total: {granted + paid + won}."
             )
         )
+        if opts["email_granted"]:
+            self.stdout.write(
+                f"{'Emailing' if opts['apply'] else 'Would email'} {already} agents who already have this trial."
+            )
         if opts["apply"]:
             self.stdout.write(f"Emails sent: {emailed}, failed: {len(failed)}.")
             for who in failed:
