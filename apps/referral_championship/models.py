@@ -61,6 +61,10 @@ class ChampionshipCampaign(models.Model):
         """Retrieve the primary live campaign, or create the default one if missing."""
         campaign = cls.objects.filter(is_active=True).exclude(status__in=['ended', 'archived']).first()
         if not campaign:
+            # Ended/archived campaign: return it (callers check status/dates). Re-seeding hit the
+            # unique slug and raised IntegrityError on every campaign page (audit CH1).
+            campaign = cls.objects.order_by('-created_at', '-pk').first()
+        if not campaign:
             start_dt = timezone.make_aware(timezone.datetime(2026, 9, 15, 0, 0, 0)) if settings.USE_TZ else timezone.datetime(2026, 9, 15, 0, 0, 0)
             end_dt = timezone.make_aware(timezone.datetime(2026, 10, 31, 23, 59, 59)) if settings.USE_TZ else timezone.datetime(2026, 10, 31, 23, 59, 59)
             campaign = cls.objects.create(
@@ -88,6 +92,10 @@ class ChampionshipCampaign(models.Model):
             # Create default slabs
             campaign.seed_default_slabs()
         return campaign
+
+    def offer_is_open(self):
+        """True while the campaign discount may be charged: live and not past end_date."""
+        return self.is_active and self.status == 'live' and timezone.now() <= self.end_date
 
     def seed_default_slabs(self):
         """Seed standard slabs: 5, 10, 25, 50, 100, 200, Top 3."""

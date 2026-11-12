@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods
@@ -94,11 +95,12 @@ def renew_plan(request):
     plan_name = _PLAN_DISPLAY.get(plan_type, paid_plan_label(plan_type))
     plan_name_stored = f'{plan_name} (Renewal)'
 
-    # One pending renewal at a time: cancel any existing pending renewal sub.
+    # Drop only abandoned rows that never got a Razorpay order. A row with an order id must stay:
+    # a late UPI payment on it is found by that id, deleting it lost the money (audit PAY4).
     AgentSubscription.objects.filter(
         agent=agent, payment_status='pending', status='inactive',
         selected_plan__endswith='(Renewal)',
-    ).delete()
+    ).filter(Q(razorpay_order_id__isnull=True) | Q(razorpay_order_id='')).delete()
 
     sub = AgentSubscription.objects.create(
         agent=agent,

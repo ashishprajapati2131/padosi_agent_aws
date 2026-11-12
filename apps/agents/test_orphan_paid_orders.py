@@ -80,6 +80,24 @@ class RetryCheckoutOrphanOrderTests(_SignupBase):
         self.assertEqual(AgentSubscription.objects.get(razorpay_order_id=ORDER_A).payment_status, 'completed')
         self.assertEqual(AgentSubscription.objects.get(razorpay_order_id=ORDER_B).payment_status, 'pending')
 
+    @patch('apps.agents.views.registration.queue_invoice_and_welcome')
+    def test_recovery_finds_paid_order_older_than_five_retries(self, _q):  # audit PAY5
+        from apps.agents.views.registration import verify_and_activate_pending_payment
+        agent = self._signup('retry.many@example.com', [ORDER_A, ORDER_B])
+        oldest = AgentSubscription.objects.get(razorpay_order_id=ORDER_A)
+        paise = self._paise(oldest)
+        for i in range(6):
+            AgentSubscription.objects.create(
+                agent=agent, selected_plan=oldest.selected_plan,
+                registration_amount=oldest.registration_amount, payment_status='pending',
+                status='inactive', razorpay_order_id=f'order_RETRY{i:010d}',
+            )
+        paid = {ORDER_A: [{'id': PAY_A, 'status': 'captured', 'amount': paise}]}
+        with patch('apps.agents.views.registration.razorpay_client', return_value=_rzp(paise, paid)):
+            self.assertTrue(verify_and_activate_pending_payment(agent))
+        oldest.refresh_from_db()
+        self.assertEqual(oldest.payment_status, 'completed')
+
     def _legacy_orphan(self, email):
         """Data written by the old code: the only row points at ORDER_B; ORDER_A has none."""
         agent = self._signup(email, [ORDER_B])

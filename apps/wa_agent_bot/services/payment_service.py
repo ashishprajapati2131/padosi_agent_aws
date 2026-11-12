@@ -150,10 +150,18 @@ def format_plan_selection_message():
     return msg
 
 
-def create_or_update_pending_agent(registration_data, plan_key):
+class EmailAlreadyTaken(Exception):
+    """The email belongs to an account this WhatsApp session did not create."""
+
+
+def create_or_update_pending_agent(registration_data, plan_key, owner_agent=None):
     """
     Creates or updates the User and Agent in 'pending_payment' status
     before payment is collected (matches website registration architecture).
+
+    owner_agent is the agent this bot session already created (plan change). Any other existing
+    agent or login with the email is refused: resetting its password from WhatsApp handed the
+    account to whoever typed the email (audit WA1).
     """
     email = registration_data.get("email", "").strip().lower()
     fullname = registration_data.get("fullname", "").strip()
@@ -169,7 +177,25 @@ def create_or_update_pending_agent(registration_data, plan_key):
     _alphabet = _str_mod.ascii_letters + _str_mod.digits + "!@#$"
     password = "".join(secrets.choice(_alphabet) for _ in range(12))
 
-    user, u_created = User.objects.get_or_create(
+    from django.db.models import Q
+    from apps.agents.services.account_auth import email_owned_by_non_agent_account
+
+    existing_agent = Agent.objects.filter(email=email).first()
+    owns_existing = bool(
+        existing_agent and owner_agent and existing_agent.pk == owner_agent.pk
+    )
+    if existing_agent and not owns_existing:
+        raise EmailAlreadyTaken(email)
+    if owns_existing and existing_agent.user_id:
+        user = existing_agent.user
+    else:
+        if email_owned_by_non_agent_account(email) or User.objects.filter(
+            Q(username__iexact=email) | Q(email__iexact=email)
+        ).exists():
+            raise EmailAlreadyTaken(email)
+        user = None
+
+    user, u_created = (user, False) if user else User.objects.get_or_create(
         username=email,
         defaults={
             "email": email,
@@ -277,9 +303,12 @@ def create_plan_payment_link(session, plan_key):
     site_url = bot_site_url()
 
     # Create / update Agent in pending_payment status
-    agent, user, temp_password = create_or_update_pending_agent(
-        session.registration_data, plan_key
-    )
+    try:
+        agent, user, temp_password = create_or_update_pending_agent(
+            session.registration_data, plan_key, owner_agent=session.agent
+        )
+    except EmailAlreadyTaken:
+        return {"success": False, "error": "email_taken"}
     session.agent = agent
     session.save()
 

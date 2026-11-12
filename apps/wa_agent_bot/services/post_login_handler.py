@@ -23,14 +23,30 @@ logger = logging.getLogger(__name__)
 
 # ── Command definitions ─────────────────────────────────────────────────
 COMMANDS = {
-    'help': ['help', 'menu', 'commands', 'options', '?'],
-    'profile': ['profile', 'my profile', 'myprofile', 'view profile'],
-    'dashboard': ['dashboard', 'my dashboard', 'mydashboard', 'panel'],
-    'card': ['card', 'my card', 'visiting card', 'digital card', 'visiting'],
-    'referral': ['referral', 'refer', 'referral code', 'share', 'invite'],
-    'status': ['status', 'my status', 'account status', 'plan', 'subscription'],
-    'support': ['support', 'help support', 'contact', 'customer support', 'issue', 'problem'],
-    'credentials': ['password', 'mypassword', 'my password', 'login', 'id', 'user id', 'credentials', 'pass'],
+    "help": ["help", "menu", "commands", "options", "?"],
+    "profile": ["profile", "my profile", "myprofile", "view profile"],
+    "dashboard": ["dashboard", "my dashboard", "mydashboard", "panel"],
+    "card": ["card", "my card", "visiting card", "digital card", "visiting"],
+    "referral": ["referral", "refer", "referral code", "share", "invite"],
+    "status": ["status", "my status", "account status", "plan", "subscription"],
+    "support": [
+        "support",
+        "help support",
+        "contact",
+        "customer support",
+        "issue",
+        "problem",
+    ],
+    "credentials": [
+        "password",
+        "mypassword",
+        "my password",
+        "login",
+        "id",
+        "user id",
+        "credentials",
+        "pass",
+    ],
 }
 
 
@@ -89,9 +105,9 @@ def handle_card(agent):
         slug = str(agent.id)
 
     card_url = f"{site_url}/card/{slug}/"
-    if agent.status == 'pending_approval':
+    if agent.status == "pending_approval":
         status_line = "⏳ _Status: Pending Admin Approval. Your card will become publicly visible once approved by our team._"
-    elif agent.status == 'active':
+    elif agent.status == "active":
         status_line = "✅ _Status: Active & Live! Tap the link above to view and share with clients._"
     else:
         status_line = f"⚠️ _Status: {agent.status.title()}._"
@@ -110,17 +126,17 @@ def handle_profile(agent):
     """Show the agent's profile summary."""
     from apps.agents.services.feature_unlock import paid_plan_label
 
-    plan_display = paid_plan_label(agent.plan_type) if agent.plan_type else 'None'
-    segments = ', '.join(agent.user_types) if agent.user_types else 'None'
+    plan_display = paid_plan_label(agent.plan_type) if agent.plan_type else "None"
+    segments = ", ".join(agent.user_types) if agent.user_types else "None"
 
     site_url = bot_site_url()
 
     # Try to get the profile slug
-    profile_url = ''
+    profile_url = ""
     try:
         profile = agent.get_primary_profile()
         if profile and profile.slug:
-            if agent.status == 'active':
+            if agent.status == "active":
                 profile_url = f"\n🔗 *Profile URL:* {site_url}/profile/{profile.slug}/"
             else:
                 profile_url = f"\n🔗 *Profile URL:* {site_url}/profile/{profile.slug}/ _(Live after admin approval)_"
@@ -128,9 +144,9 @@ def handle_profile(agent):
         pass
 
     status_tag = agent.status.title()
-    if agent.status == 'pending_approval':
+    if agent.status == "pending_approval":
         status_tag = "⏳ Pending Approval (Under Review)"
-    elif agent.status == 'active':
+    elif agent.status == "active":
         status_tag = "✅ Active & Verified"
 
     return (
@@ -170,10 +186,10 @@ def handle_referral(agent):
     site_url = bot_site_url()
 
     # Try to get referral code from the agent's profile or generate from ID
-    referral_code = ''
+    referral_code = ""
     try:
         profile = agent.get_primary_profile()
-        if profile and hasattr(profile, 'referral_code') and profile.referral_code:
+        if profile and hasattr(profile, "referral_code") and profile.referral_code:
             referral_code = profile.referral_code
     except Exception:
         pass
@@ -199,7 +215,7 @@ def handle_status(agent):
     from apps.agents.services.feature_unlock import paid_plan_label
     from django.utils import timezone
 
-    plan_display = paid_plan_label(agent.plan_type) if agent.plan_type else 'None'
+    plan_display = paid_plan_label(agent.plan_type) if agent.plan_type else "None"
 
     # Check subscription
     sub_info = "No active subscription"
@@ -213,25 +229,31 @@ def handle_status(agent):
 
     # Check trial
     trial_info = ""
-    if agent.plan_type == 'free_trial':
+    if agent.plan_type == "free_trial":
         if agent.isOnFreeTrial():
             days_left = (agent.trial_ends_at - timezone.now()).days
             trial_info = f"\n⏰ *Trial:* {days_left} days remaining"
         elif agent.isTrialExpired():
             trial_info = "\n⏰ *Trial:* Expired"
 
-    if agent.status == 'pending_approval':
+    if agent.status == "pending_approval":
         status_display = "⏳ Pending Admin Approval (Under Review)"
         status_note = "\n\nℹ️ *Note:* Your payment is confirmed and your registration is currently being reviewed by the admin team. Once approved, your digital card and public profile will go LIVE!"
-    elif agent.status == 'active':
+    elif agent.status == "active":
         status_display = "✅ Active & Verified"
-        status_note = "\n\n✨ Your account is fully approved and your public profile is LIVE!"
-    elif agent.status == 'suspended':
+        status_note = (
+            "\n\n✨ Your account is fully approved and your public profile is LIVE!"
+        )
+    elif agent.status == "suspended":
         status_display = "⚠️ Suspended"
-        status_note = "\n\n⚠️ Your account is temporarily suspended. Please contact support."
-    elif agent.status == 'rejected':
+        status_note = (
+            "\n\n⚠️ Your account is temporarily suspended. Please contact support."
+        )
+    elif agent.status == "rejected":
         status_display = "❌ Rejected"
-        status_note = "\n\n❌ Your application was not approved. Please contact support."
+        status_note = (
+            "\n\n❌ Your application was not approved. Please contact support."
+        )
     else:
         status_display = agent.status.title()
         status_note = ""
@@ -266,22 +288,22 @@ def handle_support():
 
 
 def handle_credentials(agent):
-    """Provide the agent's login information and password reminder."""
+    """Provide the agent's login URL plus a reset link.
+
+    The bot used to say "password = your 10-digit mobile", but bot signups actually get a random
+    `temp_password`, so that reply failed on every bot-created account (audit WA2/WA3).
+    """
     site_url = bot_site_url()
     login_url = f"{site_url}/agent-login/"
     reset_url = f"{site_url}/password-reset/"
-    mobile_clean = ''.join(c for c in (agent.mobile or '') if c.isdigit())
-    pw = mobile_clean[-10:] if len(mobile_clean) >= 10 else (mobile_clean or 'Your registered phone number')
-
     return (
-        "🔑 *Your Login Credentials*\n"
+        "🔑 *Your Login*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"🌐 *Login URL:* {login_url}\n"
-        f"📧 *Email / User ID:* {agent.email}\n"
-        f"🔒 *Password:* `{pw}`\n"
-        f"_(Your default password is your 10-digit registered mobile number)_\n\n"
-        f"Forgot or want to change your password?\n"
-        f"👉 Reset here: {reset_url}\n\n"
+        f"📧 *Email / User ID:* {agent.email}\n\n"
+        "Forgot your password? Reset it securely here:\n"
+        f"👉 {reset_url}\n\n"
+        "For your safety, we no longer send the current password over WhatsApp.\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "_Type *help* to see all commands._"
     )
@@ -312,21 +334,21 @@ def process_post_login_message(agent, user_text):
     """
     command = _match_command(user_text)
 
-    if command == 'help':
+    if command == "help":
         return handle_help()
-    elif command == 'profile':
+    elif command == "profile":
         return handle_profile(agent)
-    elif command == 'card':
+    elif command == "card":
         return handle_card(agent)
-    elif command == 'dashboard':
+    elif command == "dashboard":
         return handle_dashboard(agent)
-    elif command == 'referral':
+    elif command == "referral":
         return handle_referral(agent)
-    elif command == 'status':
+    elif command == "status":
         return handle_status(agent)
-    elif command == 'support':
+    elif command == "support":
         return handle_support()
-    elif command == 'credentials':
+    elif command == "credentials":
         return handle_credentials(agent)
     else:
         # ── STRICT BOUNDARY ─────────────────────────────────────────

@@ -1356,7 +1356,8 @@ function showGoogleReviewNudgePopup(nudge) {
             else if (interactionType === 'instagram') socialUrl = '{{ socialLinks.instagram|default:"#" }}';
             else if (interactionType === 'youtube') socialUrl = '{{ socialLinks.youtube|default:"#" }}';
             else if (interactionType === 'google_business') socialUrl = '{{ socialLinks.google_business|default:"#" }}';
-            if (socialUrl && socialUrl !== '#') {
+            // Never open script URLs saved before server-side validation existed (audit AG1).
+            if (socialUrl && socialUrl !== '#' && !/^\s*(javascript|data|vbscript):/i.test(socialUrl)) {
                 window.open(socialUrl, element.getAttribute('target') === '_blank' ? '_blank' : '_self', 'noopener');
             }
             return false;

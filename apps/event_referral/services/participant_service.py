@@ -1,4 +1,5 @@
 """Evaluate deadlines, wins, blocks, and dashboard access for event referral challengers."""
+
 import logging
 from datetime import datetime
 
@@ -10,19 +11,22 @@ from apps.event_referral.models import EventReferral, EventReferralParticipant
 logger = logging.getLogger(__name__)
 
 BLOCK_MESSAGE = (
-    'Your event referral challenge ended. You did not complete the required paid '
-    'referrals in time. Please contact support if you need help.'
+    "Your event referral challenge ended. You did not complete the required paid "
+    "referrals in time. Please contact support if you need help."
 )
 
 
 def get_participant_for_agent(agent):
     if not agent:
         return None
-    from apps.event_referral.services.schema_compat import ensure_event_referral_metrics_schema
+    from apps.event_referral.services.schema_compat import (
+        ensure_event_referral_metrics_schema,
+    )
+
     ensure_event_referral_metrics_schema(log_errors=False)
     return (
         EventReferralParticipant.objects.filter(agent=agent)
-        .select_related('campaign')
+        .select_related("campaign")
         .first()
     )
 
@@ -32,7 +36,10 @@ def event_referral_grants_dashboard(agent):
     participant = get_participant_for_agent(agent)
     if not participant:
         return False
-    if participant.status == EventReferralParticipant.STATUS_BLOCKED and participant.blocked_by_admin:
+    if (
+        participant.status == EventReferralParticipant.STATUS_BLOCKED
+        and participant.blocked_by_admin
+    ):
         # Blocked by an admin: no Paldi dashboard (and login stays suspended).
         return False
     if participant.status in (
@@ -88,7 +95,10 @@ def event_referral_bypasses_championship_unlock(agent):
 
 def force_lock_all_dashboard_features(participant):
     """Lock dashboard after 48h expiry until the agent pays for a plan."""
-    if participant is None or participant.status != EventReferralParticipant.STATUS_BLOCKED:
+    if (
+        participant is None
+        or participant.status != EventReferralParticipant.STATUS_BLOCKED
+    ):
         return False
     from apps.agents.services.account_auth import agent_has_completed_payment
 
@@ -100,32 +110,33 @@ def force_lock_all_dashboard_features(participant):
 
 def _normalize_grant_plan(plan_slug):
     """Admin grant plans: basic (starter features) or professional."""
-    slug = (plan_slug or '').strip().lower()
-    if slug in ('professional', 'pro'):
-        return 'professional'
-    if slug in ('basic', 'starter', 'standard'):
-        return 'basic'
-    return ''
+    slug = (plan_slug or "").strip().lower()
+    if slug in ("professional", "pro"):
+        return "professional"
+    if slug in ("basic", "starter", "standard"):
+        return "basic"
+    return ""
 
 
 def _feature_plan_slug(plan_slug):
-    slug = (plan_slug or '').strip().lower()
-    if slug in ('basic', 'starter', 'standard'):
-        return 'starter'
+    slug = (plan_slug or "").strip().lower()
+    if slug in ("basic", "starter", "standard"):
+        return "starter"
     return slug
 
 
 def _same_plan(left, right):
     from plan_upgrade_handoff import normalize_upgrade_slug
+
     a = normalize_upgrade_slug(left)
     b = normalize_upgrade_slug(right)
     return bool(a) and a == b
 
 
 def _clear_grant_fields(participant):
-    participant.grant_plan_slug = ''
+    participant.grant_plan_slug = ""
     participant.grant_expires_at = None
-    participant.grant_previous_plan = ''
+    participant.grant_previous_plan = ""
 
 
 def expire_admin_grant_if_due(participant):
@@ -135,7 +146,11 @@ def expire_admin_grant_if_due(participant):
     campaign reward plan. A grant that was not earned is undone, the same
     way Restore does.
     """
-    if not participant or not participant.grant_expires_at or not (participant.grant_plan_slug or '').strip():
+    if (
+        not participant
+        or not participant.grant_expires_at
+        or not (participant.grant_plan_slug or "").strip()
+    ):
         return participant
     if participant.grant_expires_at > datetime.now():
         return participant
@@ -146,25 +161,35 @@ def expire_admin_grant_if_due(participant):
             .filter(pk=participant.pk)
             .first()
         )
-        if not participant or not participant.grant_expires_at or participant.grant_expires_at > datetime.now():
+        if (
+            not participant
+            or not participant.grant_expires_at
+            or participant.grant_expires_at > datetime.now()
+        ):
             return participant
-        if not (participant.grant_plan_slug or '').strip():
+        if not (participant.grant_plan_slug or "").strip():
             return participant
 
         granted = participant.grant_plan_slug
         agent = Agent.objects.select_for_update().get(pk=participant.agent_id)
         from apps.agents.services.account_auth import agent_has_completed_payment
+
         paid = agent_has_completed_payment(agent)
         earned = _recount_paid(participant) >= participant.required_paid_referrals
 
         if earned:
             if not paid and _same_plan(agent.plan_type, granted):
-                agent.plan_type = participant.reward_plan_slug or 'basic'
-                agent.save(update_fields=['plan_type', 'updated_at'])
+                agent.plan_type = participant.reward_plan_slug or "basic"
+                agent.save(update_fields=["plan_type", "updated_at"])
             _clear_grant_fields(participant)
-            participant.save(update_fields=[
-                'grant_plan_slug', 'grant_expires_at', 'grant_previous_plan', 'updated_at',
-            ])
+            participant.save(
+                update_fields=[
+                    "grant_plan_slug",
+                    "grant_expires_at",
+                    "grant_previous_plan",
+                    "updated_at",
+                ]
+            )
             participant.refresh_from_db()
             return participant
 
@@ -176,7 +201,7 @@ def expire_admin_grant_if_due(participant):
         ):
             _block_participant(
                 participant,
-                reason='Temporary granted plan ended and the challenge deadline has passed.',
+                reason="Temporary granted plan ended and the challenge deadline has passed.",
             )
             participant.refresh_from_db()
         return participant
@@ -184,22 +209,25 @@ def expire_admin_grant_if_due(participant):
 
 def _undo_unearned_grant(participant, agent):
     """Take back an admin grant that was not earned with paid referrals."""
-    granted = participant.grant_plan_slug or participant.reward_plan_slug or 'basic'
-    previous = participant.grant_previous_plan or ''
+    granted = participant.grant_plan_slug or participant.reward_plan_slug or "basic"
+    previous = participant.grant_previous_plan or ""
     participant.status = EventReferralParticipant.STATUS_ACTIVE
     participant.won_at = None
     participant.blocked_at = None
-    participant.blocked_reason = ''
+    participant.blocked_reason = ""
     _clear_grant_fields(participant)
     participant.save()
     from apps.agents.services.account_auth import agent_has_completed_payment
+
     if not agent_has_completed_payment(agent):
-        fields = ['status', 'updated_at']
-        agent.status = 'event_challenge'
-        reward = participant.reward_plan_slug or 'basic'
+        fields = ["status", "updated_at"]
+        agent.status = "event_challenge"
+        reward = participant.reward_plan_slug or "basic"
         if _same_plan(agent.plan_type, granted) or agent.plan_type == reward:
-            agent.plan_type = previous if previous and not _same_plan(previous, granted) else ''
-            fields.append('plan_type')
+            agent.plan_type = (
+                previous if previous and not _same_plan(previous, granted) else ""
+            )
+            fields.append("plan_type")
         agent.save(update_fields=fields)
 
 
@@ -222,16 +250,20 @@ def event_referral_effective_plan_type(agent, participant=None):
     ):
         participant = expire_admin_grant_if_due(participant) or participant
     if participant.status == EventReferralParticipant.STATUS_ACTIVE:
-        return 'professional'
+        return "professional"
     if participant.status == EventReferralParticipant.STATUS_WON:
-        granted = (participant.grant_plan_slug or '').strip().lower()
-        if granted and (not participant.grant_expires_at or participant.grant_expires_at > datetime.now()):
+        granted = (participant.grant_plan_slug or "").strip().lower()
+        if granted and (
+            not participant.grant_expires_at
+            or participant.grant_expires_at > datetime.now()
+        ):
             slug = granted
         else:
-            slug = (participant.reward_plan_slug or 'basic').strip().lower() or 'basic'
+            slug = (participant.reward_plan_slug or "basic").strip().lower() or "basic"
         chosen = _feature_plan_slug(slug)
-        current = _feature_plan_slug(getattr(agent, 'plan_type', '') or '')
+        current = _feature_plan_slug(getattr(agent, "plan_type", "") or "")
         from plan_upgrade_handoff import plan_rank
+
         if current and plan_rank(current) > plan_rank(chosen):
             return current
         return chosen
@@ -248,48 +280,57 @@ def _recount_paid(participant):
 
 def _grant_win(participant):
     agent = participant.agent
-    plan = participant.reward_plan_slug or 'basic'
+    plan = participant.reward_plan_slug or "basic"
     participant.status = EventReferralParticipant.STATUS_WON
     participant.won_at = datetime.now()
     participant.paid_count = _recount_paid(participant)
     participant.save(
-        update_fields=['status', 'won_at', 'paid_count', 'updated_at'],
+        update_fields=["status", "won_at", "paid_count", "updated_at"],
     )
     # Never take anything away: an already-approved agent stays active, and an
     # agent who meanwhile paid for an equal or higher plan keeps it (the win
     # used to push them back to pending approval on the basic plan).
     from plan_upgrade_handoff import plan_rank
-    if agent.status != 'active':
-        agent.status = 'pending_approval'
-    if plan_rank(plan) >= plan_rank(agent.plan_type or ''):
+
+    if agent.status != "active":
+        agent.status = "pending_approval"
+    if plan_rank(plan) >= plan_rank(agent.plan_type or ""):
         agent.plan_type = plan
     agent.registration_step = max(agent.registration_step or 1, 2)
-    agent.save(update_fields=['status', 'plan_type', 'registration_step', 'updated_at'])
+    agent.save(update_fields=["status", "plan_type", "registration_step", "updated_at"])
     logger.info(
-        'Event referral win: agent #%s participant %s plan=%s',
+        "Event referral win: agent #%s participant %s plan=%s",
         agent.id,
         participant.referral_code,
         plan,
     )
 
 
-def _block_participant(participant, reason='', by_admin=False):
+def _block_participant(participant, reason="", by_admin=False):
     """Block a challenger. Deadline blocks keep a locked dashboard and let
     them buy a plan; an admin block (by_admin) also suspends the login of an
     agent who has not paid or been approved."""
     participant.status = EventReferralParticipant.STATUS_BLOCKED
     participant.blocked_at = datetime.now()
-    participant.blocked_reason = reason or 'Deadline passed without enough paid referrals.'
+    participant.blocked_reason = (
+        reason or "Deadline passed without enough paid referrals."
+    )
     participant.blocked_by_admin = bool(by_admin)
     participant.save(
-        update_fields=['status', 'blocked_at', 'blocked_reason', 'blocked_by_admin', 'updated_at'],
+        update_fields=[
+            "status",
+            "blocked_at",
+            "blocked_reason",
+            "blocked_by_admin",
+            "updated_at",
+        ],
     )
     agent = participant.agent
-    if agent.status not in ('active', 'pending_approval'):
-        agent.status = 'suspended' if by_admin else 'pending_payment'
-        agent.save(update_fields=['status', 'updated_at'])
+    if agent.status not in ("active", "pending_approval"):
+        agent.status = "suspended" if by_admin else "pending_payment"
+        agent.save(update_fields=["status", "updated_at"])
     logger.info(
-        'Event referral blocked: agent #%s participant %s',
+        "Event referral blocked: agent #%s participant %s",
         agent.id,
         participant.referral_code,
     )
@@ -304,7 +345,7 @@ def evaluate_participant(participant, *, block_on_expire=True):
     with transaction.atomic():
         participant = (
             EventReferralParticipant.objects.select_for_update()
-            .select_related('agent')
+            .select_related("agent")
             .filter(pk=participant.pk)
             .first()
         )
@@ -316,7 +357,7 @@ def evaluate_participant(participant, *, block_on_expire=True):
             return participant
 
         participant.paid_count = _recount_paid(participant)
-        participant.save(update_fields=['paid_count', 'updated_at'])
+        participant.save(update_fields=["paid_count", "updated_at"])
 
         if participant.paid_count >= participant.required_paid_referrals:
             _grant_win(participant)
@@ -327,8 +368,8 @@ def evaluate_participant(participant, *, block_on_expire=True):
             _block_participant(
                 participant,
                 reason=(
-                    f'Required {participant.required_paid_referrals} paid referrals '
-                    f'within {participant.window_hours} hours were not completed.'
+                    f"Required {participant.required_paid_referrals} paid referrals "
+                    f"within {participant.window_hours} hours were not completed."
                 ),
             )
             return participant
@@ -343,22 +384,22 @@ def evaluate_agent(agent, *, block_on_expire=True):
     return evaluate_participant(participant, block_on_expire=block_on_expire)
 
 
-def admin_grant_win(participant, *, plan_slug='basic', expires_at=None):
+def admin_grant_win(participant, *, plan_slug="basic", expires_at=None):
     """Manual grant from admin.
 
     plan_slug is 'basic' or 'professional'. expires_at is None for a permanent
     grant and a datetime for a temporary one.
     """
-    plan_slug = _normalize_grant_plan(plan_slug) or 'basic'
+    plan_slug = _normalize_grant_plan(plan_slug) or "basic"
     with transaction.atomic():
         participant = (
             EventReferralParticipant.objects.select_for_update()
-            .select_related('agent')
+            .select_related("agent")
             .get(pk=participant.pk)
         )
         agent = Agent.objects.select_for_update().get(pk=participant.agent_id)
-        if not (participant.grant_plan_slug or '').strip():
-            participant.grant_previous_plan = agent.plan_type or ''
+        if not (participant.grant_plan_slug or "").strip():
+            participant.grant_previous_plan = agent.plan_type or ""
         participant.grant_plan_slug = plan_slug
         participant.grant_expires_at = expires_at
         if participant.status != EventReferralParticipant.STATUS_WON:
@@ -366,59 +407,78 @@ def admin_grant_win(participant, *, plan_slug='basic', expires_at=None):
             agent.refresh_from_db()
         from apps.agents.services.account_auth import agent_has_completed_payment
         from plan_upgrade_handoff import plan_rank
-        paid_higher = (
-            agent_has_completed_payment(agent)
-            and plan_rank(agent.plan_type or '') > plan_rank(plan_slug)
-        )
+
+        paid_higher = agent_has_completed_payment(agent) and plan_rank(
+            agent.plan_type or ""
+        ) > plan_rank(plan_slug)
         if not paid_higher:
-            from apps.agents.services.feature_unlock import sync_agent_plan_from_admin_slug
+            from apps.agents.services.feature_unlock import (
+                sync_agent_plan_from_admin_slug,
+            )
 
             if expires_at and not agent_has_completed_payment(agent):
                 # Temporary trial grant: keep unpaid agent as event_challenge, NOT pending_approval
-                if agent.status not in ('active', 'suspended', 'blacklisted', 'rejected'):
-                    agent.status = 'event_challenge'
-            elif agent.status != 'active':
-                agent.status = 'pending_approval'
+                if agent.status not in (
+                    "active",
+                    "suspended",
+                    "blacklisted",
+                    "rejected",
+                ):
+                    agent.status = "event_challenge"
+            elif agent.status != "active":
+                agent.status = "pending_approval"
             agent.registration_step = max(agent.registration_step or 1, 2)
-            agent.save(update_fields=['status', 'registration_step', 'updated_at'])
+            agent.save(update_fields=["status", "registration_step", "updated_at"])
             sync_agent_plan_from_admin_slug(agent, plan_slug)
-        participant.save(update_fields=[
-            'grant_plan_slug', 'grant_expires_at', 'grant_previous_plan', 'updated_at',
-        ])
+        participant.save(
+            update_fields=[
+                "grant_plan_slug",
+                "grant_expires_at",
+                "grant_previous_plan",
+                "updated_at",
+            ]
+        )
     participant.refresh_from_db()
     return participant
 
 
 def admin_restore_participant(participant, *, extend_hours=0):
     with transaction.atomic():
-        participant = EventReferralParticipant.objects.select_for_update().get(pk=participant.pk)
+        participant = EventReferralParticipant.objects.select_for_update().get(
+            pk=participant.pk
+        )
         agent = Agent.objects.select_for_update().get(pk=participant.agent_id)
         if extend_hours:
             from datetime import timedelta
-            participant.deadline_at = participant.deadline_at + timedelta(hours=int(extend_hours))
+
+            participant.deadline_at = participant.deadline_at + timedelta(
+                hours=int(extend_hours)
+            )
         if participant.status == EventReferralParticipant.STATUS_WON:
             if _recount_paid(participant) >= participant.required_paid_referrals:
                 # Earned with real paid referrals: Restore never takes it away
                 # (re-activating made the next evaluation grant it again).
-                participant.save(update_fields=['deadline_at', 'updated_at'])
+                participant.save(update_fields=["deadline_at", "updated_at"])
                 participant.refresh_from_db()
-                participant.restore_outcome = 'kept_earned_win'
+                participant.restore_outcome = "kept_earned_win"
                 return participant
             # An admin "Grant plan": Restore undoes it, so the agent leaves
             # the Approvals queue and is back in the challenge. An agent who
             # paid for a plan themselves keeps their plan and status.
             _undo_unearned_grant(participant, agent)
             participant.refresh_from_db()
-            participant.restore_outcome = 'undid_grant'
+            participant.restore_outcome = "undid_grant"
             return participant
         participant.status = EventReferralParticipant.STATUS_ACTIVE
         participant.blocked_at = None
-        participant.blocked_reason = ''
+        participant.blocked_reason = ""
         participant.blocked_by_admin = False
         participant.save()
-        if agent.status in ('suspended', 'pending_payment', 'event_challenge'):
-            agent.status = 'event_challenge' if not agent.plan_type else 'pending_approval'
-            agent.save(update_fields=['status', 'updated_at'])
+        if agent.status in ("suspended", "pending_payment", "event_challenge"):
+            agent.status = (
+                "event_challenge" if not agent.plan_type else "pending_approval"
+            )
+            agent.save(update_fields=["status", "updated_at"])
     participant.refresh_from_db()
     return participant
 
@@ -427,9 +487,14 @@ def _has_real_payment_records(agent):
     """Completed/refunded real payments or invoices (kept for GST / the CA)."""
     from apps.agents.models import AgentSubscription, Invoice
     from apps.agents.services.test_markers import TEST_ORDER_PREFIX, TEST_PAYMENT_PREFIX
-    real_subs = (AgentSubscription.objects.filter(agent=agent, payment_status__in=['completed', 'refunded'])
-                 .exclude(razorpay_payment_id__startswith=TEST_PAYMENT_PREFIX)
-                 .exclude(razorpay_order_id__startswith=TEST_ORDER_PREFIX))
+
+    real_subs = (
+        AgentSubscription.objects.filter(
+            agent=agent, payment_status__in=["completed", "refunded"]
+        )
+        .exclude(razorpay_payment_id__startswith=TEST_PAYMENT_PREFIX)
+        .exclude(razorpay_order_id__startswith=TEST_ORDER_PREFIX)
+    )
     return real_subs.exists() or Invoice.objects.filter(agent_id=agent.pk).exists()
 
 
@@ -437,34 +502,54 @@ def remove_test_referrals(participant):
     """Delete the testing-mode fake referrals of a participant and take them
     out of the Paldi and championship counts. Returns how many were removed."""
     from apps.agents.services.test_markers import TEST_EMAIL_DOMAIN
-    from apps.referral_championship.services.qualification_service import revert_championship_qualification
+    from apps.referral_championship.services.qualification_service import (
+        revert_championship_qualification,
+    )
 
-    fakes = list(Agent.objects.filter(referred_by_code=participant.referral_code,
-                                      email__iendswith='@' + TEST_EMAIL_DOMAIN))
-    EventReferral.objects.filter(participant=participant, referred_agent__in=fakes).delete()
+    fakes = list(
+        Agent.objects.filter(
+            referred_by_code=participant.referral_code,
+            email__iendswith="@" + TEST_EMAIL_DOMAIN,
+        )
+    )
+    EventReferral.objects.filter(
+        participant=participant, referred_agent__in=fakes
+    ).delete()
     for fake in fakes:
         try:
-            revert_championship_qualification(fake, reason='test removed')
+            revert_championship_qualification(fake, reason="test removed")
         except Exception:
-            logger.exception('Championship revert failed for test referral %s', fake.pk)
+            logger.exception("Championship revert failed for test referral %s", fake.pk)
         try:
             with transaction.atomic():
                 fake.delete()
         except Exception:
             # A legacy table can block the cascade; detach the fake instead.
-            Agent.objects.filter(pk=fake.pk).update(status='deleted', referred_by_code='')
-            fake.subscriptions.filter(razorpay_order_id__startswith='order_TESTREF').delete()
+            Agent.objects.filter(pk=fake.pk).update(
+                status="deleted", referred_by_code=""
+            )
+            fake.subscriptions.filter(
+                razorpay_order_id__startswith="order_TESTREF"
+            ).delete()
     participant.paid_count = _recount_paid(participant)
-    participant.save(update_fields=['paid_count', 'updated_at'])
+    participant.save(update_fields=["paid_count", "updated_at"])
     try:
-        from apps.referral_championship.models import ChampionshipParticipant, ChampionshipRewardClaim
+        from apps.referral_championship.models import (
+            ChampionshipParticipant,
+            ChampionshipRewardClaim,
+        )
+
         for cp in ChampionshipParticipant.objects.filter(agent_id=participant.agent_id):
+            # Also 'cancelled' now that revert withdraws unlocked claims (audit CH3).
             ChampionshipRewardClaim.objects.filter(
-                participant=cp, status__in=['locked', 'unlocked'],
+                participant=cp,
+                status__in=["locked", "unlocked", "cancelled"],
                 reward_slab__threshold__gt=cp.qualifying_referrals_count,
             ).delete()
     except Exception:
-        logger.exception('Could not withdraw test-unlocked claims for participant %s', participant.pk)
+        logger.exception(
+            "Could not withdraw test-unlocked claims for participant %s", participant.pk
+        )
     return len(fakes)
 
 
@@ -490,15 +575,20 @@ def admin_delete_participant(participant):
         participant.delete()
         try:
             from apps.referral_championship.models import ChampionshipParticipant
+
             ChampionshipParticipant.objects.filter(agent=agent).delete()
         except Exception:
-            logger.exception('Championship participant cleanup failed for agent %s', agent.pk)
+            logger.exception(
+                "Championship participant cleanup failed for agent %s", agent.pk
+            )
 
     if keep_agent:
-        logger.warning('Paldi participant removed; agent #%s kept (payment records)', agent.pk)
-        return 'event_data_removed'
+        logger.warning(
+            "Paldi participant removed; agent #%s kept (payment records)", agent.pk
+        )
+        return "event_data_removed"
 
-    email = (agent.email or '').strip()
+    email = (agent.email or "").strip()
     user = agent.user if agent.user_id else None
     agent_pk = agent.pk
     try:
@@ -506,8 +596,10 @@ def admin_delete_participant(participant):
             agent.delete()
     except Exception:
         # A legacy table can block the cascade: hide the account instead.
-        logger.exception('Hard delete of agent #%s failed; marking it deleted', agent_pk)
-        Agent.objects.filter(pk=agent_pk).update(status='deleted', referred_by_code='')
+        logger.exception(
+            "Hard delete of agent #%s failed; marking it deleted", agent_pk
+        )
+        Agent.objects.filter(pk=agent_pk).update(status="deleted", referred_by_code="")
     with transaction.atomic():
         if email:
             AgentDraft.objects.filter(email__iexact=email).delete()
@@ -522,5 +614,5 @@ def admin_delete_participant(participant):
                     "DELETE FROM users WHERE LOWER(email) = LOWER(%s) AND LOWER(COALESCE(role, '')) IN ('agent', 'client', 'user', '')",
                     [email],
                 )
-    logger.warning('Paldi participant and agent #%s deleted by admin', agent_pk)
-    return 'agent_deleted'
+    logger.warning("Paldi participant and agent #%s deleted by admin", agent_pk)
+    return "agent_deleted"

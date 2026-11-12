@@ -9,6 +9,7 @@ Flow:
   5. POST /agent-register-step2/   → saves profile details, redirects to plans
 """
 
+import datetime
 import json
 import os
 import time
@@ -2581,6 +2582,27 @@ def register_step1(request):
                 }
             )
 
+        # Step 1 needs no login. Someone else continuing this registration must not change the
+        # mobile: it becomes the first password once the order is paid, which handed the account
+        # to whoever typed the email (audit PAY1).
+        if not _session_owns_agent(request, existing_agent):
+            from apps.agents.services.registration_leads import normalize_phone
+
+            if normalize_phone(request.POST.get("mobile", "")) != normalize_phone(
+                existing_agent.mobile
+            ):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": (
+                            "A registration with this email is already in progress. "
+                            "Please use the same mobile number you started with, "
+                            "or contact support."
+                        ),
+                    },
+                    status=422,
+                )
+
         # Reuse existing registration (Agent and AgentDraft)
         draft = AgentDraft.objects.filter(email=email).first()
         if not draft:
@@ -3236,6 +3258,8 @@ def chooseplan(request):
             from apps.referral_championship.models import ChampionshipCampaign
 
             champ = ChampionshipCampaign.get_current()
+            if not champ.offer_is_open():  # audit CH2: no campaign price after it ends
+                raise LookupError("championship offer closed")
             champ_pricing = champ.pricing_config or {}
             dig_camp = float(
                 champ_pricing.get("digital", {}).get("campaign_price", 999)
@@ -4130,7 +4154,10 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
         )
         .exclude(razorpay_order_id__isnull=True)
         .exclude(razorpay_order_id="")
-        .order_by("-created_at")[:5]
+        # Every order of the last 30 days (was the newest 5: a 6th-oldest paid order was never
+        # found; audit PAY5). The cap only bounds Razorpay calls for abusive retry loops.
+        .filter(created_at__gte=datetime.datetime.now() - datetime.timedelta(days=30))
+        .order_by("-created_at")[:50]
         if is_real_razorpay_id(sub.razorpay_order_id, "order_")
     ]
     if not open_orders:
@@ -4412,9 +4439,10 @@ def _agent_register_complete_impl(request):
 
                 champ = ChampionshipCampaign.get_current()
                 champ_pricing = champ.pricing_config or {}
-                total_amount = float(
-                    champ_pricing.get("digital", {}).get("campaign_price", 999)
-                )
+                if champ.offer_is_open():  # audit CH2: no campaign price after it ends
+                    total_amount = float(
+                        champ_pricing.get("digital", {}).get("campaign_price", 999)
+                    )
             except Exception:
                 logger.exception(
                     "Starter checkout: championship campaign price unavailable; using regular price"
@@ -4446,9 +4474,10 @@ def _agent_register_complete_impl(request):
 
                 champ = ChampionshipCampaign.get_current()
                 champ_pricing = champ.pricing_config or {}
-                total_amount = float(
-                    champ_pricing.get("professional", {}).get("campaign_price", 4999)
-                )
+                if champ.offer_is_open():  # audit CH2: no campaign price after it ends
+                    total_amount = float(
+                        champ_pricing.get("professional", {}).get("campaign_price", 4999)
+                    )
             except Exception:
                 logger.exception(
                     "Professional checkout: championship campaign price unavailable; using regular price"
@@ -4781,6 +4810,27 @@ def _agent_register_complete_impl(request):
     )
 
 
+SIGNATURE_LOGIN_WINDOW = datetime.timedelta(days=1)
+
+
+def _signature_login_allowed(order_row, order_id, payment_id, signature):
+    """A Razorpay signature may sign the payer in once, within a day of the order.
+
+    The callback is a GET, so the signature lands in URLs, history and logs; unlimited reuse made
+    it a permanent login link to the agent's account (audit PAY2).
+    """
+    created = getattr(order_row, "created_at", None)
+    if not created or datetime.datetime.now() - created > SIGNATURE_LOGIN_WINDOW:
+        return False
+    if not _payer_signature_valid(order_id, payment_id, signature):
+        return False
+    from django.core.cache import cache
+
+    return cache.add(
+        f"rzp_sig_login_used:{order_id}", 1, timeout=int(SIGNATURE_LOGIN_WINDOW.total_seconds())
+    )
+
+
 def _payer_signature_valid(order_id, payment_id, signature):
     """True when Razorpay's checkout signature proves the caller made this payment.
 
@@ -4857,8 +4907,11 @@ def _finalize_razorpay_payment(request, data):
             # this order (e.g. UPI app switch landed in a different browser).
             if not (
                 _session_owns_agent(request, agent_obj)
-                or _payer_signature_valid(
-                    razorpay_order_id, razorpay_payment_id, razorpay_signature
+                or _signature_login_allowed(
+                    existing_sub or existing_invoice,
+                    razorpay_order_id,
+                    razorpay_payment_id,
+                    razorpay_signature,
                 )
             ):
                 return {
@@ -4867,6 +4920,18 @@ def _finalize_razorpay_payment(request, data):
                     "redirect_url": reverse("agents:agent_login"),
                 }
             completed_sub = existing_sub
+            # Replaying an older order (Back button, old callback URL) must not move the agent
+            # back to that order's plan or deactivate the newer subscription (audit PAY3).
+            if completed_sub:
+                latest = (
+                    AgentSubscription.objects.filter(
+                        agent=agent_obj, payment_status="completed"
+                    )
+                    .order_by("-created_at", "-pk")
+                    .first()
+                )
+                if latest and latest.pk != completed_sub.pk:
+                    completed_sub = None
             if completed_sub and completed_sub.selected_plan:
                 synced_slug = plan_slug_from_name(completed_sub.selected_plan)
                 if synced_slug and synced_slug != agent_obj.plan_type:

@@ -192,11 +192,12 @@ class PasswordResetService:
             # 1. Fetch User by email
             user = self.user_repo.get_by_email(request.email)
             if not user:
+                # Email-enumeration oracle: use the same message as a bad token (audit API4).
                 return JSONResponse(
                     status_code=400,
                     content={
                         "success": False,
-                        "message": "This email is not registered.",
+                        "message": "This password reset token is invalid or has expired.",
                     },
                 )
 
@@ -242,15 +243,23 @@ class PasswordResetService:
             if not authenticated_user:
                 self.token_repo.delete_by_email(user.email)
 
-            # 6. Account recovery (emailed token) must end every existing API
-            #    session; stolen tokens previously stayed valid until expiry.
-            #    An authenticated in-app password change keeps the current login.
-            if not authenticated_user:
-                from fastapi_app.models.user_token import UserToken
+            # 6. Any password change ends every OTHER API session. For an emailed-token reset the
+            #    caller has no jti, so every row is revoked. For an in-app change the caller's own
+            #    jti is kept alive so this request's own token keeps working (audit API3).
+            from fastapi_app.models.user_token import UserToken
 
-                self.db.query(UserToken).filter(UserToken.user_id == user.id).update(
-                    {"is_revoked": True}, synchronize_session=False
-                )
+            tokens = self.db.query(UserToken).filter(UserToken.user_id == user.id)
+            current_jti = None
+            if authenticated_user and req:
+                auth_header = req.headers.get("Authorization")
+                if auth_header and auth_header.startswith("Bearer "):
+                    try:
+                        current_jti = decode_access_token(auth_header.split(" ")[1]).get("jti")
+                    except Exception:
+                        current_jti = None
+            if current_jti:
+                tokens = tokens.filter(UserToken.jti != current_jti)
+            tokens.update({"is_revoked": True}, synchronize_session=False)
 
             self.db.commit()
             return JSONResponse(

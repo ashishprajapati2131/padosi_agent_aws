@@ -1100,6 +1100,16 @@ def pincode_fetch(request, pincode):
     if not re.match(r'^[1-9]\d{5}$', pincode):
         return JsonResponse({'success': False, 'message': 'Invalid pincode format.'})
 
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    ip = ThreatMonitorMiddleware.get_client_ip(request)
+    # Each uncached pincode can run 2 external lookups; cap one IP at 30/minute (audit WEB3).
+    rl_key = f'rl_pincode_fetch_{ip}'
+    if not cache.add(rl_key, 1, timeout=60):
+        if cache.incr(rl_key) > 30:
+            return JsonResponse(
+                {'success': False, 'message': 'Too many requests. Try again shortly.'}, status=429
+            )
+
     cache_key = f'pincode_fetch_json_{pincode}'
     cached_payload = cache.get(cache_key)
     if cached_payload is not None and isinstance(cached_payload, dict):
@@ -1135,6 +1145,7 @@ def pincode_fetch(request, pincode):
         record = _get_or_create_pincode(pincode)
 
     if not record:
+        cache.set(cache_key, {'success': False, 'message': 'Pincode not found.'}, timeout=86400)
         return JsonResponse({'success': False, 'message': 'Pincode not found.'})
 
     formatted_location = record.formatted_location
@@ -1145,12 +1156,7 @@ def pincode_fetch(request, pincode):
     resolved = geo_svc.resolve_coordinates(pincode)
     
     if resolved and resolved.get('display_name'):
-        formatted_location = resolved['display_name']
-        # Optionally update the database record to cache this better name
-        if record.office_name != formatted_location and not re.match(r'^(Area|Region)\s+\d', record.office_name, re.IGNORECASE):
-            record.office_name = formatted_location
-            record.district = ''
-            record.save()
+        formatted_location = resolved['display_name']  # shown here only; never saved (audit WEB5).
 
     payload = {
         'success': True,
@@ -1898,12 +1904,24 @@ def save_user_location(request):
         for k in ['last_pincode', 'last_location', 'pincode', 'location', 'detected_area']:
             request.session.pop(k, None)
         try:
-            geo_svc = GeocodingService()
-            area = geo_svc.reverse_geocode(float(lat), float(lng))
-            if area:
-                request.session['detected_area'] = area
-        except Exception:
-            pass
+            lat_f, lng_f = float(lat), float(lng)
+        except (TypeError, ValueError):
+            lat_f = lng_f = None
+        # Bounded to India, and one external reverse-geocode per IP per minute (audit WEB4).
+        from apps.admin_panel.middleware import ThreatMonitorMiddleware
+        in_india = (
+            lat_f is not None and lng_f is not None
+            and lat_f == lat_f and lng_f == lng_f  # reject NaN
+            and 6.5 <= lat_f <= 37.5 and 68.0 <= lng_f <= 97.5
+        )
+        rl_key = f'rl_reverse_geocode_{ThreatMonitorMiddleware.get_client_ip(request)}'
+        if in_india and cache.add(rl_key, 1, timeout=60):
+            try:
+                area = GeocodingService().reverse_geocode(lat_f, lng_f)
+                if area:
+                    request.session['detected_area'] = area
+            except Exception:
+                pass
         try:
             request.session.modified = True
         except AttributeError:

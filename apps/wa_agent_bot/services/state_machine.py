@@ -43,16 +43,37 @@ logger = logging.getLogger(__name__)
 
 # ── Welcome / registration trigger keywords ─────────────────────────────
 REGISTER_KEYWORDS = {
-    'register', 'start', 'signup', 'sign up', 'join', 'hi', 'hello', 'hey', 'namaste',
-    'kem cho', 'kemcho', 'agent', 'chalu', 'shuru', 'account', 'join now'
+    "register",
+    "start",
+    "signup",
+    "sign up",
+    "join",
+    "hi",
+    "hello",
+    "hey",
+    "namaste",
+    "kem cho",
+    "kemcho",
+    "agent",
+    "chalu",
+    "shuru",
+    "account",
+    "join now",
 }
 CANCEL_KEYWORDS = {
-    'cancel', 'stop', 'exit', 'quit', 'bye', 'rad', 'bandh', 'nathi karvu', 'abort', 'close'
+    "cancel",
+    "stop",
+    "exit",
+    "quit",
+    "bye",
+    "rad",
+    "bandh",
+    "nathi karvu",
+    "abort",
+    "close",
 }
-BACK_KEYWORDS = {
-    'back', 'pachhu', 'pacho', 'piche', 'prev', 'previous', 'go back', '<'
-}
-RESTART_KEYWORDS = {'restart', 'reset', 'start over', 'new'}
+BACK_KEYWORDS = {"back", "pachhu", "pacho", "piche", "prev", "previous", "go back", "<"}
+RESTART_KEYWORDS = {"restart", "reset", "start over", "new"}
 
 
 def _build_welcome_message():
@@ -166,7 +187,7 @@ def _build_ask_segments_message():
 
 def _build_confirm_message(reg_data):
     """Build the confirmation summary message."""
-    segments_display = format_segments_display(reg_data.get('segments', []))
+    segments_display = format_segments_display(reg_data.get("segments", []))
     return (
         "✅ *Registration Summary*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -252,11 +273,12 @@ def process_message(session, user_text):
     # ── Deliver pending credentials if previous WhatsApp send had failed ──
     if session.is_logged_in and session.agent:
         reg_data = session.registration_data or {}
-        if isinstance(reg_data, dict) and reg_data.get('pending_credentials_delivery'):
-            reg_data.pop('pending_credentials_delivery', None)
+        if isinstance(reg_data, dict) and reg_data.get("pending_credentials_delivery"):
+            reg_data.pop("pending_credentials_delivery", None)
             session.registration_data = reg_data
             session.save()
             from .post_login_handler import handle_credentials
+
             return (
                 "🎉 *Welcome back! Here are your account login details:*\n\n"
                 + handle_credentials(session.agent)
@@ -266,6 +288,7 @@ def process_message(session, user_text):
     # Only outside the registration flow, so a keyword can't swallow an answer like a name or pincode.
     if current_state in (WaBotSession.STATE_WELCOME, WaBotSession.STATE_LOGGED_IN):
         from .message_templates import match_keyword_reply
+
         keyword_reply = match_keyword_reply(text)
         if keyword_reply:
             return keyword_reply
@@ -322,7 +345,9 @@ def process_message(session, user_text):
         return _handle_logged_in(session, text)
     else:
         # Unknown state — reset to welcome
-        logger.warning(f"[WA-Bot] Unknown state '{current_state}' for {session.phone_number}, resetting")
+        logger.warning(
+            f"[WA-Bot] Unknown state '{current_state}' for {session.phone_number}, resetting"
+        )
         session.state = WaBotSession.STATE_WELCOME
         session.registration_data = {}
         session.save()
@@ -330,6 +355,7 @@ def process_message(session, user_text):
 
 
 # ── State handlers ──────────────────────────────────────────────────────
+
 
 def _handle_welcome(session, text, text_lower):
     """Handle messages in WELCOME state."""
@@ -352,9 +378,23 @@ def _handle_welcome(session, text, text_lower):
         return process_post_login_message(session.agent, text)
 
     # New user — check for registration keywords or greetings
-    is_start_intent = (
-        text_lower in REGISTER_KEYWORDS
-        or any(kw in text_lower for kw in ('register', 'start', 'signup', 'sign up', 'join', 'hi', 'hello', 'hey', 'namaste', 'kem cho', 'kemcho', 'agent', 'account'))
+    is_start_intent = text_lower in REGISTER_KEYWORDS or any(
+        kw in text_lower
+        for kw in (
+            "register",
+            "start",
+            "signup",
+            "sign up",
+            "join",
+            "hi",
+            "hello",
+            "hey",
+            "namaste",
+            "kem cho",
+            "kemcho",
+            "agent",
+            "account",
+        )
     )
     if is_start_intent:
         session.state = WaBotSession.STATE_ASK_FULLNAME
@@ -373,7 +413,7 @@ def _handle_ask_fullname(session, text):
         return f"❌ {result}\n\n" + _build_ask_fullname_message()
 
     reg_data = session.registration_data or {}
-    reg_data['fullname'] = result
+    reg_data["fullname"] = result
     session.registration_data = reg_data
     session.state = WaBotSession.STATE_ASK_EMAIL
     session.save()
@@ -391,8 +431,8 @@ def _handle_ask_email(session, text):
     from apps.agents.models import Agent
 
     parsed = parse_contact_input(text)
-    email = parsed.get('email')
-    mobile = parsed.get('mobile')
+    email = parsed.get("email")
+    mobile = parsed.get("mobile")
 
     site_url = bot_site_url()
     reg_data = session.registration_data or {}
@@ -410,16 +450,15 @@ def _handle_ask_email(session, text):
                 f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
                 "Please enter a *different mobile number*:"
             )
-        reg_data['email'] = email
-        reg_data['mobile'] = mobile
+        reg_data["email"] = email
+        reg_data["mobile"] = mobile
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_STATE
         session.save()
         return (
             f"✅ *Email & Mobile Saved!*\n"
             f"📧 Email: *{email}*\n"
-            f"📱 Mobile: *{mobile}*\n\n"
-            + _build_ask_state_message()
+            f"📱 Mobile: *{mobile}*\n\n" + _build_ask_state_message()
         )
 
     # Case 2: Only mobile number provided at email step
@@ -429,7 +468,7 @@ def _handle_ask_email(session, text):
                 f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
                 "Please enter a *different mobile number* or enter your *email address*:"
             )
-        reg_data['mobile'] = mobile
+        reg_data["mobile"] = mobile
         session.registration_data = reg_data
         session.save()
         return (
@@ -446,17 +485,14 @@ def _handle_ask_email(session, text):
                 f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
                 "Otherwise, please enter a *different email address*:"
             )
-        reg_data['email'] = email
+        reg_data["email"] = email
         session.registration_data = reg_data
 
         # If mobile was already saved earlier, skip Step 3 and advance directly to Step 4!
-        if reg_data.get('mobile'):
+        if reg_data.get("mobile"):
             session.state = WaBotSession.STATE_ASK_STATE
             session.save()
-            return (
-                f"✅ *Email Saved:* *{email}*\n\n"
-                + _build_ask_state_message()
-            )
+            return f"✅ *Email Saved:* *{email}*\n\n" + _build_ask_state_message()
 
         session.state = WaBotSession.STATE_ASK_MOBILE
         session.save()
@@ -486,21 +522,21 @@ def _handle_ask_mobile(session, text):
     site_url = bot_site_url()
 
     # Quick acceptance of WhatsApp number
-    if text_lower in {'yes', 'y', '1', 'ha', 'haa', 'same', 'ok', 'sure'} and clean_wa:
+    if text_lower in {"yes", "y", "1", "ha", "haa", "same", "ok", "sure"} and clean_wa:
         if Agent.objects.filter(mobile=clean_wa).exists():
             return (
                 f"⚠️ An account with mobile *{clean_wa}* already exists.\n\n"
                 "Please enter a *different 10-digit mobile number*:"
             )
-        reg_data['mobile'] = clean_wa
+        reg_data["mobile"] = clean_wa
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_STATE
         session.save()
         return _build_ask_state_message()
 
     parsed = parse_contact_input(text)
-    email = parsed.get('email')
-    mobile = parsed.get('mobile')
+    email = parsed.get("email")
+    mobile = parsed.get("mobile")
 
     # If email provided, check uniqueness and update email
     if email:
@@ -510,7 +546,7 @@ def _handle_ask_mobile(session, text):
                 f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
                 "Otherwise, please enter a *different email address*:"
             )
-        reg_data['email'] = email
+        reg_data["email"] = email
 
     # If mobile is provided
     if mobile:
@@ -519,19 +555,18 @@ def _handle_ask_mobile(session, text):
                 f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
                 "Please enter a *different mobile number*:"
             )
-        reg_data['mobile'] = mobile
+        reg_data["mobile"] = mobile
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_STATE
         session.save()
         return _build_ask_state_message()
 
     # If only email was provided but no mobile yet
-    if email and not mobile and not reg_data.get('mobile'):
+    if email and not mobile and not reg_data.get("mobile"):
         session.registration_data = reg_data
         session.save()
-        return (
-            f"📧 Email updated to *{email}*.\n\n"
-            + _build_ask_mobile_message(whatsapp_phone=clean_wa)
+        return f"📧 Email updated to *{email}*.\n\n" + _build_ask_mobile_message(
+            whatsapp_phone=clean_wa
         )
 
     # Invalid input
@@ -548,7 +583,7 @@ def _handle_ask_state(session, text):
         return f"❌ {result}\n\n" + _build_ask_state_message()
 
     reg_data = session.registration_data or {}
-    reg_data['state'] = result
+    reg_data["state"] = result
     session.registration_data = reg_data
     session.state = WaBotSession.STATE_ASK_PINCODE
     session.save()
@@ -562,7 +597,7 @@ def _handle_ask_pincode(session, text):
         return f"❌ {result}\n\n" + _build_ask_pincode_message()
 
     reg_data = session.registration_data or {}
-    reg_data['agent_pincode'] = result
+    reg_data["agent_pincode"] = result
     session.registration_data = reg_data
     session.state = WaBotSession.STATE_ASK_EXPERIENCE
     session.save()
@@ -576,7 +611,7 @@ def _handle_ask_experience(session, text):
         return f"❌ {result}\n\n" + _build_ask_experience_message()
 
     reg_data = session.registration_data or {}
-    reg_data['experience_range'] = result
+    reg_data["experience_range"] = result
     session.registration_data = reg_data
     session.state = WaBotSession.STATE_ASK_SEGMENTS
     session.save()
@@ -590,7 +625,7 @@ def _handle_ask_segments(session, text):
         return f"❌ {result}\n\n" + _build_ask_segments_message()
 
     reg_data = session.registration_data or {}
-    reg_data['segments'] = result
+    reg_data["segments"] = result
     session.registration_data = reg_data
     session.state = WaBotSession.STATE_CONFIRM_DETAILS
     session.save()
@@ -600,12 +635,40 @@ def _handle_ask_segments(session, text):
 def _handle_confirm(session, text, text_lower):
     """Handle confirmation of registration details."""
     confirm_yes = {
-        'yes', 'y', 'confirm', 'ok', 'okay', 'done', 'ha', 'haa', 'han', 'haan',
-        'sachu', 'sachu che', 'right', 'sure', 'correct', 'yep', 'yeah', 'perfect',
-        '1', 'continue', 'next', 'proceed', '👍', '👌'
+        "yes",
+        "y",
+        "confirm",
+        "ok",
+        "okay",
+        "done",
+        "ha",
+        "haa",
+        "han",
+        "haan",
+        "sachu",
+        "sachu che",
+        "right",
+        "sure",
+        "correct",
+        "yep",
+        "yeah",
+        "perfect",
+        "1",
+        "continue",
+        "next",
+        "proceed",
+        "👍",
+        "👌",
     }
     confirm_edit = {
-        'edit', 'change', 'modify', 'badlo', 'update', 'start over', 'restart', '2'
+        "edit",
+        "change",
+        "modify",
+        "badlo",
+        "update",
+        "start over",
+        "restart",
+        "2",
     }
 
     if text_lower in confirm_yes:
@@ -618,10 +681,7 @@ def _handle_confirm(session, text, text_lower):
         session.state = WaBotSession.STATE_ASK_FULLNAME
         session.registration_data = {}
         session.save()
-        return (
-            "✏️ Let's start over.\n\n"
-            + _build_ask_fullname_message()
-        )
+        return "✏️ Let's start over.\n\n" + _build_ask_fullname_message()
 
     elif text_lower in CANCEL_KEYWORDS:
         session.state = WaBotSession.STATE_WELCOME
@@ -643,19 +703,36 @@ def _handle_ask_plan(session, text, text_lower):
     plan_key = None
 
     starter_synonyms = (
-        '1', 'starter', 'starter plan', 'digital', 'digital presence', 'plan 1', 'plan1',
-        'first', 'first plan', '1st', 'basic'
+        "1",
+        "starter",
+        "starter plan",
+        "digital",
+        "digital presence",
+        "plan 1",
+        "plan1",
+        "first",
+        "first plan",
+        "1st",
+        "basic",
     )
     prof_synonyms = (
-        '2', 'professional', 'pro', 'professional plan', 'professional presence', 'plan 2', 'plan2',
-        'second', 'second plan', '2nd'
+        "2",
+        "professional",
+        "pro",
+        "professional plan",
+        "professional presence",
+        "plan 2",
+        "plan2",
+        "second",
+        "second plan",
+        "2nd",
     )
 
     if text_lower in starter_synonyms:
-        plan_key = 'starter'
+        plan_key = "starter"
     elif text_lower in prof_synonyms:
-        plan_key = 'professional'
-    elif text_lower in ('edit', 'change', 'modify'):
+        plan_key = "professional"
+    elif text_lower in ("edit", "change", "modify"):
         session.state = WaBotSession.STATE_ASK_FULLNAME
         session.registration_data = {}
         session.save()
@@ -663,8 +740,8 @@ def _handle_ask_plan(session, text, text_lower):
 
     if not plan_key:
         plans = get_available_plans()
-        starter_name = plans.get('starter', {}).get('name', 'Digital Presence')
-        prof_name = plans.get('professional', {}).get('name', 'Professional Presence')
+        starter_name = plans.get("starter", {}).get("name", "Digital Presence")
+        prof_name = plans.get("professional", {}).get("name", "Professional Presence")
         return (
             "❌ Invalid option. Please select your plan by replying with:\n\n"
             f"1️⃣ *1* — {starter_name}\n"
@@ -674,6 +751,17 @@ def _handle_ask_plan(session, text, text_lower):
 
     # Generate payment link and save pending agent
     payment_info = create_plan_payment_link(session, plan_key)
+    if not payment_info.get("success", True):
+        reg_data = session.registration_data or {}
+        reg_data.pop("email", None)
+        session.registration_data = reg_data
+        session.state = WaBotSession.STATE_ASK_EMAIL
+        session.save()
+        return (
+            "⚠️ This email is already linked to an account.\n\n"
+            f"If it is yours, please login at:\n🔗 {bot_site_url()}/agent-login/\n\n"
+            "Otherwise, please enter a *different email address*:"
+        )
 
     # Move to awaiting payment
     session.state = WaBotSession.STATE_AWAITING_PAYMENT
@@ -685,52 +773,55 @@ def _handle_ask_plan(session, text, text_lower):
 def _handle_awaiting_payment(session, text, text_lower):
     """Handle messages while waiting for payment completion."""
     # Allow switching plans
-    if text_lower in ('change', 'change plan', 'plan', 'switch'):
+    if text_lower in ("change", "change plan", "plan", "switch"):
         session.state = WaBotSession.STATE_ASK_PLAN
         session.save()
         return format_plan_selection_message()
 
     # Check if payment was completed in background (e.g. via webhook) or poll Razorpay
     reg_data = session.registration_data or {}
-    sub_id = reg_data.get('subscription_id')
+    sub_id = reg_data.get("subscription_id")
     if sub_id:
         try:
             from apps.agents.models import AgentSubscription
+
             sub = AgentSubscription.objects.filter(pk=sub_id).first()
             if sub:
                 # Active fallback: check Razorpay payment link status directly
-                if sub.payment_status != 'completed':
-                    plink_id = reg_data.get('payment_link_id') or sub.razorpay_order_id
+                if sub.payment_status != "completed":
+                    plink_id = reg_data.get("payment_link_id") or sub.razorpay_order_id
                     if plink_id:
                         try:
-                            from apps.agents.services.razorpay_checkout import razorpay_client
+                            from apps.agents.services.razorpay_checkout import (
+                                razorpay_client,
+                            )
+
                             client = razorpay_client()
                             if client:
                                 link_data = client.payment_link.fetch(plink_id)
-                                if link_data.get('status') == 'paid':
+                                if link_data.get("status") == "paid":
                                     activate_agent_subscription_after_payment(sub.id)
                                     sub.refresh_from_db()
                         except Exception as rz_err:
                             logger.debug(f"[WA-Bot] Razorpay link poll error: {rz_err}")
 
-                if sub.payment_status == 'completed':
+                if sub.payment_status == "completed":
                     session.state = WaBotSession.STATE_LOGGED_IN
                     session.is_registered = True
                     session.is_logged_in = True
                     session.save()
                     site_url = bot_site_url()
                     login_url = f"{site_url}/agent-login/"
-                    mobile_clean = ''.join(c for c in (session.agent.mobile if session.agent else session.phone_number) if c.isdigit())
-                    pw = mobile_clean[-10:] if len(mobile_clean) >= 10 else mobile_clean
+                    reset_url = f"{site_url}/password-reset/"
                     return (
                         f"🎉 *Payment Received, {session.agent.fullname if session.agent else 'Agent'}!* 🚀\n\n"
                         f"⏳ *Account Status:* Pending Admin Approval\n"
                         f"Your payment was confirmed and your registration is submitted for admin review. Once approved by our team, your public profile and digital visiting card will go LIVE!\n\n"
-                        f"🔑 *Your Portal Login Credentials:*\n"
+                        f"🔑 *Your Portal Login:*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🌐 *Login URL:* {login_url}\n"
                         f"📧 *Email / User ID:* {session.agent.email if session.agent else reg_data.get('email')}\n"
-                        f"🔒 *Password:* `{pw}` _(Your registered mobile number)_\n"
+                        f"🔒 *Set your password:* {reset_url}\n"  # audit WA2: don't send credentials over WhatsApp
                         f"📦 *Selected Plan:* {sub.selected_plan}\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"👉 You can log in now to review your profile, or type *status* to check approval progress."
@@ -738,9 +829,9 @@ def _handle_awaiting_payment(session, text, text_lower):
         except Exception as e:
             logger.error(f"[WA-Bot] Error checking payment status: {e}")
 
-    payment_link = reg_data.get('payment_link', '')
-    plan_name = reg_data.get('plan_name', 'Membership Plan')
-    total = reg_data.get('plan_total', '')
+    payment_link = reg_data.get("payment_link", "")
+    plan_name = reg_data.get("plan_name", "Membership Plan")
+    total = reg_data.get("plan_total", "")
 
     return (
         f"⏳ *Payment is Pending for {plan_name}*\n"

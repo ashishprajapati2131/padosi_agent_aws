@@ -13,6 +13,8 @@ DJANGO_API_PREFIXES = (
     "/api/save-location/",
     "/api/facebook/",
     "/api/pincode/check-agents/",
+    "/api/quick-lead-capture/",
+    "/api/google-review/",
 )
 
 

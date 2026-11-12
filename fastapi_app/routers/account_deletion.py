@@ -141,28 +141,21 @@ def request_deletion_otp(
     name_clean = payload.fullname.strip()
 
     # 1. Strictly verify that the email exists in the Agent database
+    # Different messages for unknown email vs wrong PAN vs wrong phone let an attacker test
+    # which emails are agents and brute-force PAN/mobile pairs (audit API2). One generic reply.
+    GENERIC = "We could not verify this account. Please check the details on file and try again."
+
     agent = db.query(Agent).filter(func.lower(Agent.email) == email_clean).first()
     if not agent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The email address entered does not exist in our system. Please provide your registered account email.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
 
-    # 2. Strictly verify that the PAN number matches the Agent's profile on record
     profile = db.query(AgentProfile).filter(AgentProfile.agent_id == agent.id).first()
     stored_pan = (profile.pan_number or "").strip().upper() if profile else ""
     if not stored_pan or stored_pan != pan_clean:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The PAN number provided does not match our records for this account.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
 
-    # 3. Verify mobile number matches the registered agent mobile
     if agent.mobile and agent.mobile.strip() != mobile_clean:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The phone number provided does not match our records for this account.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
 
     agent_id = agent.id
     user_id = agent.user_id
@@ -171,7 +164,7 @@ def request_deletion_otp(
     otp_code = str(secrets.randbelow(900000) + 100000)
     now = _utcnow()
     expires_at = now + timedelta(minutes=10)
-    ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
+    ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(8).upper()}"  # 64 random bits: /status is reachable with the ref alone (audit API1)
 
     client_ip = _get_client_ip(request)
     user_agent = request.headers.get("user-agent", "")[:500]
@@ -373,12 +366,33 @@ def get_deletion_status(
         status=del_req.status,
         status_display=status_display,
         is_verified=del_req.is_verified,
-        fullname=summary.get("fullname") or del_req.identifier,
-        email=del_req.email,
-        mobile=del_req.mobile,
+        # Anyone holding the ref can call this, so personal data is masked and staff notes stay
+        # internal (audit API1).
+        fullname=_mask_name(summary.get("fullname") or del_req.identifier),
+        email=_mask_email(del_req.email),
+        mobile=_mask_mobile(del_req.mobile),
         submitted_at=sub_at_str,
         processed_at=proc_at_str,
         reason=summary.get("reason_category") or del_req.reason,
         rejection_reason=del_req.rejection_reason or "",
-        admin_notes=del_req.admin_notes or "",
+        admin_notes="",
     )
+
+
+def _mask_email(email):
+    if not email or "@" not in email:
+        return None
+    local, domain = email.split("@", 1)
+    return f"{local[:2]}***@{domain}"
+
+
+def _mask_mobile(mobile):
+    digits = "".join(ch for ch in str(mobile or "") if ch.isdigit())
+    return f"******{digits[-4:]}" if len(digits) >= 4 else None
+
+
+def _mask_name(name):
+    parts = str(name or "").split()
+    if not parts or "@" in parts[0] or parts[0].isdigit():
+        return None
+    return " ".join([parts[0]] + [p[0] + "." for p in parts[1:]])

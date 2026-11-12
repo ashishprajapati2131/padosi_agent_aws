@@ -309,6 +309,12 @@ def get_current_campaign(db: Session) -> ChampionshipCampaign:
     ).first()
 
     if not campaign:
+        # Ended campaign: return it; re-seeding collides with the unique slug (audit CH1).
+        campaign = db.query(ChampionshipCampaign).order_by(
+            ChampionshipCampaign.created_at.desc(), ChampionshipCampaign.id.desc()
+        ).first()
+
+    if not campaign:
         campaign = ChampionshipCampaign(
             name="PadosiAgent Referral Championship",
             slug="championship-2026",

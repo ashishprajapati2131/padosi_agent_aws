@@ -154,6 +154,14 @@ def _is_valid_gbp_url(url):
     """Return True if the URL looks like a legitimate Google Business / Maps URL."""
     if not url or not isinstance(url, str):
         return False
+    # The patterns below are unanchored: "javascript:...//maps.google.com" matched them and the
+    # public profile opened it (audit AG1). Require a real http(s) link on a Google host first.
+    from apps.agents.utils.web_url import GOOGLE_BUSINESS_HOSTS, optional_web_url_error
+
+    if not re.match(r"^https?://", url.strip(), re.IGNORECASE) or optional_web_url_error(
+        url, GOOGLE_BUSINESS_HOSTS, "Google Business"
+    ):
+        return False
     patterns = [
         r"maps\.google\.",
         r"google\..+/maps",

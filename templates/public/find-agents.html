@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Find Verified Insurance Experts near me - PadosiAgent{% endblock %}
 {% block meta_robots %}{% if request.GET %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
@@ -2327,7 +2327,7 @@
 
         // --- Populate Claim Company Dropdown based on the ONE selected insurance type tile ---
         // allClaimCompanies = every company name stored in Agent.insurance_companies (served by backend)
-        var allClaimCompanies = {{ all_claim_companies|default:"[]"|safe }};
+        var allClaimCompanies = {{ all_claim_companies|safe_json:"[]" }};
         var preSelectedClaimCompany = "{{ selected_claim_company|escapejs }}";
 
         function updateClaimCompanyDropdown() {

@@ -308,16 +308,25 @@ def checkout_cart(request):
         return JsonResponse({'success': False, 'message': 'Only the manager or accounts sub-user can record offline payments.'}, status=403)
 
     recorded_dt = None
+    ALLOWED_METHODS = {'NEFT', 'IMPS', 'UPI', 'Cheque', 'Cash', 'Bank Transfer', 'Other'}
     if payment_type == 'offline':
         if not payment_method:
             return JsonResponse({'success': False, 'message': 'Payment method is required for offline payment.'}, status=400)
+        if payment_method not in ALLOWED_METHODS:
+            return JsonResponse({'success': False, 'message': 'Choose a valid payment method.'}, status=400)
         if not payment_reference:
             return JsonResponse({'success': False, 'message': 'Transaction reference / UTR is required for offline payment.'}, status=400)
+        # Writing a Razorpay-looking id into razorpay_order_id unlocked the dashboard as if paid
+        # online. record_payment already blocks this; the cart must too (audit INS1).
+        if payment_reference.lower().startswith(('order_', 'pay_')):
+            return JsonResponse({'success': False, 'message': 'Enter the bank / UPI / cheque reference here, not a Razorpay id.'}, status=400)
         if not payment_recorded_at:
             return JsonResponse({'success': False, 'message': 'Payment date is required for offline payment.'}, status=400)
         recorded_dt = parse_date(payment_recorded_at)
         if not recorded_dt:
             return JsonResponse({'success': False, 'message': 'Payment date is invalid.'}, status=400)
+        if recorded_dt > datetime.date.today():
+            return JsonResponse({'success': False, 'message': 'Payment date cannot be in the future.'}, status=400)
 
     recorded_at = datetime.datetime.combine(recorded_dt, datetime.datetime.min.time()) if recorded_dt else None
 
@@ -379,8 +388,10 @@ def checkout_cart(request):
                     status='inactive',
                     starts_at=recorded_at if payment_type == 'offline' else None,
                     expires_at=(recorded_at + timezone.timedelta(days=365)) if recorded_at else None,
-                    razorpay_order_id=payment_reference if payment_type == 'offline' else 'OFFLINE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
-                    razorpay_payment_id=payment_reference if payment_type == 'offline' else None,
+                    # Never store the UTR in razorpay_order_id: a Razorpay-looking value here
+                    # unlocks the dashboard as if paid online (audit INS1).
+                    razorpay_order_id='OFFLINE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
+                    razorpay_payment_id=None,
                 )
 
             request.session.pop('insurance_bulk_cart', None)
@@ -394,8 +405,11 @@ def checkout_cart(request):
             })
 
     except Exception as e:
-        logger.error(f'Cart checkout failed: {e}')
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        logger.exception('Cart checkout failed')
+        return JsonResponse(
+            {'success': False, 'message': 'Could not record this payment. Please try again.'},
+            status=500,
+        )
 
 try:
     import razorpay

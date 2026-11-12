@@ -1304,6 +1304,11 @@ def agent_public_profile(request, slug, state_code=None):
 
     if not agent:
         raise Http404("Agent not found")
+    # Suspended / deleted / unpaid agents have no public page, as on the card views (audit AG3).
+    from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
+
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+        raise Http404("Agent not found")
 
     is_owner = False
     if request.user.is_authenticated:
@@ -1450,8 +1455,9 @@ def store_review(request, slug, state_code=None):
     agent = Agent.objects.filter(profile__slug=slug).first()
     if not agent and slug.isdigit():
         agent = Agent.objects.filter(id=int(slug)).first()
+    from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
-    if not agent:
+    if not agent or _hidden_from_public(agent):  # audit AG3
         return JsonResponse(
             {"status": "error", "message": "Agent not found"}, status=404
         )
@@ -3685,7 +3691,9 @@ def agent_capture_lead(request):
 
         # Check Agent exists
         agent = Agent.objects.filter(id=agent_id).first()
-        if not agent:
+        from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
+
+        if not agent or _hidden_from_public(agent):  # audit AG3
             return JsonResponse(
                 {"success": False, "message": "Agent not found."}, status=404
             )
@@ -4067,7 +4075,11 @@ def agent_og_image(request, agent_id=None, slug=None):
             except Exception:
                 pass
 
-    if not agent:
+    from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
+
+    if not agent or (  # audit AG3
+        _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)
+    ):
         raise Http404("Agent not found")
 
     cache_key = og_image_cache_key(agent.id)
