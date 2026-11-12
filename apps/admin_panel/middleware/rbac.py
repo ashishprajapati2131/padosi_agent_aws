@@ -1,4 +1,5 @@
 """Admin route gate: deny-by-default permission map keyed by url_name."""
+
 from django.shortcuts import redirect
 
 from apps.admin_panel import registry
@@ -11,7 +12,11 @@ class AdminPermissionMiddleware:
 
     def __call__(self, request):
         # 0. Fast-path whitelist for health checks, probes, and static metadata
-        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+        if request.path.startswith("/health/") or request.path in [
+            "/healthz",
+            "/favicon.ico",
+            "/robots.txt",
+        ]:
             return self.get_response(request)
         path = request.path.rstrip("/")
         if not (path.startswith("/admin") or path.startswith("/padosi-admin")):

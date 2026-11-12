@@ -54,7 +54,9 @@ class BrevoEmailService:
         Raises ValueError if the primary key is missing in production.
         """
         api_key = getattr(settings, "BREVO_API_KEY", "").strip()
-        from_email = getattr(settings, "BREVO_FROM_EMAIL", "noreply@padosiagent.com").strip()
+        from_email = getattr(
+            settings, "BREVO_FROM_EMAIL", "noreply@padosiagent.com"
+        ).strip()
         from_name = getattr(settings, "BREVO_FROM_NAME", "PadosiAgent").strip()
         otp_fallback = getattr(settings, "BREVO_OTP_FALLBACK", True)
         debug = getattr(settings, "DEBUG", False)
@@ -67,13 +69,24 @@ class BrevoEmailService:
             "debug": debug,
         }
 
-    def _send_via_brevo_api(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
+    def _send_via_brevo_api(
+        self,
+        cfg: dict,
+        to_email: str,
+        to_name: str,
+        subject: str,
+        html_content: str,
+        attachment_path: str = None,
+        cc_emails: list = None,
+    ) -> bool:
         """
         Send email via Brevo HTTP API with retry logic, optional attachment and CC support.
         Returns True on success, False if all retries fail.
         """
         if not cfg["api_key"]:
-            logger.warning("[BrevoAPI] BREVO_API_KEY is not configured — skipping API delivery.")
+            logger.warning(
+                "[BrevoAPI] BREVO_API_KEY is not configured — skipping API delivery."
+            )
             return False
 
         payload = {
@@ -84,22 +97,22 @@ class BrevoEmailService:
         }
 
         if cc_emails:
-            payload["cc"] = [{"email": e.strip(), "name": e.strip().split('@')[0]} for e in cc_emails if e and str(e).strip()]
+            payload["cc"] = [
+                {"email": e.strip(), "name": e.strip().split("@")[0]}
+                for e in cc_emails
+                if e and str(e).strip()
+            ]
 
         # Handle attachment for Brevo API
         if attachment_path and os.path.exists(attachment_path):
             try:
                 import base64
+
                 filename = os.path.basename(attachment_path)
                 with open(attachment_path, "rb") as f:
                     file_data = f.read()
                 base64_content = base64.b64encode(file_data).decode("utf-8")
-                payload["attachment"] = [
-                    {
-                        "name": filename,
-                        "content": base64_content
-                    }
-                ]
+                payload["attachment"] = [{"name": filename, "content": base64_content}]
             except Exception as e:
                 logger.error(f"[BrevoAPI] Failed to attach file {attachment_path}: {e}")
 
@@ -109,55 +122,74 @@ class BrevoEmailService:
             "content-type": "application/json",
         }
 
-        for attempt in range(1, MAX_RETRIES + 1):
-            try:
-                response = requests.post(
-                    BREVO_API_URL,
-                    headers=headers,
-                    json=payload,
-                    timeout=20,
-                )
+        # Retry with exponential backoff + full jitter, behind a circuit breaker
+        # shared across processes: once Brevo is clearly down we stop hammering
+        # it and fall through to SMTP (the caller's fallback).
+        from apps.admin_panel.services.resilience import (
+            CircuitBreakerOpen,
+            guarded_call,
+        )
 
-                if 200 <= response.status_code < 300:
-                    logger.info(
-                        "[BrevoAPI] Email delivered successfully. "
-                        f"to={to_email!r} subject={subject!r} attempt={attempt}"
-                    )
-                    return True
+        def _attempt():
+            response = requests.post(
+                BREVO_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=20,
+            )
+            if 200 <= response.status_code < 300:
+                return response
+            # Treat any non-2xx as a retryable failure so backoff kicks in.
+            raise requests.HTTPError(
+                f"Brevo returned HTTP {response.status_code}: {response.text[:200]}",
+                response=response,
+            )
 
-                # Non-2xx — log and maybe retry
-                logger.warning(
-                    f"[BrevoAPI] Attempt {attempt}/{MAX_RETRIES} failed. "
-                    f"status={response.status_code} body={response.text[:200]}"
-                )
+        try:
+            response = guarded_call(
+                "brevo",
+                _attempt,
+                attempts=MAX_RETRIES,
+                retry_on=(
+                    requests.Timeout,
+                    requests.ConnectionError,
+                    requests.HTTPError,
+                ),
+            )
+            logger.info(
+                "[BrevoAPI] Email delivered successfully. to=%r subject=%r",
+                to_email,
+                subject,
+            )
+            return True
+        except CircuitBreakerOpen:
+            logger.warning("[BrevoAPI] Circuit breaker open; skipping Brevo.")
+            return False
+        except Exception as exc:
+            logger.error(
+                "[BrevoAPI] All %d attempts failed for to=%r: %s",
+                MAX_RETRIES,
+                to_email,
+                exc,
+            )
+            return False
 
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY_SECONDS)
-
-            except requests.Timeout:
-                logger.warning(f"[BrevoAPI] Attempt {attempt}/{MAX_RETRIES} timed out.")
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY_SECONDS)
-
-            except requests.ConnectionError as exc:
-                logger.warning(f"[BrevoAPI] Attempt {attempt}/{MAX_RETRIES} connection error: {exc}")
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY_SECONDS)
-
-            except Exception as exc:
-                logger.error(f"[BrevoAPI] Unexpected error on attempt {attempt}: {exc}", exc_info=True)
-                break
-
-        logger.error(f"[BrevoAPI] All {MAX_RETRIES} attempts failed for to={to_email!r}")
-        return False
-
-    def _send_via_smtp(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
+    def _send_via_smtp(
+        self,
+        cfg: dict,
+        to_email: str,
+        to_name: str,
+        subject: str,
+        html_content: str,
+        attachment_path: str = None,
+        cc_emails: list = None,
+    ) -> bool:
         """
         Send email via Django SMTP backend (fallback channel) with optional attachment and CC support.
         Uses EMAIL_HOST / EMAIL_PORT / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD from settings.
         """
-        host_user = getattr(settings, 'EMAIL_HOST_USER', '')
-        host_pwd = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+        host_user = getattr(settings, "EMAIL_HOST_USER", "")
+        host_pwd = getattr(settings, "EMAIL_HOST_PASSWORD", "")
         if not host_user and not host_pwd:
             logger.warning(
                 "[SMTP Fallback] MAIL_USERNAME and MAIL_PASSWORD are not configured in .env. "
@@ -169,26 +201,42 @@ class BrevoEmailService:
             from_addr = f"{cfg['from_name']} <{cfg['from_email']}>"
             text_content = strip_tags(html_content)
 
-            cc_clean = [str(e).strip() for e in (cc_emails or []) if e and str(e).strip()]
-            msg = EmailMultiAlternatives(subject, text_content, from_addr, [to_email], cc=cc_clean or None)
+            cc_clean = [
+                str(e).strip() for e in (cc_emails or []) if e and str(e).strip()
+            ]
+            msg = EmailMultiAlternatives(
+                subject, text_content, from_addr, [to_email], cc=cc_clean or None
+            )
             msg.attach_alternative(html_content, "text/html")
-            
+
             # Handle attachment for SMTP
             if attachment_path and os.path.exists(attachment_path):
                 msg.attach_file(attachment_path)
 
             msg.send(fail_silently=False)
 
-            logger.info(f"[SMTP Fallback] Email sent to {to_email!r} (cc={cc_clean}) — {subject!r}")
+            logger.info(
+                f"[SMTP Fallback] Email sent to {to_email!r} (cc={cc_clean}) — {subject!r}"
+            )
             return True
 
         except Exception as exc:
-            logger.error(f"[SMTP Fallback] Failed to send to {to_email!r}: {exc}", exc_info=True)
+            logger.error(
+                f"[SMTP Fallback] Failed to send to {to_email!r}: {exc}", exc_info=True
+            )
             return False
 
     # ─── Public API ──────────────────────────────────────────────────────────
 
-    def send_generic(self, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
+    def send_generic(
+        self,
+        to_email: str,
+        to_name: str,
+        subject: str,
+        html_content: str,
+        attachment_path: str = None,
+        cc_emails: list = None,
+    ) -> bool:
         """
         Send any transactional email with automatic fallback chain, optional attachment and CC recipients.
 
@@ -199,12 +247,30 @@ class BrevoEmailService:
         cfg = self._get_config()
 
         # 1. Try Brevo HTTP API
-        if self._send_via_brevo_api(cfg, to_email, to_name, subject, html_content, attachment_path, cc_emails=cc_emails):
+        if self._send_via_brevo_api(
+            cfg,
+            to_email,
+            to_name,
+            subject,
+            html_content,
+            attachment_path,
+            cc_emails=cc_emails,
+        ):
             return True
 
         # 2. Fallback to Django SMTP
-        logger.warning(f"[EmailService] Brevo API failed. Attempting SMTP fallback for {to_email!r}.")
-        if self._send_via_smtp(cfg, to_email, to_name, subject, html_content, attachment_path, cc_emails=cc_emails):
+        logger.warning(
+            f"[EmailService] Brevo API failed. Attempting SMTP fallback for {to_email!r}."
+        )
+        if self._send_via_smtp(
+            cfg,
+            to_email,
+            to_name,
+            subject,
+            html_content,
+            attachment_path,
+            cc_emails=cc_emails,
+        ):
             return True
 
         # 3. Both channels failed
@@ -227,7 +293,6 @@ class BrevoEmailService:
         # Always log OTP in DEBUG for local testing convenience
         if cfg["debug"]:
             logger.info(f"[DEBUG OTP] to={to_email!r} otp={otp_code}")
-
 
         html = _build_otp_html(otp_code)
         subject = "Your PadosiAgent Verification Code"
@@ -295,7 +360,9 @@ class BrevoEmailService:
                     subject=subject,
                 )
             except Exception as e:
-                logger.warning(f"[EmailQueue] Background welcome email to {to_email!r} failed: {e}")
+                logger.warning(
+                    f"[EmailQueue] Background welcome email to {to_email!r} failed: {e}"
+                )
             finally:
                 close_old_connections()
 
@@ -303,7 +370,7 @@ class BrevoEmailService:
             thread = threading.Thread(
                 target=_run_email,
                 daemon=False,
-                name=f'welcome-email-{to_email[:20]}',
+                name=f"welcome-email-{to_email[:20]}",
             )
             thread.start()
 
@@ -315,7 +382,14 @@ class BrevoEmailService:
             pass
         _dispatch()
 
-    def send_password_reset(self, to_email: str, to_name: str, reset_url: str, expiry_minutes: str = "60", role_name: str = "Agent") -> bool:
+    def send_password_reset(
+        self,
+        to_email: str,
+        to_name: str,
+        reset_url: str,
+        expiry_minutes: str = "60",
+        role_name: str = "Agent",
+    ) -> bool:
         """
         Send a branded password reset email with reset link and expiry time.
         Matches PHP BrevoMailService::sendPasswordReset.
@@ -323,7 +397,6 @@ class BrevoEmailService:
         html = _build_password_reset_html(to_name, reset_url, expiry_minutes, role_name)
         subject = "PadosiAgent – Reset Your Password"
         return self.send_generic(to_email, to_name, subject, html)
-
 
     def send_test(self, to_email: str) -> dict:
         """
@@ -342,7 +415,9 @@ class BrevoEmailService:
         html = _build_test_html(to_email)
 
         # Try Brevo API first
-        if cfg["api_key"] and self._send_via_brevo_api(cfg, to_email, to_email, subject, html):
+        if cfg["api_key"] and self._send_via_brevo_api(
+            cfg, to_email, to_email, subject, html
+        ):
             return {
                 "success": True,
                 "channel": "brevo_api",
@@ -377,17 +452,21 @@ email_service = BrevoEmailService()
 # ─── Backwards-compatible helper functions ───────────────────────────────────
 # Keep these so existing code that calls send_otp_email(...) still works.
 
+
 def send_otp_email(to_email: str, to_name: str, otp_code: str) -> bool:
     """Backwards-compatible wrapper. Use email_service.send_otp() for new code."""
     return email_service.send_otp(to_email, to_name, otp_code)
 
 
-def send_brevo_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
+def send_brevo_email(
+    to_email: str, to_name: str, subject: str, html_content: str
+) -> bool:
     """Backwards-compatible wrapper. Use email_service.send_generic() for new code."""
     return email_service.send_generic(to_email, to_name, subject, html_content)
 
 
 # ─── HTML Email Builders ─────────────────────────────────────────────────────
+
 
 def _build_otp_html(otp_code: str) -> str:
     """Render the OTP email HTML inline (no template dependency)."""
@@ -470,11 +549,16 @@ def _build_otp_html(otp_code: str) -> str:
 def _build_welcome_html(name: str, email: str, password: str, plan_name: str) -> str:
     """Render the welcome / credentials email HTML."""
     import html as _html
+
     # Agent-controlled values go into HTML: escape them.
-    name = _html.escape(name or '')
-    email = _html.escape(email or '')
-    password = _html.escape(password or '')
-    plan_line = f"<strong>{_html.escape(plan_name)}</strong>" if plan_name else "your selected plan"
+    name = _html.escape(name or "")
+    email = _html.escape(email or "")
+    password = _html.escape(password or "")
+    plan_line = (
+        f"<strong>{_html.escape(plan_name)}</strong>"
+        if plan_name
+        else "your selected plan"
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -567,6 +651,7 @@ def _build_welcome_html(name: str, email: str, password: str, plan_name: str) ->
 def _build_test_html(to_email: str) -> str:
     """Render a simple test email HTML to verify the pipeline."""
     import datetime
+
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -643,7 +728,9 @@ def _build_test_html(to_email: str) -> str:
 </html>"""
 
 
-def _build_password_reset_html(to_name: str, reset_url: str, expiry_minutes: str = "60", role_name: str = "Agent") -> str:
+def _build_password_reset_html(
+    to_name: str, reset_url: str, expiry_minutes: str = "60", role_name: str = "Agent"
+) -> str:
     """Render the branded password reset email HTML matching PHP template."""
     return f"""<!DOCTYPE html>
 <html lang="en">

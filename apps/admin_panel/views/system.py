@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import psutil
 import platform
 import sys
@@ -38,7 +39,11 @@ def health(request):
     process = psutil.Process(os.getpid())
 
     zone_id, api_token = cloudflare.get_credentials()
-    masked_token = (api_token[:4] + "••••••••" + api_token[-4:]) if len(api_token) >= 8 else ("Configured" if api_token else "")
+    masked_token = (
+        (api_token[:4] + "••••••••" + api_token[-4:])
+        if len(api_token) >= 8
+        else ("Configured" if api_token else "")
+    )
 
     server_info = {
         "php_version": "Python " + sys.version.split(" ")[0],  # Mocking as PHP version
@@ -56,7 +61,68 @@ def health(request):
         "cloudflare_dash_url": cloudflare.get_purge_url(),
     }
 
-    return render(request, "admin/system/health.html", {"serverInfo": server_info})
+    from apps.admin_panel.auth import is_super_admin
+    from apps.admin_panel.models import SystemIncident
+    from apps.admin_panel.services.recovery import available_actions
+
+    admin_id = _get_admin_from_session(request)
+    return render(
+        request,
+        "admin/system/health.html",
+        {
+            "serverInfo": server_info,
+            "incidents": SystemIncident.objects.all()[:20],
+            "recovery_actions": available_actions() if is_super_admin(admin_id) else [],
+        },
+    )
+
+
+def recovery_action(request):
+    """POST-only JSON endpoint. Super Admin only; actions live in services/recovery.py."""
+    from apps.admin_panel.auth import is_super_admin
+    from apps.admin_panel.models import AdminActivityLog
+    from apps.admin_panel.services import recovery
+
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "POST required"}, status=405)
+
+    admin_id = _get_admin_from_session(request)
+    if not admin_id or not is_super_admin(admin_id):
+        return JsonResponse({"ok": False, "message": "Super Admin only"}, status=403)
+
+    name = (request.POST.get("action") or "").strip()
+    entry = recovery.ACTIONS.get(name)
+    if not entry:
+        return JsonResponse({"ok": False, "message": "Unknown action"}, status=400)
+    handler, needs_confirmation = entry
+    if needs_confirmation and request.POST.get("confirmed") != "yes":
+        return JsonResponse(
+            {"ok": False, "message": "Confirmation required"}, status=400
+        )
+
+    started = time.perf_counter()
+    try:
+        result = handler(request)
+    except Exception as e:  # pragma: no cover — caught so one bug does not 500 the page
+        logger.exception("[recovery] action %s crashed", name)
+        result = {"ok": False, "message": f"{type(e).__name__}: {e}"[:200]}
+    duration_ms = round((time.perf_counter() - started) * 1000, 1)
+
+    AdminActivityLog.log(
+        action=f"System recovery: {name}",
+        model_type="SystemHealth",
+        request=request,
+        admin_id=admin_id,
+        severity="WARNING" if needs_confirmation else "INFO",
+        details={
+            "action": name,
+            "ok": bool(result.get("ok")),
+            "duration_ms": duration_ms,
+            "message": result.get("message"),
+        },
+    )
+    result["duration_ms"] = duration_ms
+    return JsonResponse(result, status=200 if result.get("ok") else 400)
 
 
 def clear_cache(request):
@@ -73,9 +139,15 @@ def clear_cache(request):
                 if cloudflare.is_configured():
                     cf_ok, cf_msg = cloudflare.purge_cache()
                     if cf_ok:
-                        messages.success(request, "Application cache and Cloudflare CDN cache cleared successfully!")
+                        messages.success(
+                            request,
+                            "Application cache and Cloudflare CDN cache cleared successfully!",
+                        )
                     else:
-                        messages.warning(request, f"Application cache cleared, but Cloudflare: {cf_msg}")
+                        messages.warning(
+                            request,
+                            f"Application cache cleared, but Cloudflare: {cf_msg}",
+                        )
                 else:
                     messages.success(request, "Application cache cleared successfully!")
             elif cache_type == "cloudflare":
@@ -94,8 +166,12 @@ def clear_cache(request):
                 cache.clear()
                 messages.success(request, "Cache cleared successfully!")
         except Exception as e:
-            logger.exception("Admin request failed in system")  # detail stays server-side
-            messages.error(request, "Failed to clear cache. Details are in the server log.")
+            logger.exception(
+                "Admin request failed in system"
+            )  # detail stays server-side
+            messages.error(
+                request, "Failed to clear cache. Details are in the server log."
+            )
 
     # Always redirect back
     referer = request.META.get("HTTP_REFERER")
@@ -108,14 +184,19 @@ def purge_cloudflare(request):
     Accepts AJAX JSON requests or standard browser form POST.
     """
     admin_id = _get_admin_from_session(request)
-    is_ajax = (
-        request.headers.get("x-requested-with") == "XMLHttpRequest"
-        or "application/json" in request.headers.get("accept", "")
-    )
+    is_ajax = request.headers.get(
+        "x-requested-with"
+    ) == "XMLHttpRequest" or "application/json" in request.headers.get("accept", "")
 
     if not admin_id:
         if is_ajax:
-            return JsonResponse({"success": False, "message": "Unauthorized session. Please login again."}, status=401)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Unauthorized session. Please login again.",
+                },
+                status=401,
+            )
         return redirect("admin_login")
 
     if request.method == "POST":
@@ -128,18 +209,22 @@ def purge_cloudflare(request):
                 "or save your Zone ID & API Token in Settings to enable 1-click purge."
             )
             if is_ajax:
-                return JsonResponse({
-                    "success": False,
-                    "requires_setup": True,
-                    "dash_url": cloudflare.get_purge_url(),
-                    "message": msg,
-                })
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "requires_setup": True,
+                        "dash_url": cloudflare.get_purge_url(),
+                        "message": msg,
+                    }
+                )
             messages.warning(request, msg)
         else:
             success, message = cloudflare.purge_cache()
             if success:
                 try:
-                    AdminActivityLog.log("Purged Cloudflare CDN cache", "System", request=request)
+                    AdminActivityLog.log(
+                        "Purged Cloudflare CDN cache", "System", request=request
+                    )
                 except Exception:
                     pass
                 if is_ajax:
@@ -171,12 +256,20 @@ def save_cloudflare_settings(request):
         if zone_id and api_token:
             cloudflare.save_credentials(zone_id, api_token)
             try:
-                AdminActivityLog.log("Updated Cloudflare CDN API configuration", "System", request=request)
+                AdminActivityLog.log(
+                    "Updated Cloudflare CDN API configuration",
+                    "System",
+                    request=request,
+                )
             except Exception:
                 pass
-            messages.success(request, "Cloudflare credentials saved! 1-click purge is now active.")
+            messages.success(
+                request, "Cloudflare credentials saved! 1-click purge is now active."
+            )
         else:
-            messages.error(request, "Please provide both Cloudflare Zone ID and API Token.")
+            messages.error(
+                request, "Please provide both Cloudflare Zone ID and API Token."
+            )
 
     referer = request.META.get("HTTP_REFERER")
     return redirect(referer if referer else "admin_system_health")
@@ -390,7 +483,9 @@ def run_backup(request):
             call_command("backup_system")
             messages.success(request, "Database backup completed successfully.")
         except Exception as e:
-            logger.exception("Admin request failed in system")  # detail stays server-side
+            logger.exception(
+                "Admin request failed in system"
+            )  # detail stays server-side
             messages.error(request, "Backup failed. Details are in the server log.")
             logger.error(f"Backup failed: {e}")
 
@@ -428,7 +523,9 @@ def run_maintenance_jobs(request):
     )
 
     if is_staff and request.method != "POST":
-        return redirect("admin_system_health")  # state-changing: never on a GET (link/prefetch)
+        return redirect(
+            "admin_system_health"
+        )  # state-changing: never on a GET (link/prefetch)
 
     if not is_staff and not is_token_valid:
         if token:

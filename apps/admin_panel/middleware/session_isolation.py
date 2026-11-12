@@ -1,7 +1,6 @@
 """Keep admin and agent sessions from leaking into each other."""
 
 
-
 class IsolateAdminAgentSessionsMiddleware:
     """
     A Django-authenticated agent must not keep an admin session_token cookie.
@@ -13,7 +12,11 @@ class IsolateAdminAgentSessionsMiddleware:
 
     def __call__(self, request):
         # 0. Fast-path whitelist for health checks, probes, and static metadata
-        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+        if request.path.startswith("/health/") or request.path in [
+            "/healthz",
+            "/favicon.ico",
+            "/robots.txt",
+        ]:
             return self.get_response(request)
         path = request.path.rstrip("/")
         if path in ["/admin", "/admin/login", "/admin/login/post", "/admin/logout"]:

@@ -1709,6 +1709,12 @@
   "access": "super_only",
   "name": "admin_system_purge_cloudflare"
  },
+ "admin/system/recovery-action/": {
+  "access": [
+   "server_health"
+  ],
+  "name": "admin_system_recovery_action"
+ },
  "admin/system/run-jobs/": {
   "access": "super_only",
   "name": "admin_system_run_jobs"

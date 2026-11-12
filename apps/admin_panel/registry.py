@@ -9,6 +9,7 @@ Adding an admin module:
 Used by: AdminPermissionMiddleware (access + landing route) and the admin editor
 (permission checkboxes). The sidebar (templates/admin/base.html) still checks keys by hand.
 """
+
 from dataclasses import dataclass
 
 
@@ -21,49 +22,76 @@ class AdminModule:
 
 
 MODULES = (
-    AdminModule('dashboard', 'Dashboard View', 'admin_dashboard'),
-    AdminModule('agents', 'Active Agents', 'admin_agents'),
-    AdminModule('approvals', 'Pending Approvals', 'admin_agents_approvals', children=(
-        AdminModule('approvals_awaiting_verification', 'Awaiting Verification Only', 'admin_agents_approvals'),
-        AdminModule('approvals_missing_licenses', 'Missing IRDAI Licenses Only', 'admin_agents_approvals'),
-    )),
-    AdminModule('blacklisted_agents', 'Blacklisted Agents', 'admin_blacklisted_agents'),
-    AdminModule('pending_registrations', 'Registration Pending', 'admin_agents_pending_registrations'),
-    AdminModule('distributors', 'Distributors', 'admin_distributors'),
-    AdminModule('insurance', 'Insurance Companies', 'admin_insurance_index'),
-    AdminModule('insurance_approvals', 'Insurance Onboarding Approvals', 'admin_insurance_approvals_index'),
-    AdminModule('users', 'Clients / Users Registry', 'admin_users'),
-    AdminModule('events', 'Event Management', 'admin_events_index'),
-    AdminModule('subscriptions', 'Renewal Tracker', 'admin_subscriptions_index'),
-    AdminModule('leads', 'Agent Leads', 'admin_leads_index'),
-    AdminModule('contacts', 'Contact Inbox', 'admin_contacts_index'),
-    AdminModule('reviews', 'Review Moderation', 'admin_reviews_index'),
-    AdminModule('notifications', 'Push Notifications', 'agent_notify'),
-    AdminModule('content', 'Content Control', 'admin_content_about'),
-    AdminModule('revenue', 'Revenue Tracking', 'admin_revenue'),
-    AdminModule('invoices', 'Invoices', 'admin_invoices'),
-    AdminModule('promo_codes', 'Promo Codes', 'admin_promo_codes'),
-    AdminModule('free_trial', 'Free Trial Manager', 'admin_free_trial'),
-    AdminModule('referrals', 'Referral System', 'admin_referrals_index'),
-    AdminModule('finance_accounts', 'Finance Accounts', 'admin_finance_index'),
-    AdminModule('export', 'Export Manager', 'export_index'),
-    AdminModule('qr_generator', 'QR Generator', 'admin_qr_files_index'),
-    AdminModule('geocoding', 'Geocoding Manager', 'admin_geocoding_index'),
-    AdminModule('pincode', 'Pincode Database Manager', 'admin_pincode_index'),
-    AdminModule('analytics', 'Analytics, Activity Logs & Threat Intelligence', 'advanced_analytics'),
-    AdminModule('error_logs', 'Error Logs', 'admin_error_logs_index'),
-    AdminModule('feature_flags', 'Feature Flags Control Center', 'admin_feature_flags'),
-    AdminModule('site_settings', 'Site Settings, SEO & Security Rules', 'admin_settings_general'),
-    AdminModule('email_templates', 'Email & PDF Templates', 'admin_settings_templates'),
-    AdminModule('server_health', 'Server Health', 'admin_system_health'),
-    AdminModule('logs', 'Logs', 'admin_system_logs'),
-    AdminModule('api_logs', 'API Logs', 'admin_system_api_logs'),
-    AdminModule('backups', 'Backups', 'admin_system_backups'),
-    AdminModule('sessions', 'Session & Device Management', 'admin_sessions_index'),
-    AdminModule('app_version', 'App Version Control', 'admin_app_version'),
+    AdminModule("dashboard", "Dashboard View", "admin_dashboard"),
+    AdminModule("agents", "Active Agents", "admin_agents"),
+    AdminModule(
+        "approvals",
+        "Pending Approvals",
+        "admin_agents_approvals",
+        children=(
+            AdminModule(
+                "approvals_awaiting_verification",
+                "Awaiting Verification Only",
+                "admin_agents_approvals",
+            ),
+            AdminModule(
+                "approvals_missing_licenses",
+                "Missing IRDAI Licenses Only",
+                "admin_agents_approvals",
+            ),
+        ),
+    ),
+    AdminModule("blacklisted_agents", "Blacklisted Agents", "admin_blacklisted_agents"),
+    AdminModule(
+        "pending_registrations",
+        "Registration Pending",
+        "admin_agents_pending_registrations",
+    ),
+    AdminModule("distributors", "Distributors", "admin_distributors"),
+    AdminModule("insurance", "Insurance Companies", "admin_insurance_index"),
+    AdminModule(
+        "insurance_approvals",
+        "Insurance Onboarding Approvals",
+        "admin_insurance_approvals_index",
+    ),
+    AdminModule("users", "Clients / Users Registry", "admin_users"),
+    AdminModule("events", "Event Management", "admin_events_index"),
+    AdminModule("subscriptions", "Renewal Tracker", "admin_subscriptions_index"),
+    AdminModule("leads", "Agent Leads", "admin_leads_index"),
+    AdminModule("contacts", "Contact Inbox", "admin_contacts_index"),
+    AdminModule("reviews", "Review Moderation", "admin_reviews_index"),
+    AdminModule("notifications", "Push Notifications", "agent_notify"),
+    AdminModule("content", "Content Control", "admin_content_about"),
+    AdminModule("revenue", "Revenue Tracking", "admin_revenue"),
+    AdminModule("invoices", "Invoices", "admin_invoices"),
+    AdminModule("promo_codes", "Promo Codes", "admin_promo_codes"),
+    AdminModule("free_trial", "Free Trial Manager", "admin_free_trial"),
+    AdminModule("referrals", "Referral System", "admin_referrals_index"),
+    AdminModule("finance_accounts", "Finance Accounts", "admin_finance_index"),
+    AdminModule("export", "Export Manager", "export_index"),
+    AdminModule("qr_generator", "QR Generator", "admin_qr_files_index"),
+    AdminModule("geocoding", "Geocoding Manager", "admin_geocoding_index"),
+    AdminModule("pincode", "Pincode Database Manager", "admin_pincode_index"),
+    AdminModule(
+        "analytics",
+        "Analytics, Activity Logs & Threat Intelligence",
+        "advanced_analytics",
+    ),
+    AdminModule("error_logs", "Error Logs", "admin_error_logs_index"),
+    AdminModule("feature_flags", "Feature Flags Control Center", "admin_feature_flags"),
+    AdminModule(
+        "site_settings", "Site Settings, SEO & Security Rules", "admin_settings_general"
+    ),
+    AdminModule("email_templates", "Email & PDF Templates", "admin_settings_templates"),
+    AdminModule("server_health", "Server Health", "admin_system_health"),
+    AdminModule("logs", "Logs", "admin_system_logs"),
+    AdminModule("api_logs", "API Logs", "admin_system_api_logs"),
+    AdminModule("backups", "Backups", "admin_system_backups"),
+    AdminModule("sessions", "Session & Device Management", "admin_sessions_index"),
+    AdminModule("app_version", "App Version Control", "admin_app_version"),
     # Sidebar link to /api/docs only; no admin page, so no landing route (it used to point at the
     # dashboard, which needs 'dashboard' -> endless redirect for staff holding only this key).
-    AdminModule('fastapi_services', 'FastAPI Services', None),
+    AdminModule("fastapi_services", "FastAPI Services", None),
 )
 
 # url_name -> permission key, or a tuple of keys (any one is enough). Exact names only.
@@ -372,6 +400,7 @@ ROUTE_PERMISSIONS = {
     "admin_system_run_backup": "backups",
     "admin_system_download_backup": "backups",
     "admin_system_clear_cache": "server_health",
+    "admin_system_recovery_action": "server_health",
     # ── Session & Device Management (module #15) ──────────────────
     "admin_sessions_index": "sessions",
     "admin_sessions_revoke": "sessions",
@@ -430,7 +459,10 @@ def open_route_names(permissions, is_super):
 
     def has(perm):
         if perm == "approvals":
-            return bool(granted & {"approvals_awaiting_verification", "approvals_missing_licenses"})
+            return bool(
+                granted
+                & {"approvals_awaiting_verification", "approvals_missing_licenses"}
+            )
         return perm in granted
 
     names = set()

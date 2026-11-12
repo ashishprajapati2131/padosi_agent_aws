@@ -65,6 +65,112 @@
         </div>
     </div>
 
+    {% if recovery_actions %}
+    <div class="card mb-4 border-primary border-opacity-25">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="m-0"><i class="fa-solid fa-screwdriver-wrench me-2"></i> Recovery Centre (Super Admin)</h5>
+            <small style="color: var(--text-muted);">Every action is audited. Shell execution is not available.</small>
+        </div>
+        <div class="card-body">
+            <div class="row g-2" id="recovery-buttons">
+                {% for action in recovery_actions %}
+                <div class="col-md-4 col-sm-6">
+                    <button type="button"
+                        class="btn btn-outline-primary w-100 recovery-btn"
+                        data-action="{{ action.name }}"
+                        data-confirm="{{ action.needs_confirmation|yesno:'1,0' }}">
+                        {{ action.name|cut:"_"|title }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            <pre id="recovery-output" style="background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; margin-top: 16px; max-height: 320px; overflow: auto; font-size: 12px; display: none;"></pre>
+        </div>
+    </div>
+    <script>
+    (function () {
+        const output = document.getElementById('recovery-output');
+        const url = "{% url 'admin_system_recovery_action' %}";
+        const csrf = (document.cookie.match(/padosi_csrf_token=([^;]+)/) || [])[1] || '';
+        document.querySelectorAll('.recovery-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const action = btn.dataset.action;
+                const needsConfirm = btn.dataset.confirm === '1';
+                const params = new URLSearchParams({action});
+                if (needsConfirm) {
+                    let msg = `Run "${action}"? This changes production behaviour.`;
+                    if (action === 'resolve_incident') {
+                        const id = prompt('Incident ID to resolve (e.g. INC-...):');
+                        if (!id) return;
+                        params.set('incident_id', id.trim());
+                    } else if (!confirm(msg)) {
+                        return;
+                    }
+                    params.set('confirmed', 'yes');
+                }
+                output.style.display = 'block';
+                output.textContent = `Running ${action}...`;
+                btn.disabled = true;
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params.toString(),
+                    });
+                    const data = await res.json().catch(() => ({ok: false, message: 'Non-JSON response'}));
+                    output.textContent = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    output.textContent = 'Request failed: ' + e;
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+    })();
+    </script>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="m-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> System Incidents (latest 20)</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Incident</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">What failed</th>
+                            <th scope="col">First detected</th>
+                            <th scope="col">Duration</th>
+                            <th scope="col">Failed checks</th>
+                            <th scope="col">Alert emailed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in incidents %}
+                        <tr>
+                            <td style="font-family: monospace;">{{ incident.incident_id }}</td>
+                            <td><span class="badge {% if incident.resolved_at %}bg-success{% else %}bg-danger{% endif %}">{{ incident.status }}</span></td>
+                            <td>
+                                <strong>{{ incident.title }}</strong>
+                                {% for reason in incident.reasons %}<div style="font-size: 12px; color: var(--text-muted);">{{ reason }}</div>{% endfor %}
+                            </td>
+                            <td>{{ incident.first_detected_at|date:"d M Y H:i:s" }}</td>
+                            <td>{{ incident.duration }}</td>
+                            <td>{{ incident.failed_checks }}</td>
+                            <td>{{ incident.alert_sent|yesno:"Yes,No" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center" style="color: var(--text-muted);">No incidents recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <h5 class="m-0"><i class="fa-solid fa-broom me-2"></i> Cache Management</h5>

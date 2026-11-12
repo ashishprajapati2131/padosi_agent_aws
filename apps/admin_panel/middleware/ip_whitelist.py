@@ -1,4 +1,5 @@
 """Optional IP allow-list for /admin (ADMIN_WHITELIST_IPS)."""
+
 import logging
 from django.http import HttpResponseForbidden
 from django.conf import settings
@@ -13,7 +14,11 @@ class AdminIpWhitelistMiddleware:
 
     def __call__(self, request):
         # 0. Fast-path whitelist for health checks, probes, and static metadata
-        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+        if request.path.startswith("/health/") or request.path in [
+            "/healthz",
+            "/favicon.ico",
+            "/robots.txt",
+        ]:
             return self.get_response(request)
         path = request.path.rstrip("/")
         if (

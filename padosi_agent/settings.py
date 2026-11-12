@@ -195,7 +195,11 @@ WSGI_APPLICATION = "padosi_agent.wsgi.application"
 ASGI_APPLICATION = "padosi_agent.asgi.application"
 
 
-_db_options = {"charset": "utf8mb4"}
+_db_options = {
+    "charset": "utf8mb4",
+    # Fail fast when MySQL is unreachable instead of hanging a worker (and the health checks).
+    "connect_timeout": int(os.environ.get("DB_CONNECT_TIMEOUT", "10")),
+}
 _ssl_ca = os.environ.get("MYSQL_ATTR_SSL_CA", "").strip()
 if _ssl_ca:
     _db_options["ssl"] = {"ca": _ssl_ca}
@@ -420,10 +424,12 @@ FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
 # ─── Cloudflare CDN & Caching ───────────────────────────────────────────────
 CLOUDFLARE_ZONE_ID = os.environ.get("CLOUDFLARE_ZONE_ID", "").strip()
 CLOUDFLARE_API_TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
-CLOUDFLARE_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "64503f055289a96299db0c2bc0dc973c").strip()
+CLOUDFLARE_ACCOUNT_ID = os.environ.get(
+    "CLOUDFLARE_ACCOUNT_ID", "64503f055289a96299db0c2bc0dc973c"
+).strip()
 CLOUDFLARE_PURGE_URL = os.environ.get(
     "CLOUDFLARE_PURGE_URL",
-    f"https://dash.cloudflare.com/{CLOUDFLARE_ACCOUNT_ID}/padosiagent.com/caching/configuration"
+    f"https://dash.cloudflare.com/{CLOUDFLARE_ACCOUNT_ID}/padosiagent.com/caching/configuration",
 ).strip()
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
@@ -533,6 +539,10 @@ _whitelist_ips_env = os.environ.get("ADMIN_WHITELIST_IPS", "")
 ADMIN_WHITELIST_IPS = [ip.strip() for ip in _whitelist_ips_env.split(",") if ip.strip()]
 
 # Multi-Factor Authentication (MFA / 2FA) for Administrative Logins
-ADMIN_MFA_ENABLED = os.environ.get("ADMIN_MFA_ENABLED", "False").lower() in ("true", "1", "yes")
+ADMIN_MFA_ENABLED = os.environ.get("ADMIN_MFA_ENABLED", "False").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 # WAF auto-block alerts go here (was ignored: the env var was never read into settings).
 SECURITY_ALERT_EMAIL = os.environ.get("SECURITY_ALERT_EMAIL", "").strip()

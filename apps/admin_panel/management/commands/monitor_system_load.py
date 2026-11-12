@@ -1,6 +1,10 @@
 import time
 from django.core.management.base import BaseCommand
-from apps.admin_panel.services.system_monitor import SystemMonitorService, DEFAULT_CRITICAL_THRESHOLD, MANDATORY_CC_EMAIL
+from apps.admin_panel.services.system_monitor import (
+    SystemMonitorService,
+    DEFAULT_CRITICAL_THRESHOLD,
+    MANDATORY_CC_EMAIL,
+)
 
 
 class Command(BaseCommand):
@@ -52,6 +56,7 @@ class Command(BaseCommand):
         if preview:
             from pathlib import Path
             import webbrowser
+
             metrics = SystemMonitorService.get_metrics()
             html = SystemMonitorService._build_emergency_email_html(
                 metrics,
@@ -64,38 +69,70 @@ class Command(BaseCommand):
             )
             preview_file = Path("alert_email_preview.html").resolve()
             preview_file.write_text(html, encoding="utf-8")
-            self.stdout.write(self.style.SUCCESS(f"[PREVIEW] Alert email saved to: {preview_file}"))
+            self.stdout.write(
+                self.style.SUCCESS(f"[PREVIEW] Alert email saved to: {preview_file}")
+            )
             webbrowser.open(preview_file.as_uri())
             return
 
-        self.stdout.write(f"[Monitor] Starting system load inspection (Threshold: {threshold}%, CC: {cc_email})...")
+        self.stdout.write(
+            f"[Monitor] Starting system load inspection (Threshold: {threshold}%, CC: {cc_email})..."
+        )
 
         if not daemon:
-            res = SystemMonitorService.check_and_alert(threshold=threshold, force=force, cc_email=cc_email)
+            res = SystemMonitorService.check_and_alert(
+                threshold=threshold, force=force, cc_email=cc_email
+            )
             m = res["metrics"]
             self.stdout.write(
                 f"Metrics: CPU={m['cpu_percent']}%, RAM={m['ram_percent']}%, "
-                f"Disk={m['disk_percent']}%, DB Conns={m['db_connection_percent']}%"
+                f"Disk={m['disk_percent']}%, DB Conns={m['db_display']}"
             )
             if res["email_sent"]:
-                self.stdout.write(self.style.SUCCESS(f"[ALERT SENT] Emergency alert email sent successfully! (CC: {cc_email})"))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"[ALERT SENT] Emergency alert email sent successfully! (CC: {cc_email})"
+                    )
+                )
             elif res["cooldown_active"]:
-                self.stdout.write(self.style.WARNING("[COOLDOWN] Load is critical, but alert cooldown is active."))
+                self.stdout.write(
+                    self.style.WARNING(
+                        "[COOLDOWN] Load is critical, but alert cooldown is active."
+                    )
+                )
             elif res["is_critical"]:
-                self.stdout.write(self.style.ERROR("[ALERT FAILED] Critical load detected, but email dispatch failed."))
+                self.stdout.write(
+                    self.style.ERROR(
+                        "[ALERT FAILED] Critical load detected, but email dispatch failed."
+                    )
+                )
             else:
-                self.stdout.write(self.style.SUCCESS("[OK] System is healthy (all metrics below threshold)."))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "[OK] System is healthy (all metrics below threshold)."
+                    )
+                )
             return
 
-        self.stdout.write(self.style.SUCCESS(f"Running as background monitoring daemon (interval: {interval}s). Press Ctrl+C to stop."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Running as background monitoring daemon (interval: {interval}s). Press Ctrl+C to stop."
+            )
+        )
         while True:
             try:
-                res = SystemMonitorService.check_and_alert(threshold=threshold, force=False, cc_email=cc_email)
+                res = SystemMonitorService.check_and_alert(
+                    threshold=threshold, force=False, cc_email=cc_email
+                )
                 m = res["metrics"]
-                status = "ALERT SENT" if res["email_sent"] else ("COOLDOWN" if res["cooldown_active"] else "OK")
+                status = (
+                    "ALERT SENT"
+                    if res["email_sent"]
+                    else ("COOLDOWN" if res["cooldown_active"] else "OK")
+                )
                 self.stdout.write(
                     f"[{m['timestamp']}] CPU: {m['cpu_percent']}% | RAM: {m['ram_percent']}% | "
-                    f"Disk: {m['disk_percent']}% | DB: {m['db_connection_percent']}% -> {status}"
+                    f"Disk: {m['disk_percent']}% | DB: {m['db_display']} -> {status}"
                 )
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"Monitor error: {e}"))

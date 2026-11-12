@@ -1,4 +1,5 @@
 """WAF / threat monitor, client IP helpers and IP blocking."""
+
 import logging
 import re
 import threading
@@ -114,16 +115,18 @@ def is_ip_blocked(ip):
 
 # Compiled once (they were re-parsed from strings on every request).
 _WAF_PATTERN_SOURCES = {
-        "SQL Injection": r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
-        "Cross Site Scripting (XSS)": r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
-        "Path Traversal / LFI": r"((?<!\.)\.\.[/\\]|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
-        "RCE / Shell Injection": r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
-        "SSRF / Metadata API": r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
-        "XML External Entity (XXE)": r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
-        "Server-Side Template Injection": _TEMPLATE_TAG_RE.pattern,
-        "CRLF / Header Injection": r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
+    "SQL Injection": r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
+    "Cross Site Scripting (XSS)": r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
+    "Path Traversal / LFI": r"((?<!\.)\.\.[/\\]|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
+    "RCE / Shell Injection": r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
+    "SSRF / Metadata API": r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
+    "XML External Entity (XXE)": r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
+    "Server-Side Template Injection": _TEMPLATE_TAG_RE.pattern,
+    "CRLF / Header Injection": r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
 }
-_WAF_PATTERNS = {k: re.compile(v, re.IGNORECASE) for k, v in _WAF_PATTERN_SOURCES.items()}
+_WAF_PATTERNS = {
+    k: re.compile(v, re.IGNORECASE) for k, v in _WAF_PATTERN_SOURCES.items()
+}
 
 
 class ThreatMonitorMiddleware:
@@ -146,7 +149,11 @@ class ThreatMonitorMiddleware:
 
     def __call__(self, request):
         # 0. Fast-path whitelist for health checks, probes, and static metadata
-        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+        if request.path.startswith("/health/") or request.path in [
+            "/healthz",
+            "/favicon.ico",
+            "/robots.txt",
+        ]:
             return self.get_response(request)
         # 1. Get Client IP Address safely
         remote_addr = request.META.get("REMOTE_ADDR", "")
@@ -179,6 +186,7 @@ class ThreatMonitorMiddleware:
         is_admin = False
         try:
             from apps.admin_panel.auth import _get_admin_from_session
+
             if _get_admin_from_session(request):
                 is_admin = True
         except Exception:

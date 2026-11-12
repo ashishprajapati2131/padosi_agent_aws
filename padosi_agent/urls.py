@@ -14,59 +14,103 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import RedirectView, TemplateView
 from django.conf import settings
 
-from apps.agents.views.dashboard import serve_private_file, track_google_review_click_view
+from apps.agents.views.dashboard import (
+    serve_private_file,
+    track_google_review_click_view,
+)
 from apps.agents.views import pwa as pwa_views
 from apps.insurance.views.dashboard import InsuranceLoginView
 
 from django.contrib.sitemaps.views import sitemap
 from django.views.decorators.cache import cache_page
 from padosi_agent.sitemaps import sitemaps
-from padosi_agent.views import csrf_refresh_api, health_check_view
-from apps.event_referral.views.public_leaderboard import public_leaderboard as stall_public_leaderboard
+from padosi_agent.views import (
+    csrf_refresh_api,
+    health_check_view,
+    health_live_view,
+    health_database_view,
+    health_redis_view,
+)
+from apps.event_referral.views.public_leaderboard import (
+    public_leaderboard as stall_public_leaderboard,
+)
 
 urlpatterns = [
     # Legacy/stale URL — redirect to the actual agent login page
-    path('client-login/', RedirectView.as_view(url='/agent-login/', permanent=True), name='client_login_redirect'),
-    path('health/', health_check_view, name='health_check'),
-    path('healthz', health_check_view, name='healthz'),
-    path('api/v1/csrf-refresh/', csrf_refresh_api, name='csrf_refresh_api'),
+    path(
+        "client-login/",
+        RedirectView.as_view(url="/agent-login/", permanent=True),
+        name="client_login_redirect",
+    ),
+    path("health/", health_check_view, name="health_check"),
+    path("healthz", health_check_view, name="healthz"),
+    path("health/live", health_live_view, name="health_live"),
+    path("health/ready", health_check_view, name="health_ready"),
+    path("health/database", health_database_view, name="health_database"),
+    path("health/redis", health_redis_view, name="health_redis"),
+    path("api/v1/csrf-refresh/", csrf_refresh_api, name="csrf_refresh_api"),
     # ── PWA (mirrors Laravel pwa.manifest / pwa.sw / pwa.offline) ────────────
-    path('manifest.webmanifest', pwa_views.manifest,       name='pwa.manifest'),
-    path('sw.js',                pwa_views.service_worker, name='pwa.sw'),
-    path('offline.html',         pwa_views.offline,        name='pwa.offline'),
+    path("manifest.webmanifest", pwa_views.manifest, name="pwa.manifest"),
+    path("sw.js", pwa_views.service_worker, name="pwa.sw"),
+    path("offline.html", pwa_views.offline, name="pwa.offline"),
     # Heavy (counts + every listed agent): cache the rendered XML for an hour.
-    path('sitemap.xml', cache_page(60 * 60)(sitemap), {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
-    path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots_txt'),
-    path('insurance-login/', InsuranceLoginView.as_view(), name='insurance_login'),
+    path(
+        "sitemap.xml",
+        cache_page(60 * 60)(sitemap),
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.sitemap",
+    ),
+    path(
+        "robots.txt",
+        TemplateView.as_view(template_name="robots.txt", content_type="text/plain"),
+        name="robots_txt",
+    ),
+    path("insurance-login/", InsuranceLoginView.as_view(), name="insurance_login"),
     # Removed overriding logout view, now handled by apps.agents.urls
-    path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
-    path('django-admin/', admin.site.urls),
-    path('agent/championship/', include('apps.referral_championship.urls')),
-    path('admin/championship/', include('apps.referral_championship.urls_admin')),
+    path(
+        "media/app/private/<path:file_path>",
+        serve_private_file,
+        name="serve_private_file",
+    ),
+    path("django-admin/", admin.site.urls),
+    path("agent/championship/", include("apps.referral_championship.urls")),
+    path("admin/championship/", include("apps.referral_championship.urls_admin")),
     # Paldi 48-hour challenge. The old address and lowercase /48hr/ redirect
     # here (with any sub-path and query string), so printed QR codes and
     # shared links keep working.
-    path('48HR/', include('apps.event_referral.urls')),
-    re_path(r'^(?:event-registration|48hr)/(?P<rest>.*)$',
-            RedirectView.as_view(url='/48HR/%(rest)s', query_string=True, permanent=False)),
-    path('stall-leaderboard/', stall_public_leaderboard, name='stall_leaderboard'),
-    path('admin/event-referral/', include('apps.event_referral.urls_admin')),
-    path('admin/trial-activity/', RedirectView.as_view(url='/admin/event-referral/activity/', query_string=True, permanent=False)),
-    path('', include('apps.admin_panel.urls')),
-    path('', include('apps.agents.urls')),
-    path('events/', include('apps.agents.urls_events')),
-    path('api/google-review/track-click/', track_google_review_click_view, name='agent_google_review_track_click'),
-    path('chatbot-api/', include('apps.chatbot.urls')),
-    path('wa-bot/', include('apps.wa_agent_bot.urls')),
-    path('', include('apps.distributors.urls')),
-    path('insurance/', include('apps.insurance.urls')),
-    path('wholesale/', include('apps.wholesale.urls')),
-    path('', include('apps.home.urls')),
+    path("48HR/", include("apps.event_referral.urls")),
+    re_path(
+        r"^(?:event-registration|48hr)/(?P<rest>.*)$",
+        RedirectView.as_view(url="/48HR/%(rest)s", query_string=True, permanent=False),
+    ),
+    path("stall-leaderboard/", stall_public_leaderboard, name="stall_leaderboard"),
+    path("admin/event-referral/", include("apps.event_referral.urls_admin")),
+    path(
+        "admin/trial-activity/",
+        RedirectView.as_view(
+            url="/admin/event-referral/activity/", query_string=True, permanent=False
+        ),
+    ),
+    path("", include("apps.admin_panel.urls")),
+    path("", include("apps.agents.urls")),
+    path("events/", include("apps.agents.urls_events")),
+    path(
+        "api/google-review/track-click/",
+        track_google_review_click_view,
+        name="agent_google_review_track_click",
+    ),
+    path("chatbot-api/", include("apps.chatbot.urls")),
+    path("wa-bot/", include("apps.wa_agent_bot.urls")),
+    path("", include("apps.distributors.urls")),
+    path("insurance/", include("apps.insurance.urls")),
+    path("wholesale/", include("apps.wholesale.urls")),
+    path("", include("apps.home.urls")),
 ]
 
 import posixpath
@@ -83,31 +127,33 @@ def serve_public_media(request, path, document_root=None):
     serve() normalises the path itself, so "/media/app//private/x.pdf" missed
     the authenticated private route above yet was served from app/private.
     """
-    normalized = posixpath.normpath(path.replace('\\', '/')).lstrip('/')
+    normalized = posixpath.normpath(path.replace("\\", "/")).lstrip("/")
     if (
-        normalized == 'app/private'
-        or normalized.startswith('app/private/')
-        or normalized == 'wholesale/documents'
-        or normalized.startswith('wholesale/documents/')
-        or normalized == 'wholesale/rfq_attachments'
-        or normalized.startswith('wholesale/rfq_attachments/')
-        or normalized == 'wholesale/imports'
-        or normalized.startswith('wholesale/imports/')
+        normalized == "app/private"
+        or normalized.startswith("app/private/")
+        or normalized == "wholesale/documents"
+        or normalized.startswith("wholesale/documents/")
+        or normalized == "wholesale/rfq_attachments"
+        or normalized.startswith("wholesale/rfq_attachments/")
+        or normalized == "wholesale/imports"
+        or normalized.startswith("wholesale/imports/")
     ):
         raise Http404("File not found")
     response = serve(request, path, document_root=document_root)
     # User uploads must never execute as same-origin documents (HTML/SVG
     # uploaded as a "photo" was stored XSS). Embedding via <img> is unaffected;
     # PDFs are exempt so license documents still open in the browser viewer.
-    response['X-Content-Type-Options'] = 'nosniff'
-    if not normalized.lower().endswith('.pdf'):
-        response['Content-Security-Policy'] = UPLOAD_SANDBOX_CSP
+    response["X-Content-Type-Options"] = "nosniff"
+    if not normalized.lower().endswith(".pdf"):
+        response["Content-Security-Policy"] = UPLOAD_SANDBOX_CSP
     return response
 
 
 # Serve media files in development & production fallback
 urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', serve_public_media, {'document_root': settings.MEDIA_ROOT}),
+    re_path(
+        r"^media/(?P<path>.*)$",
+        serve_public_media,
+        {"document_root": settings.MEDIA_ROOT},
+    ),
 ]
-
-
