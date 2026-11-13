@@ -222,6 +222,10 @@ class ChampionshipReferral(models.Model):
 
     class Meta:
         db_table = 'championship_referrals'
+        # A referred agent is credited once per campaign (audit CH4). NULL rows (no signup yet) are allowed.
+        constraints = [
+            models.UniqueConstraint(fields=['campaign', 'referred_agent'], name='champ_ref_campaign_agent_uniq')
+        ]
         ordering = ['-created_at']
 
     def __str__(self):

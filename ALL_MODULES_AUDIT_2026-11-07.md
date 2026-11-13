@@ -49,6 +49,16 @@ These are account takeovers, money leaks, or things already broken in production
 7. **API1 ✅:** the FastAPI account-deletion status endpoint has no authentication, accepts guessable reference IDs, and returns the email, mobile and name.
 8. **INS2 ✅:** the insurance *sales* role can record payments and send agents for activation.
 
+## Unique rules after the production check (2026-11-14)
+
+`python manage.py audit_duplicates` on production: reviews 4 duplicate groups, championship referrals 0, invoices 0.
+
+| Item | Status | Change |
+|---|---|---|
+| CH4 | ✅ | Unique (campaign, referred_agent) on `championship_referrals` (`referral_championship/0003`). Rows with no referred agent yet may repeat. Qualification re-reads the row under the referrer lock before creating one. |
+| PAY13 | ✅ | Unique `razorpay_payment_id` on `invoices` (`agents/0045`). The migration first turns `''` into NULL; invoices are written with NULL when there is no payment id. The insert runs in a savepoint and returns the existing invoice if a parallel run already created it. |
+| AG17 | ⏸ Owner decision: keep | 11 duplicate reviews exist (agent #6: 9 from one mobile; #79: 2+2; #221: 2). The owner chose to keep them, so no unique rule. Since AG2 they no longer unlock features, and the review rate limit is atomic. |
+
 ## Phase 7 status (2026-11-14) — FastAPI (API5–API20)
 
 Tests: `fastapi_app/test_phase_api_security.py`, `test_phase_api_profile.py`, `test_phase_api_dashboard.py`.

@@ -2323,8 +2323,7 @@ Overview
                                         / Go Back</button>
                                     <button type="button" class="btn btn-primary rounded-pill px-5 py-2 shadow-sm"
                                         id="btn-modal-save"
-                                        style="background: #0d9488; border: none; font-weight: 700;">Save &
-                                        Continue</button>
+                                        style="background: #0d9488; border: none; font-weight: 700;">Save</button>
                                 </div>
                             </div>
                         </div>
@@ -3086,14 +3085,8 @@ Overview
                     // Mark current step as completed in header
                     $(`.step-item[data-step="${currentStep}"]`).addClass('completed');
 
-                    if (currentStep === 2) {
-                        if (leadPreferencesLocked()) {
-                            currentStep = 3;
-                            showStep(currentStep);
-                        } else {
-                            $('#leadPreferencesModal').modal('show');
-                        }
-                    } else if (currentStep === 4) {
+                    // Lead Preferences opens only from its "Configure" button, not from Next.
+                    if (currentStep === 4) {
                         // Show Declarations popup modal
                         $('#declarationsModal').modal('show');
                     } else if (currentStep < totalSteps) {
@@ -3117,20 +3110,27 @@ Overview
         $('#leadPreferencesModal').modal('hide');
     });
 
+    // Summary badges on the page reflect the popup toggles once they are saved.
+    function refreshLeadSummaryBadges() {
+        [['new_business', '#lead-summary-new-business'],
+         ['portfolio_analysis', '#lead-summary-portfolio'],
+         ['claims_support', '#lead-summary-claims']].forEach(function (pair) {
+            const on = $('#leadPreferencesModal input[name="lead_types[]"][value="' + pair[0] + '"]').is(':checked');
+            $(pair[1]).find('.badge').toggleClass('badge-success', on).toggleClass('badge-secondary', !on);
+        });
+    }
+
+    // Save keeps the agent on the current step; Next moves on from there.
     $('#btn-modal-save').on('click', function () {
         if (leadPreferencesLocked()) {
             $('#leadPreferencesModal').modal('hide');
-            currentStep = 3;
-            showStep(currentStep);
             return;
         }
         if (validateStep(6)) {
             saveStepData(6, $('#btn-modal-save')).then(function (success) {
                 if (success) {
+                    refreshLeadSummaryBadges();
                     $('#leadPreferencesModal').modal('hide');
-                    // Move to Step 3
-                    currentStep = 3;
-                    showStep(currentStep);
                 }
             });
         }

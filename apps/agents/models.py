@@ -1924,6 +1924,12 @@ class Invoice(models.Model):
     class Meta:
         db_table = "invoices"
         managed = True
+        # One invoice per Razorpay payment (audit PAY13). NULL = no payment id; MySQL allows many.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["razorpay_payment_id"], name="invoices_razorpay_payment_id_uniq"
+            )
+        ]
 
     def __str__(self):
         return f"Invoice({self.invoice_number}, total={self.total_amount})"

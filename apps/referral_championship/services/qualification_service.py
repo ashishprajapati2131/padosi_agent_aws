@@ -130,6 +130,11 @@ def process_championship_qualification(new_agent, subscription):
             pk=referrer_participant.pk
         )
         if not referral_rec:
+            # Look again under the lock: a parallel callback/webhook may have created it (audit CH4).
+            referral_rec = ChampionshipReferral.objects.filter(
+                referred_agent=new_agent, campaign=campaign
+            ).first()
+        if not referral_rec:
             referral_rec = ChampionshipReferral.objects.create(
                 campaign=campaign,
                 referrer=referrer_participant,

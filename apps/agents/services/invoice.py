@@ -216,33 +216,43 @@ class InvoiceService:
                 agent_state = 'Gujarat'
 
             # 5. Create Invoice Database record with retry on sequence collision
-            from django.db import IntegrityError
+            from django.db import IntegrityError, transaction
             invoice = None
             for attempt in range(5):
                 invoice_number = self.generate_invoice_number()
                 try:
-                    invoice = Invoice.objects.create(
-                        invoice_number=invoice_number,
-                        agent=agent,
-                        agent_name=agent.fullname,
-                        agent_email=agent.email,
-                        agent_mobile=agent.mobile,
-                        agent_address=agent_address,
-                        agent_state=agent_state,
-                        plan_name=subscription.selected_plan,
-                        plan_type=agent.plan_type or 'professional',
-                        base_amount=base_amount,
-                        gst_amount=gst_amount,
-                        total_amount=total_amount,
-                        discount_percent=discount_percent,
-                        discount_folder=folder,
-                        promo_code=subscription.promo_code,
-                        razorpay_payment_id=subscription.razorpay_payment_id,
-                        razorpay_order_id=subscription.razorpay_order_id,
-                        payment_status='paid',
-                    )
+                    # Savepoint: a unique clash must not break an outer transaction (we query after it).
+                    with transaction.atomic():
+                        invoice = Invoice.objects.create(
+                            invoice_number=invoice_number,
+                            agent=agent,
+                            agent_name=agent.fullname,
+                            agent_email=agent.email,
+                            agent_mobile=agent.mobile,
+                            agent_address=agent_address,
+                            agent_state=agent_state,
+                            plan_name=subscription.selected_plan,
+                            plan_type=agent.plan_type or 'professional',
+                            base_amount=base_amount,
+                            gst_amount=gst_amount,
+                            total_amount=total_amount,
+                            discount_percent=discount_percent,
+                            discount_folder=folder,
+                            promo_code=subscription.promo_code,
+                            # '' would clash under the unique rule; no payment id is NULL.
+                            razorpay_payment_id=subscription.razorpay_payment_id or None,
+                            razorpay_order_id=subscription.razorpay_order_id,
+                            payment_status='paid',
+                        )
                     break
                 except IntegrityError as ie:
+                    # A parallel run already invoiced this payment (unique rule, audit PAY13).
+                    if subscription.razorpay_payment_id and 'razorpay_payment_id' in str(ie):
+                        existing = Invoice.objects.filter(
+                            razorpay_payment_id=subscription.razorpay_payment_id
+                        ).first()
+                        if existing:
+                            return existing
                     if 'invoice_number' in str(ie) and attempt < 4:
                         logger.warning(
                             f"[InvoiceService] Invoice number collision on {invoice_number}, "
