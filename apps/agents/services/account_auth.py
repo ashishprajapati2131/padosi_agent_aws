@@ -54,6 +54,40 @@ def public_agent_is_hidden(request, agent):
     return not request_is_admin_preview(request)
 
 
+def render_public_profile_unavailable(request, agent=None):
+    """Friendly 404 page instead of the generic Django not-found template."""
+    from django.shortcuts import render
+
+    profile = None
+    if agent is not None:
+        try:
+            profile = agent.get_primary_profile()
+        except Exception:
+            profile = None
+    context = {}
+    if agent is not None:
+        context["agent"] = agent
+    if profile is not None:
+        context["profile"] = profile
+    if agent is not None and not agent_account_is_active(agent):
+        context["account_restricted"] = True
+    return render(request, "agents/profile_unavailable.html", context, status=404)
+
+
+def public_binary_unavailable_or_404(request, agent):
+    """PNG/vCard URLs opened in a browser get the HTML unavailable page."""
+    from django.http import Http404
+
+    if agent is None:
+        raise Http404("Agent not found")
+    accept = (request.META.get("HTTP_ACCEPT") or "").lower().strip()
+    first = accept.split(",")[0].strip() if accept else ""
+    # Embedded <img> requests list image/* first and usually omit text/html.
+    if first.startswith("image/") and "text/html" not in accept:
+        raise Http404("Agent not found")
+    return render_public_profile_unavailable(request, agent)
+
+
 def end_agent_logins(agent):
     """Delete open browser sessions and API tokens for this agent.
 

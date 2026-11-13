@@ -268,10 +268,12 @@ def public_qr_image(request, slug, qr_type):
     if qr_type not in QR_TYPES or not is_qr_enabled():
         raise Http404("QR service is not available")
     agent = _resolve_agent_by_slug(slug)
-    if not agent or (
-        _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)
-    ):
+    from apps.agents.services.account_auth import public_binary_unavailable_or_404
+
+    if not agent:
         raise Http404("Agent not found")
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+        return public_binary_unavailable_or_404(request, agent)
     plan = _resolve_agent_plan(agent.plan_type, agent=agent)
     if not qr_access_for_plan(plan):
         raise Http404("QR service is not available")
@@ -294,16 +296,10 @@ def public_agent_card(request, slug):
 
     # Owner viewing their own card or admin previewing
     is_privileged = _card_viewer_is_privileged(request, agent)
+    from apps.agents.services.account_auth import render_public_profile_unavailable
+
     if not is_privileged and _hidden_from_public(agent):
-        return render(
-            request,
-            "agents/profile_unavailable.html",
-            {
-                "agent": agent,
-                "profile": agent.get_primary_profile(),
-            },
-            status=404,
-        )
+        return render_public_profile_unavailable(request, agent)
     # Hidden (unpaid/blocked) agents already returned 404 above, so this only fills in a missing
     # profile for a paid agent or the owner/admin, as before.
     _ensure_profile(agent)
@@ -676,11 +672,13 @@ def agent_card_vcf_download(request, slug):
     ):
         raise Http404("Digital Card is disabled")
 
+    from apps.agents.services.account_auth import public_binary_unavailable_or_404
+
     agent = _resolve_agent_by_slug(slug)
-    if not agent or (
-        _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)
-    ):
+    if not agent:
         raise Http404("Agent not found")
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+        return public_binary_unavailable_or_404(request, agent)
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
@@ -1041,12 +1039,13 @@ def agent_card_pure_qr_image(request, slug):
     ):
         raise Http404("Digital Card is disabled")
 
+    from apps.agents.services.account_auth import public_binary_unavailable_or_404
+
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
-    from apps.agents.services.account_auth import public_agent_is_hidden
-    if public_agent_is_hidden(request, agent):
-        raise Http404("Agent not found")
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+        return public_binary_unavailable_or_404(request, agent)
 
     profile = agent.get_primary_profile()
     agent_slug = (
@@ -1348,9 +1347,12 @@ def public_review_page(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
-    from apps.agents.services.account_auth import public_agent_is_hidden
+    from apps.agents.services.account_auth import (
+        public_agent_is_hidden,
+        render_public_profile_unavailable,
+    )
     if public_agent_is_hidden(request, agent):
-        return render(request, "agents/profile_unavailable.html", status=404)
+        return render_public_profile_unavailable(request, agent)
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
@@ -1359,15 +1361,7 @@ def public_review_page(request, slug):
         or getattr(profile, "is_card_visible", False)
     )
     if agent.status in ("inactive", "suspended", "deleted") or not is_visible:
-        return render(
-            request,
-            "agents/profile_unavailable.html",
-            {
-                "agent": agent,
-                "profile": profile,
-            },
-            status=404,
-        )
+        return render_public_profile_unavailable(request, agent)
 
     context = advisor_review_context(request, agent)
     context.update(
@@ -1388,9 +1382,12 @@ def public_review_card(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
-    from apps.agents.services.account_auth import public_agent_is_hidden
+    from apps.agents.services.account_auth import (
+        public_agent_is_hidden,
+        render_public_profile_unavailable,
+    )
     if public_agent_is_hidden(request, agent):
-        return render(request, "agents/profile_unavailable.html", status=404)
+        return render_public_profile_unavailable(request, agent)
     owner = _logged_in_agent(request)
     is_owner = bool(owner and owner.id == agent.id)
     if is_owner:
@@ -1405,15 +1402,7 @@ def public_review_card(request, slug):
     if not is_owner and (
         agent.status in ("inactive", "suspended", "deleted") or not is_visible
     ):
-        return render(
-            request,
-            "agents/profile_unavailable.html",
-            {
-                "agent": agent,
-                "profile": profile,
-            },
-            status=404,
-        )
+        return render_public_profile_unavailable(request, agent)
     context = advisor_review_context(request, agent)
     context["is_owner"] = is_owner
     return render(request, "agents/review_card.html", context)

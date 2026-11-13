@@ -15,7 +15,11 @@
         </div>
         <h2 class="font-weight-bold text-dark mb-3" style="font-size: 26px; font-family: 'Outfit', sans-serif;">Profile Not Available</h2>
         <p class="text-muted mb-4" style="font-size: 15px; line-height: 1.6;">
+            {% if account_restricted %}
+            This advisor profile is not available right now. For more information, contact the PadosiAgent team.
+            {% else %}
             The agent profile you are trying to reach is currently inactive, suspended, private, or has been removed from our platform.
+            {% endif %}
         </p>
         <div class="d-flex flex-column gap-2">
             <a href="{% url 'home:find_agents' %}" class="btn btn-primary rounded-pill py-3 px-4 font-weight-bold shadow-sm" style="background: linear-gradient(135deg, #18529d, #2d5a7a); border: none; font-size: 15px; transition: all 0.3s;">

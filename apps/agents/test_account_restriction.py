@@ -165,22 +165,27 @@ class RestrictedPublicSurfaceTests(TestCase):
 
         card = self.client.get(card_url)
         self.assertEqual(card.status_code, 404)
+        self.assertContains(card, 'Profile Not Available', status_code=404)
         self.assertNotContains(card, 'Restricted Zebra Agent', status_code=404)
 
         profile = self.client.get(reverse('agents:agent_public_profile', kwargs={'slug': 'restricted-zebra'}))
         self.assertEqual(profile.status_code, 404)
+        self.assertContains(profile, 'Profile Not Available', status_code=404)
         self.assertNotContains(profile, 'Restricted Zebra Agent', status_code=404)
 
         review = self.client.get(reverse('agents:agent_review_card', kwargs={'slug': 'restricted-zebra'}))
         self.assertEqual(review.status_code, 404)
+        self.assertContains(review, 'Profile Not Available', status_code=404)
         self.assertNotContains(review, 'Restricted Zebra Agent', status_code=404)
 
         review_page = self.client.get(reverse('agents:agent_public_review', kwargs={'slug': 'restricted-zebra'}))
         self.assertEqual(review_page.status_code, 404)
+        self.assertContains(review_page, 'Profile Not Available', status_code=404)
         self.assertNotContains(review_page, 'Restricted Zebra Agent', status_code=404)
 
         vcard = self.client.get(reverse('agents:agent_card_vcf', kwargs={'slug': 'restricted-zebra'}))
         self.assertEqual(vcard.status_code, 404)
+        self.assertContains(vcard, 'Profile Not Available', status_code=404)
         self.assertNotIn(b'Restricted Zebra Agent', vcard.content)
 
         qr = self.client.get(reverse(

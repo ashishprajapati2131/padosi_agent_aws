@@ -1319,12 +1319,16 @@ def agent_public_profile(request, slug, state_code=None):
     # Suspended / deleted / unpaid agents have no public page, as on the card views (audit AG3).
     from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
-    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
-        raise Http404("Agent not found")
+    from apps.agents.services.account_auth import (
+        public_agent_is_hidden,
+        render_public_profile_unavailable,
+    )
 
-    from apps.agents.services.account_auth import public_agent_is_hidden
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+        return render_public_profile_unavailable(request, agent)
+
     if public_agent_is_hidden(request, agent):
-        return render(request, "agents/profile_unavailable.html", status=404)
+        return render_public_profile_unavailable(request, agent)
 
     is_owner = False
     if request.user.is_authenticated:
@@ -1481,7 +1485,7 @@ def store_review(request, slug, state_code=None):
     from apps.agents.services.account_auth import public_agent_is_hidden
     if public_agent_is_hidden(request, agent):
         return JsonResponse(
-            {"status": "error", "message": "Agent not found"}, status=404
+            {"status": "error", "message": "Profile not available"}, status=404
         )
 
     # Prevent agent from reviewing themselves
@@ -4099,14 +4103,12 @@ def agent_og_image(request, agent_id=None, slug=None):
 
     from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
-    if not agent or (  # audit AG3
-        _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)
-    ):
-        raise Http404("Agent not found")
+    from apps.agents.services.account_auth import public_binary_unavailable_or_404
 
-    from apps.agents.services.account_auth import public_agent_is_hidden
-    if public_agent_is_hidden(request, agent):
+    if not agent:
         raise Http404("Agent not found")
+    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):  # audit AG3
+        return public_binary_unavailable_or_404(request, agent)
 
     cache_key = og_image_cache_key(agent.id)
     # Cache bypass forces a full PIL render; only the owning agent or an admin
@@ -4158,9 +4160,12 @@ def agent_public_share_profile(request, slug):
     if not agent:
         raise Http404("Agent not found")
 
-    from apps.agents.services.account_auth import public_agent_is_hidden
+    from apps.agents.services.account_auth import (
+        public_agent_is_hidden,
+        render_public_profile_unavailable,
+    )
     if public_agent_is_hidden(request, agent):
-        return render(request, "agents/profile_unavailable.html", status=404)
+        return render_public_profile_unavailable(request, agent)
 
     profile = agent.get_primary_profile()
 
