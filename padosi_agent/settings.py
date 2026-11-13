@@ -137,6 +137,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "padosi_agent.middleware.OgImageCdnCacheMiddleware",
     "padosi_agent.middleware.StaleCookieSanitizerMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

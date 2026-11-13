@@ -6,6 +6,33 @@ import re
 logger = logging.getLogger(__name__)
 
 
+class OgImageCdnCacheMiddleware:
+    """Agent share JPEGs are cached at the CDN; they must not vary on session cookies."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.method not in ('GET', 'HEAD') or '/og-image/' not in request.path:
+            return response
+        content_type = (response.get('Content-Type') or '').split(';')[0].strip().lower()
+        if response.status_code != 200 or content_type != 'image/jpeg':
+            return response
+        vary = response.get('Vary')
+        if not vary:
+            return response
+        kept = [
+            part.strip() for part in vary.split(',')
+            if part.strip() and part.strip().lower() != 'cookie'
+        ]
+        if kept:
+            response['Vary'] = ', '.join(kept)
+        else:
+            del response['Vary']
+        return response
+
+
 class StaleCookieSanitizerMiddleware:
     """
     Sanitizes malformed or corrupted HTTP_COOKIE header strings before Django parses them.

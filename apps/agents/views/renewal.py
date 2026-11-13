@@ -3,6 +3,7 @@ another year on their current plan without going back through registration."""
 import logging
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
@@ -110,7 +111,8 @@ def renew_plan(request):
         status='inactive',
     )
 
-    mock_checkout = should_mock_razorpay(request)
+    # Automated tests must not call the live Razorpay API (CI often has test keys only).
+    mock_checkout = should_mock_razorpay(request) or getattr(settings, 'TESTING', False)
     if mock_checkout:
         from apps.agents.services.razorpay_checkout import MOCK_ORDER_PREFIX
         import uuid
