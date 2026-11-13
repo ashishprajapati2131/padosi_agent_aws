@@ -23,8 +23,10 @@ from django.http import HttpResponse, JsonResponse
 from apps.agents.models import Agent
 from apps.agents.services.brevo import email_service
 from apps.agents.services.account_auth import (
+    ACCOUNT_RESTRICTED_MESSAGE,
     DJANGO_AUTH_BACKEND,
     INCOMPLETE_STATUSES,
+    agent_account_is_active,
     agent_can_access_dashboard,
     create_or_link_django_user,
     find_agent,
@@ -145,7 +147,19 @@ def _clear_admin_session_on(response, request):
     return clear_admin_session(request, response)
 
 
+def _refuse_restricted_account(request):
+    portal_error(request, ACCOUNT_RESTRICTED_MESSAGE, PORTAL_AGENT)
+    return render(request, 'agents/login.html', {
+        'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True,
+    })
+
+
 def _finish_agent_session_login(request, django_user, ip, agent=None):
+    if agent is None:
+        agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
+    if agent and not agent_account_is_active(agent):
+        return _refuse_restricted_account(request)
+
     clear_login_throttle(ip)
     cache.delete(_email_throttle_key(getattr(django_user, 'email', '')))
     if agent is not None and getattr(agent, 'email', None):
@@ -159,9 +173,6 @@ def _finish_agent_session_login(request, django_user, ip, agent=None):
         request.session.pop(key, None)
     login(request, django_user, backend=DJANGO_AUTH_BACKEND)
     logger.info("Agent/Admin user %s logged in successfully.", getattr(django_user, 'email', ''))
-
-    if agent is None:
-        agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
 
     if agent:
         try:
@@ -227,6 +238,9 @@ def agent_login(request):
                 agent = None
 
             if agent:
+                if not agent_account_is_active(agent):
+                    logout(request)
+                    return _refuse_restricted_account(request)
                 try:
                     from apps.agents.views.registration import verify_and_activate_pending_payment
                     verify_and_activate_pending_payment(agent)
@@ -299,6 +313,8 @@ def agent_login(request):
             return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         try:
+            if agent and not agent_account_is_active(agent):
+                return _refuse_restricted_account(request)
             if agent:
                 django_user = sync_verified_password(
                     canonical_email, fullname, password, role='agent', agent=agent
@@ -407,6 +423,9 @@ def app_upgrade_handoff(request):
         })
 
     agent = row.agent
+    if not agent_account_is_active(agent):
+        portal_error(request, ACCOUNT_RESTRICTED_MESSAGE, PORTAL_AGENT)
+        return redirect('agents:agent_login')
     if agent.status in BLOCKED_DASHBOARD_STATUSES:
         mark_plan_upgrade_handoff_used(row)
         portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
@@ -707,7 +726,12 @@ def handleGoogleCallback(request):
             return HttpResponse("Failed to retrieve Google user information.", status=400)
             
         google_user = userinfo_response.json()
-        
+
+        google_email = google_user.get('email') or ''
+        existing_agent = find_agent(google_email) if google_email else None
+        if existing_agent and not agent_account_is_active(existing_agent):
+            return HttpResponse(ACCOUNT_RESTRICTED_MESSAGE, status=403)
+
         # Save credentials in session
         request.session['google_user'] = {
             'email': google_user.get('email'),

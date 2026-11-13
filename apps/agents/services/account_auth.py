@@ -20,6 +20,108 @@ logger = logging.getLogger(__name__)
 INCOMPLETE_STATUSES = ('incomplete', 'pending_payment', 'pending_accounts_payment')
 BLOCKED_DASHBOARD_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
 DJANGO_AUTH_BACKEND = 'django.contrib.auth.backends.ModelBackend'
+ACCOUNT_RESTRICTED_MESSAGE = (
+    "You are restricted by admin. For more info, contact the PadosiAgent team."
+)
+
+
+def agent_account_is_active(agent):
+    """Account switch, independent of agents.status.
+
+    A missing attribute or NULL stays active so older rows are not locked out.
+    """
+    if not agent:
+        return True
+    value = getattr(agent, "is_account_active", True)
+    if value is None:
+        return True
+    return bool(value)
+
+
+def request_is_admin_preview(request):
+    """Logged-in admin may still open a restricted agent's public pages."""
+    try:
+        from apps.admin_panel.auth import _get_admin_from_session
+        return bool(_get_admin_from_session(request))
+    except Exception:
+        return False
+
+
+def public_agent_is_hidden(request, agent):
+    """Visitors, including the agent, must not see a restricted account."""
+    if agent_account_is_active(agent):
+        return False
+    return not request_is_admin_preview(request)
+
+
+def end_agent_logins(agent):
+    """Delete open browser sessions and API tokens for this agent.
+
+    Restricting the flag alone leaves an already-open dashboard logged in
+    until something else notices. This closes those logins immediately.
+    """
+    from importlib import import_module
+
+    from django.conf import settings
+    from django.contrib.auth.models import User as DjangoUser
+    from django.contrib.sessions.models import Session
+    from django.db import connection
+    from django.utils import timezone
+
+    if not agent:
+        return 0
+
+    user_ids = set()
+    linked_id = getattr(agent, "user_id", None)
+    if linked_id:
+        user_ids.add(int(linked_id))
+    email = (getattr(agent, "email", None) or "").strip()
+    if email:
+        user_ids.update(
+            DjangoUser.objects.filter(email__iexact=email).values_list("id", flat=True)
+        )
+    id_strings = {str(i) for i in user_ids if i}
+
+    removed = 0
+    if id_strings:
+        session_store = import_module(settings.SESSION_ENGINE).SessionStore
+        for session in Session.objects.filter(expire_date__gte=timezone.now()):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+            if str(data.get("_auth_user_id") or "") not in id_strings:
+                continue
+            session_store(session_key=session.session_key).delete()
+            removed += 1
+
+    token_ids = set(user_ids)
+    if email:
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id FROM users WHERE LOWER(email) = LOWER(%s)",
+                    [email],
+                )
+                for row in cursor.fetchall():
+                    if row and row[0]:
+                        token_ids.add(int(row[0]))
+        except Exception:
+            logger.warning("Could not match users.id while ending agent logins for %s", email)
+
+    if token_ids:
+        try:
+            id_list = list(token_ids)
+            placeholders = ", ".join(["%s"] * len(id_list))
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE user_tokens SET is_revoked = 1 "
+                    f"WHERE user_id IN ({placeholders}) AND is_revoked = 0",
+                    id_list,
+                )
+        except Exception:
+            logger.warning("Could not revoke API tokens while ending agent logins for %s", email)
+    return removed
 
 
 def is_real_razorpay_id(value, prefix):

@@ -1,13 +1,17 @@
 """Agent portal access control — payment required before dashboard routes."""
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 
 from apps.agents.services.account_auth import (
+    ACCOUNT_RESTRICTED_MESSAGE,
+    agent_account_is_active,
     agent_can_access_dashboard,
     resolve_agent_for_user,
 )
+from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
 
 # Agent-only routes that require a captured payment (subscription or paid invoice).
 _PAID_AGENT_PATH_PREFIXES = (
@@ -51,6 +55,9 @@ class AgentPaymentGateMiddleware:
 
     def __call__(self, request):
         path = (request.path or '').lower()
+        restricted = self._kick_restricted_account(request, path)
+        if restricted is not None:
+            return restricted
         if path.startswith('/agent/leads/capture/'):
             return self.get_response(request)
 
@@ -90,6 +97,48 @@ class AgentPaymentGateMiddleware:
             return redirect(reverse('agents:chooseplan'))
 
         return self.get_response(request)
+
+    def _kick_restricted_account(self, request, path):
+        """A restricted agent cannot keep a session on any page except login and logout."""
+        if path.startswith((
+            '/admin',
+            '/agent-login/',
+            '/agent-logout/',
+            '/logout/',
+            '/forgot-password/',
+            '/reset-password/',
+            '/auth/google/',
+        )):
+            return None
+
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return None
+
+        try:
+            agent = resolve_agent_for_user(user)
+            if not agent and getattr(user, 'email', None):
+                from apps.agents.services.account_auth import find_agent
+                agent = find_agent(user.email)
+        except Exception:
+            agent = None
+
+        if not agent or agent_account_is_active(agent):
+            return None
+
+        logout(request)
+        try:
+            portal_error(request, ACCOUNT_RESTRICTED_MESSAGE, PORTAL_AGENT)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Restricted-account message failed')
+        if path.startswith(_JSON_API_PREFIXES):
+            return JsonResponse({
+                'status': 'error',
+                'success': False,
+                'message': ACCOUNT_RESTRICTED_MESSAGE,
+            }, status=403)
+        return redirect(reverse('agents:agent_login'))
 
 
 class BackgroundJobsMiddleware:

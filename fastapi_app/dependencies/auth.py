@@ -89,6 +89,16 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
             detail="Agent profile not found."
         )
 
+    from apps.agents.services.account_auth import (
+        ACCOUNT_RESTRICTED_MESSAGE,
+        agent_account_is_active,
+    )
+    if not agent_account_is_active(agent):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ACCOUNT_RESTRICTED_MESSAGE,
+        )
+
     if agent.status in BLOCKED_AGENT_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

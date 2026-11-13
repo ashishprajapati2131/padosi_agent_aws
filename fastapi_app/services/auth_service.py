@@ -275,6 +275,21 @@ class AuthService:
                 content={"success": False, "message": "Agent profile not found."},
             )
 
+        # Account switch is separate from agents.status.
+        from apps.agents.services.account_auth import (
+            ACCOUNT_RESTRICTED_MESSAGE,
+            agent_account_is_active,
+        )
+        if not agent_account_is_active(agent):
+            record_login_attempt(ip)
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": False,
+                    "message": ACCOUNT_RESTRICTED_MESSAGE,
+                },
+            )
+
         # 5. Check account status matching Django/Laravel
         if user.status == "suspended":
             record_login_attempt(ip)

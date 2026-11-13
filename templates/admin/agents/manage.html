@@ -27,6 +27,12 @@
           {% if agent.status == 'active' %}⏸ Deactivate{% else %}▶ Activate{% endif %}
         </button>
       </form>
+      {% if agent.is_account_active %}
+      <button type="button" class="btn" style="font-size:13px;background:#b91c1c;color:#fff;border:none;" onclick="toggleAccount({{ agent.id }}, false)">Full restrict</button>
+      {% else %}
+      <span class="badge" style="font-size:13px;padding:6px 14px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;">Account restricted</span>
+      <button type="button" class="btn" style="font-size:13px;background:#15803d;color:#fff;border:none;" onclick="toggleAccount({{ agent.id }}, true)">Restore account</button>
+      {% endif %}
       <a href="{% url 'admin_agents_edit_profile' agent.id %}" class="btn btn-primary" style="font-size:13px;" title="Full Profile Editor"><i class="fas fa-edit"></i> Full Profile Editor</a>
       <a href="{% url 'admin_agents' %}" class="btn" style="font-size:13px;background:#f1f5f9;color:#1e293b;border:1px solid #d7e0ea;text-decoration:none;">← Back</a>
     </div>
@@ -531,6 +537,32 @@ function filterLogs(type) {
     });
     
     document.getElementById('log-total-badge').textContent = visibleCount + ' edit' + (visibleCount !== 1 ? 's' : '');
+}
+
+function toggleAccount(id, active) {
+    const verb = active ? 'restore' : 'full restrict';
+    const detail = active
+        ? 'Restore puts this account back. Status and visibility settings stay as they are.'
+        : 'This blocks login, the visiting card, the review card, QR codes, and public listing. Status and visibility settings stay as they are.';
+    if (!confirm(`Are you sure you want to ${verb} this agent's entire account?\n\n${detail}`)) return;
+    fetch("{% url 'admin_agents_toggle_account' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, active: active })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.message || 'Error updating account access');
+        }
+    })
+    .catch(err => console.error(err));
 }
 
 function toggleStatus(id, newStatus) {

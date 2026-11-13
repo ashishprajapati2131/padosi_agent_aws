@@ -235,6 +235,12 @@
   ],
   "name": "admin_agents_save_notes"
  },
+ "admin/agents/toggle-account/": {
+  "access": [
+   "agents"
+  ],
+  "name": "admin_agents_toggle_account"
+ },
  "admin/agents/toggle-review-approval/": {
   "access": [
    "agents"

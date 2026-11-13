@@ -161,7 +161,12 @@ def get_agent_google_review_data(agent):
     - Agent's plan is not eligible
     - Agent disabled their Google review showcase
     - Agent has no Google review URL
+    - The agent's whole account is restricted
     """
+    from apps.agents.services.account_auth import agent_account_is_active
+    if not agent_account_is_active(agent):
+        return None
+
     if not agent_can_use_google_reviews(agent):
         return None
 

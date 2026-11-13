@@ -359,6 +359,9 @@ class Agent(models.Model):
     )
 
     is_blacklisted = models.BooleanField(default=False)
+    # Separate from status. False blocks login and every public surface.
+    # Restoring it does not change status or profile visibility.
+    is_account_active = models.BooleanField(default=True)
     blacklist_reason = models.TextField(blank=True, null=True)
     blacklisted_at = models.DateTimeField(blank=True, null=True)
     blacklist_source = models.CharField(max_length=50, blank=True, null=True)

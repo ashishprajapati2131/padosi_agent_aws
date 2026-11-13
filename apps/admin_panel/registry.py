@@ -107,6 +107,7 @@ ROUTE_PERMISSIONS = {
     # Approvals staff approve/reject from the queue; the view limits them
     # to agents awaiting approval.
     "admin_agents_toggle_status": ("agents", "approvals"),
+    "admin_agents_toggle_account": "agents",
     "admin_agents_update_badge": "agents",
     "admin_agents_update_irdai_license": "agents",
     "admin_agents_save_notes": "agents",

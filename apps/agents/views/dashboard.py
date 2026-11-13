@@ -289,6 +289,18 @@ def agent_dashboard(request):
     if not agent and getattr(user, "email", None):
         agent = find_agent(user.email)
 
+    if agent:
+        from apps.agents.services.account_auth import (
+            ACCOUNT_RESTRICTED_MESSAGE,
+            agent_account_is_active,
+        )
+        if not agent_account_is_active(agent):
+            from django.contrib.auth import logout
+            from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
+            logout(request)
+            portal_error(request, ACCOUNT_RESTRICTED_MESSAGE, PORTAL_AGENT)
+            return redirect("agents:agent_login")
+
     if not agent and not is_admin:
         messages.error(request, "Please complete your registration.")
         return redirect("agents:agent_registration")
@@ -1310,6 +1322,10 @@ def agent_public_profile(request, slug, state_code=None):
     if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
         raise Http404("Agent not found")
 
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        return render(request, "agents/profile_unavailable.html", status=404)
+
     is_owner = False
     if request.user.is_authenticated:
         is_owner = Agent.objects.filter(user=request.user, id=agent.id).exists()
@@ -1458,6 +1474,12 @@ def store_review(request, slug, state_code=None):
     from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
     if not agent or _hidden_from_public(agent):  # audit AG3
+        return JsonResponse(
+            {"status": "error", "message": "Agent not found"}, status=404
+        )
+
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
         return JsonResponse(
             {"status": "error", "message": "Agent not found"}, status=404
         )
@@ -4082,6 +4104,10 @@ def agent_og_image(request, agent_id=None, slug=None):
     ):
         raise Http404("Agent not found")
 
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        raise Http404("Agent not found")
+
     cache_key = og_image_cache_key(agent.id)
     # Cache bypass forces a full PIL render; only the owning agent or an admin
     # may use it, otherwise it is a free CPU-exhaustion lever on a public URL.
@@ -4131,6 +4157,10 @@ def agent_public_share_profile(request, slug):
 
     if not agent:
         raise Http404("Agent not found")
+
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        return render(request, "agents/profile_unavailable.html", status=404)
 
     profile = agent.get_primary_profile()
 

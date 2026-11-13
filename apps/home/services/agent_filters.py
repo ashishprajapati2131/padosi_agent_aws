@@ -77,6 +77,7 @@ def listed_agents_queryset():
     from apps.agents.services.subscription_expiry import exclude_expired_agents
     return exclude_expired_agents(
         Agent.objects.filter(status='active')
+        .exclude(is_account_active=False)
         .exclude(profile__is_card_visible=False)
         .exclude(email__iendswith='@paldi-test.invalid')   # admin testing-mode agents
         .select_related('profile', 'performanceStats')

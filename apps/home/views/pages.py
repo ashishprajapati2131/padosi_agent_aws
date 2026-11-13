@@ -259,6 +259,7 @@ def home(request):
                 agent__status='active',
                 agent__is_blacklisted=False,
             )
+            .exclude(agent__is_account_active=False)
             .filter(
                 Q(agent__profile__isnull=True)
                 | (
@@ -278,6 +279,8 @@ def home(request):
         for rev in db_reviews:
             agent = rev.agent
             if not agent or agent.status != 'active' or agent.is_blacklisted:
+                continue
+            if getattr(agent, 'is_account_active', True) is False:
                 continue
             if hasattr(agent, 'is_approved_by_admin') and not agent.is_approved_by_admin:
                 continue

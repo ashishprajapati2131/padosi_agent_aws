@@ -143,6 +143,9 @@
                                     {% if agent.is_blacklisted %}
                                         <span class="badge bg-danger mt-1 d-inline-block" style="font-size: 9px; padding: 2px 6px; border-radius: 4px;">Blacklisted</span>
                                     {% endif %}
+                                    {% if not agent.is_account_active %}
+                                        <span class="badge bg-danger mt-1 d-inline-block" style="font-size: 9px; padding: 2px 6px; border-radius: 4px;">Account restricted</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -207,6 +210,17 @@
                                     <li><a class="dropdown-item" href="{% url 'admin_agents_edit_profile' agent.id %}"><i class="fa-solid fa-pen-to-square me-2 text-muted"></i> Full Profile Editor</a></li>
                                     <li><a class="dropdown-item" href="{% url 'admin_agents_manage' agent.id %}"><i class="fa-solid fa-chart-line me-2 text-muted"></i> Manage Statistics</a></li>
                                     <li>
+                                        {% if agent.is_account_active %}
+                                            <button type="button" class="dropdown-item text-danger" onclick="toggleAccount({{ agent.id }}, false)">
+                                                <i class="fa-solid fa-user-lock me-2"></i> Full restrict
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="dropdown-item text-success" onclick="toggleAccount({{ agent.id }}, true)">
+                                                <i class="fa-solid fa-user-check me-2"></i> Restore account
+                                            </button>
+                                        {% endif %}
+                                    </li>
+                                    <li>
                                         {% if agent.is_blacklisted %}
                                             <button type="button" class="dropdown-item text-secondary" onclick="toggleBlacklist({{ agent.id }}, 'remove')">
                                                 <i class="fa-solid fa-undo me-2"></i> Remove Blacklist
@@ -252,6 +266,32 @@
 </div>
 
 <script>
+function toggleAccount(id, active) {
+    const verb = active ? 'restore' : 'full restrict';
+    const detail = active
+        ? 'Restore puts this account back. Status and visibility settings stay as they are.'
+        : 'This blocks login, the visiting card, the review card, QR codes, and public listing. Status and visibility settings stay as they are.';
+    if (!confirm('Are you sure you want to ' + verb + " this agent's entire account?\n\n" + detail)) return;
+    fetch("{% url 'admin_agents_toggle_account' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, active: active })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.message || 'Error updating account access');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
 function toggleAgentStatus(id, isActive) {
     const status = isActive ? 'active' : 'inactive';
     fetch("{% url 'admin_agents_toggle_status' %}", {

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Numeric
+from sqlalchemy import Boolean, Column, Integer, String, JSON, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from fastapi_app.database import Base
@@ -17,6 +17,7 @@ class Agent(Base):
     # Registration specific fields
     profession = Column(String(191), nullable=True, default="LIC Agent")
     status = Column(String(191), default="incomplete")
+    is_account_active = Column(Boolean, nullable=False, default=True)
     badge = Column(String(191), nullable=True, default="none")
     registration_step = Column(Integer, default=1)
     registration_draft = Column(JSON, nullable=True)

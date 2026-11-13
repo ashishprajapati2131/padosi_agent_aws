@@ -151,14 +151,27 @@ _PUBLIC_HIDDEN_STATUSES = (
 
 
 def _hidden_from_public(agent):
-    """Unpaid or blocked agents get no public card, QR or leads."""
+    """Unpaid, blocked, or fully restricted agents get no public card, QR or leads."""
+    from apps.agents.services.account_auth import agent_account_is_active
+    if not agent_account_is_active(agent):
+        return True
     return agent.status in _PUBLIC_HIDDEN_STATUSES or bool(
         getattr(agent, "is_blacklisted", False)
     )
 
 
 def _card_viewer_is_privileged(request, agent):
-    """Owner of the card or a logged-in admin."""
+    """Owner of the card or a logged-in admin.
+
+    A restricted account stays hidden from its owner. Only an admin preview
+    may still open it.
+    """
+    from apps.agents.services.account_auth import (
+        agent_account_is_active,
+        request_is_admin_preview,
+    )
+    if not agent_account_is_active(agent):
+        return request_is_admin_preview(request)
     logged_agent = _logged_in_agent(request)
     is_owner = bool(logged_agent and logged_agent.id == agent.id)
     if not is_owner and request.user.is_authenticated:
@@ -1031,6 +1044,9 @@ def agent_card_pure_qr_image(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        raise Http404("Agent not found")
 
     profile = agent.get_primary_profile()
     agent_slug = (
@@ -1332,6 +1348,9 @@ def public_review_page(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        return render(request, "agents/profile_unavailable.html", status=404)
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
@@ -1369,6 +1388,9 @@ def public_review_card(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404("Agent not found")
+    from apps.agents.services.account_auth import public_agent_is_hidden
+    if public_agent_is_hidden(request, agent):
+        return render(request, "agents/profile_unavailable.html", status=404)
     owner = _logged_in_agent(request)
     is_owner = bool(owner and owner.id == agent.id)
     if is_owner:

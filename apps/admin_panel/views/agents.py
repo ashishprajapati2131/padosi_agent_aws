@@ -45,7 +45,7 @@ def _build_agent_list_query(
     """
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.badge, a.is_blacklisted,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.badge, a.is_blacklisted, a.is_account_active,
             ap.address, ap.state, ap.display_name,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS avg_rating,
@@ -412,6 +412,60 @@ def toggle_status(request):
         request=request,
     )
     return JsonResponse({"success": True})
+
+
+def toggle_account(request):
+    """Turn the whole agent account on or off without changing status."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method"})
+
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({"success": False, "message": "Unauthorized"}, status=401)
+
+    if not _admin_can_manage_all_agents(request):
+        return JsonResponse(
+            {"success": False, "message": "You cannot change account access."},
+            status=403,
+        )
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
+
+    agent_id = data.get("id")
+    active = data.get("active")
+    if not agent_id or not isinstance(active, bool):
+        return JsonResponse(
+            {"success": False, "message": "Missing data"}, status=400
+        )
+
+    from apps.agents.models import Agent
+
+    agent = Agent.objects.filter(pk=agent_id).first()
+    if not agent:
+        return JsonResponse({"success": False, "message": "Agent not found"})
+
+    previous = bool(agent.is_account_active)
+    if previous != active:
+        agent.is_account_active = active
+        agent.save(update_fields=["is_account_active", "updated_at"])
+    if not active:
+        from apps.agents.services.account_auth import end_agent_logins
+        end_agent_logins(agent)
+    cache.delete("homepage_reviews")
+
+    from apps.admin_panel.models import AdminActivityLog
+
+    AdminActivityLog.log(
+        "Agent account restored" if active else "Agent account restricted",
+        "Agent",
+        int(agent_id),
+        details=f"is_account_active {previous} -> {active}; status left at {agent.status}",
+        request=request,
+    )
+    return JsonResponse({"success": True, "is_account_active": active})
 
 
 def bulk_action_agents(request):
