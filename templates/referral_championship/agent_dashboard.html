@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Championship Command Center | PadosiAgent{% endblock %}
 
@@ -1065,7 +1065,7 @@
     }
 
     // ── WhatsApp Multi-Language ──
-    const waTemplates = {{ whatsapp_templates_json|safe }};
+    const waTemplates = {{ whatsapp_templates_json|safe_json }};
     const agentName = "{{ agent.fullname|escapejs }}";
     const refLink = "{{ referral_url|escapejs }}";
     const profLink = "{{ profile_url|escapejs }}";

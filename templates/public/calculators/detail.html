@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}{{ calc.meta_title|default:calc.title }}{% endblock %}
 {# Admin descriptions are often one short line; pad short ones so search snippets have context. #}
@@ -14,7 +14,7 @@
 
 {% block extra_head %}
 {% if json_ld %}
-<script type="application/ld+json">{{ json_ld|safe }}</script>
+<script type="application/ld+json">{{ json_ld|safe_json }}</script>
 {% endif %}
 {% endblock %}
 

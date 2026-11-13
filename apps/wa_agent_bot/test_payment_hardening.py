@@ -174,3 +174,36 @@ class WaActivationStatusTests(TestCase):
             (True, "Already activated"),
         )
         self.assertEqual(queue.call_count, 1)
+
+    def test_whatsapp_send_waits_for_commit(self, _queue, send):  # audit WA5
+        from apps.wa_agent_bot.services.payment_service import (
+            activate_agent_subscription_after_payment,
+        )
+
+        sub = self._sub("pending_payment")
+        with self.captureOnCommitCallbacks() as callbacks:
+            activate_agent_subscription_after_payment(sub.id, payment_id="pay_z")
+            send.assert_not_called()
+        self.assertEqual(len(callbacks), 1)
+        callbacks[0]()
+        send.assert_called()
+
+
+class PaymentLinkPaidInFullTests(SimpleTestCase):
+    """Audit WA4: 'paid' alone is not enough; the amount must be what we priced."""
+
+    def _check(self, link):
+        from unittest.mock import MagicMock
+
+        from apps.wa_agent_bot.services.payment_service import payment_link_paid_in_full
+
+        return payment_link_paid_in_full(link, MagicMock(registration_amount=1179))
+
+    def test_paid_with_right_amount(self):
+        self.assertTrue(self._check({"status": "paid", "amount_paid": 117900}))
+
+    def test_rejects_wrong_amount_unpaid_and_empty(self):
+        self.assertFalse(self._check({"status": "paid", "amount_paid": 100}))
+        self.assertFalse(self._check({"status": "paid"}))
+        self.assertFalse(self._check({"status": "created", "amount_paid": 117900}))
+        self.assertFalse(self._check(None))

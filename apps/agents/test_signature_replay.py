@@ -65,3 +65,20 @@ class SignatureReplayTests(TestCase):
         newer.refresh_from_db()
         self.assertEqual(self.agent.plan_type, 'professional')
         self.assertEqual(newer.status, 'active')
+
+
+class RefundedIsFinalTests(TestCase):
+    def test_refunded_subscription_is_not_reactivated(self):  # audit PAY6
+        from apps.agents.views.registration import _activate_paid_subscription
+
+        agent = _paid_agent(email='refund@example.com', mobile='9876500555')
+        sub = agent.subscriptions.first()
+        sub.payment_status = 'refunded'
+        sub.status = 'inactive'
+        sub.save(update_fields=['payment_status', 'status'])
+
+        _sub, activated = _activate_paid_subscription(agent, sub, {'id': 'pay_AGAIN'})
+
+        self.assertFalse(activated)
+        sub.refresh_from_db()
+        self.assertEqual((sub.payment_status, sub.status), ('refunded', 'inactive'))

@@ -428,6 +428,23 @@ def format_payment_prompt_message(payment_info):
     )
 
 
+def payment_link_paid_in_full(link, subscription):
+    """True when Razorpay reports the link 'paid' AND the amount paid is what we priced.
+
+    The poll and callback paths trusted status == 'paid' alone (audit WA4, invariant 10).
+    """
+    from apps.agents.views.registration import (
+        _expected_amount_paise,
+        _paise_amounts_match,
+    )
+
+    link = link or {}
+    return link.get("status") == "paid" and _paise_amounts_match(
+        link.get("amount_paid"),
+        _expected_amount_paise(subscription.registration_amount),
+    )
+
+
 def activate_agent_subscription_after_payment(
     subscription_id, payment_id=None, signature=None
 ):
@@ -578,27 +595,31 @@ def activate_agent_subscription_after_payment(
                 plan=subscription.selected_plan,
             )
 
-            # 6. Send WhatsApp confirmation with credentials (logged by send_text_message)
-            send_res = send_text_message(
-                session.phone_number, welcome_msg, category="welcome", session=session
-            )
-            if not send_res.get("success"):
-                logger.warning(
-                    f"[WA-Bot] Failed to send credentials via OpenWA: {send_res.get('error')}. Setting retry flag."
+            # 6. Send the WhatsApp confirmation AFTER commit: each OpenWA send can take up to
+            # 60s and ran while the subscription row lock was held (audit WA5).
+            def _deliver(session=session, agent=agent, welcome_msg=welcome_msg):
+                send_res = send_text_message(
+                    session.phone_number, welcome_msg, category="welcome", session=session
                 )
-                session.registration_data["pending_credentials_delivery"] = True
-                session.save()
+                if not send_res.get("success"):
+                    logger.warning(
+                        f"[WA-Bot] Failed to send credentials via OpenWA: {send_res.get('error')}. Setting retry flag."
+                    )
+                    session.registration_data["pending_credentials_delivery"] = True
+                    session.save(update_fields=["registration_data"])
 
-            # Also send to agent's registered mobile if different from session phone
-            agent_mobile = "".join(c for c in (agent.mobile or "") if c.isdigit())
-            if agent_mobile:
-                if len(agent_mobile) == 10:
-                    agent_mobile = "91" + agent_mobile
-                if agent_mobile != session.phone_number:
-                    send_text_message(agent_mobile, welcome_msg, category="welcome")
+                # Also send to agent's registered mobile if different from session phone
+                agent_mobile = "".join(c for c in (agent.mobile or "") if c.isdigit())
+                if agent_mobile:
+                    if len(agent_mobile) == 10:
+                        agent_mobile = "91" + agent_mobile
+                    if agent_mobile != session.phone_number:
+                        send_text_message(agent_mobile, welcome_msg, category="welcome")
+
+            transaction.on_commit(_deliver)
 
             logger.info(
-                f"[WA-Bot] Successfully activated agent #{agent.id} and dispatched WhatsApp credentials"
+                f"[WA-Bot] Successfully activated agent #{agent.id}; WhatsApp credentials queued"
             )
 
         return True, "Activated successfully"

@@ -49,6 +49,21 @@ These are account takeovers, money leaks, or things already broken in production
 7. **API1 ✅:** the FastAPI account-deletion status endpoint has no authentication, accepts guessable reference IDs, and returns the email, mobile and name.
 8. **INS2 ✅:** the insurance *sales* role can record payments and send agents for activation.
 
+## Phase 2 status (2026-11-13)
+
+FastAPI items are parked until the end, at the owner's request.
+
+| Item | Status | Fix | Test |
+|---|---|---|---|
+| PAY11 / AG6 / WEB12 / CH18 (invariant 5) | ✅ Fixed | Every JSON value printed into a `<script>` now uses `safe_json`: `dashboard.html` (4), `edit_profile.html` (2), `review_share_popup.html`, `home.html`, `calculators/detail.html`, `referral_championship/agent_dashboard.html`. | existing page tests |
+| PAY7 | ✅ Fixed | The ₹0 checkout now calls `_activate_paid_subscription`, the same path the webhook, callback and recovery use. | `agents/test_promo_accounting.py`, `test_registration_e2e.py` |
+| PAY6 | ✅ Fixed | A `refunded` subscription is final: activation and the webhook leave it alone. | `agents/test_signature_replay.RefundedIsFinalTests` |
+| INS3 | ✅ Fixed | `record_payment` keeps the subscription's own order id; the UTR stays on `agent.payment_reference`. One existing test was updated to match. | `insurance/test_offline_payment_reference.py` |
+| WA4 | ✅ Fixed (scoped) | The poll and callback paths activate only when the payment link is `paid` **and** `amount_paid` equals the priced amount. The poll path now stores the payment id. | `wa_agent_bot/test_payment_hardening.PaymentLinkPaidInFullTests` |
+| WA5 | ✅ Fixed | WhatsApp messages are sent after the DB commit, not while the subscription row is locked. | `test_payment_hardening.test_whatsapp_send_waits_for_commit` |
+
+Not done in WA4: the bot still has its own activation function instead of calling `_activate_paid_subscription`. Its rules differ (no championship or Paldi hooks, its own password and session steps), so merging them is a Phase 5 refactor.
+
 ## Phase 1 status (2026-11-12)
 
 | Item | Status | Fix | Test |

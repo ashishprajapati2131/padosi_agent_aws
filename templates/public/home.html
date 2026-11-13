@@ -725,7 +725,7 @@
                 if (!slider || !dotsWrap) return;
                 if (slider._reviewDestroy) slider._reviewDestroy();
 
-                var reviewsData = {{ reviews_json|safe }};
+                var reviewsData = {{ reviews_json|safe_json }};
         var total = reviewsData.length;
 
         function renderStars(rating) {

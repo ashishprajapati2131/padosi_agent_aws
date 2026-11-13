@@ -3955,7 +3955,9 @@ def _activate_paid_subscription(
         subscription = AgentSubscription.objects.select_for_update().get(
             pk=subscription.pk
         )
-        if subscription.payment_status == "completed":
+        # 'refunded' / 'failed' are also final: a re-delivered captured webhook must not reopen
+        # a refunded subscription (audit PAY6).
+        if subscription.payment_status in ("completed", "refunded"):
             return subscription, False
 
         plan_type = _order_plan_slug(subscription, agent)
@@ -4089,6 +4091,7 @@ def _activate_paid_subscription(
 
         try:
             from apps.event_referral.models import TrialAgentActivityLog
+
             pay_id = payment.get("id") if isinstance(payment, dict) else ""
             order_id = getattr(subscription, "razorpay_order_id", "")
             amount = getattr(subscription, "registration_amount", 0)
@@ -4109,7 +4112,9 @@ def _activate_paid_subscription(
                 force=True,
             )
         except Exception:
-            logger.exception("Trial upgrade success logging failed for agent #%s", agent.id)
+            logger.exception(
+                "Trial upgrade success logging failed for agent #%s", agent.id
+            )
     except Exception:
         logger.exception(
             "%s Quick-registration lead sync failed for agent %s",
@@ -4476,7 +4481,9 @@ def _agent_register_complete_impl(request):
                 champ_pricing = champ.pricing_config or {}
                 if champ.offer_is_open():  # audit CH2: no campaign price after it ends
                     total_amount = float(
-                        champ_pricing.get("professional", {}).get("campaign_price", 4999)
+                        champ_pricing.get("professional", {}).get(
+                            "campaign_price", 4999
+                        )
                     )
             except Exception:
                 logger.exception(
@@ -4693,53 +4700,18 @@ def _agent_register_complete_impl(request):
                 },
             )
 
-            # If 0 amount: complete instantly
+            # If 0 amount: run the SAME shared activation path the webhook / callback / recovery
+            # use (invariant 10, audit PAY7). This covers plan, dates, superseded rows, festive +
+            # championship + Paldi hooks, and queues invoice + welcome.
             if amount_paise == 0:
-                subscription.payment_status = "completed"
-                subscription.status = "active"
-                subscription.starts_at = timezone.now()
-                subscription.expires_at = sub_expiry
-                subscription.save()
-                _deactivate_superseded_subscriptions(agent, subscription.pk)
-
-                agent.status = "pending_approval"
-                agent.plan_type = plan_type
                 agent.registration_step = 2
-                if plan_type == "free_trial":
-                    agent.trial_ends_at = timezone.now() + timezone.timedelta(
-                        days=trial_days
-                    )
-                    upgrade_discount = SiteSetting.get_value(
-                        "trial_upgrade_discount", 20
-                    )
-                    agent.upgrade_discount_percent = int(upgrade_discount)
-                agent.save()
-
-                # Best-effort side effects, each in its own savepoint.
-                _isolated(
-                    "Promo usage during free checkout",
-                    lambda: _increment_promo_usage(subscription.promo_code),
+                agent.save(update_fields=["registration_step", "updated_at"])
+                _activate_paid_subscription(
+                    agent,
+                    subscription,
+                    payment={"id": None},
+                    log_label="[free_checkout]",
                 )
-                _isolated(
-                    "Referral credit during free checkout",
-                    lambda: _credit_referral_conversion(agent),
-                )
-                _isolated(
-                    "Championship qualification hook during free checkout",
-                    lambda: _championship_qualification(agent, subscription),
-                )
-                _isolated(
-                    "Event referral qualification hook during free checkout",
-                    lambda: _event_referral_qualification(agent, subscription),
-                )
-                _isolated(
-                    "Referral code generation", lambda: _ensure_referral_code(agent)
-                )
-                _isolated(
-                    "Queue invoice and welcome during free checkout",
-                    lambda: queue_invoice_and_welcome(agent.id, subscription.id),
-                )
-
                 instant_complete = True
     except Exception as db_err:
         logger.error(f"Database transaction error in agent_register_complete: {db_err}")
@@ -4827,7 +4799,9 @@ def _signature_login_allowed(order_row, order_id, payment_id, signature):
     from django.core.cache import cache
 
     return cache.add(
-        f"rzp_sig_login_used:{order_id}", 1, timeout=int(SIGNATURE_LOGIN_WINDOW.total_seconds())
+        f"rzp_sig_login_used:{order_id}",
+        1,
+        timeout=int(SIGNATURE_LOGIN_WINDOW.total_seconds()),
     )
 
 
@@ -5271,7 +5245,10 @@ def agent_verify_promo(request):
 
     if len(promo_code) > 50:
         return JsonResponse(
-            {"success": False, "message": "Promo code is too long (maximum 50 characters)."}
+            {
+                "success": False,
+                "message": "Promo code is too long (maximum 50 characters).",
+            }
         )
 
     if _promo_checks_paused(request):
@@ -5543,7 +5520,9 @@ def client_quick_register(request):
         if not is_client:
             Client.objects.create(user=existing_user, mobile=mobile, pincode=pincode)
         elif mobile:
-            Client.objects.filter(user=existing_user, mobile__isnull=True).update(mobile=mobile)
+            Client.objects.filter(user=existing_user, mobile__isnull=True).update(
+                mobile=mobile
+            )
 
         request.session["quick_lead_user"] = {
             "fullname": fullname
@@ -5933,7 +5912,9 @@ def razorpay_webhook(request):
                 razorpay_order_id=order_id
             ).first()
         except Exception as exc:
-            logger.warning(f"[Razorpay Webhook] EventRegistration lookup skipped: {exc}")
+            logger.warning(
+                f"[Razorpay Webhook] EventRegistration lookup skipped: {exc}"
+            )
             event_registration = None
         if event_registration:
             return _fulfil_event_order_webhook(
@@ -5956,7 +5937,7 @@ def razorpay_webhook(request):
         existing_invoice = Invoice.objects.filter(razorpay_order_id=order_id).first()
 
         if (
-            subscription and subscription.payment_status == "completed"
+            subscription and subscription.payment_status in ("completed", "refunded")
         ) or existing_invoice:
             return HttpResponse(
                 "Webhook processed successfully (already completed)", status=200
@@ -6040,11 +6021,15 @@ def razorpay_webhook(request):
     return HttpResponse("Webhook processed successfully", status=200)
 
 
-def _fulfil_event_order_webhook(event_registration, order_id, payment_id, payment_entity):
+def _fulfil_event_order_webhook(
+    event_registration, order_id, payment_id, payment_entity
+):
     from apps.agents.views.events import EventPaymentRejected, fulfil_event_registration
 
     if not payment_id:
-        logger.error(f"[Webhook] Event order {order_id} has no payment id; not fulfilled")
+        logger.error(
+            f"[Webhook] Event order {order_id} has no payment id; not fulfilled"
+        )
         return HttpResponse("Webhook ignored: event order without payment", status=200)
     payment = payment_entity if payment_entity.get("id") == payment_id else None
     try:
@@ -6064,7 +6049,9 @@ def _fulfil_event_order_webhook(event_registration, order_id, payment_id, paymen
         )
         return HttpResponse("Event fulfilment failed", status=500)
     if not fulfilled:
-        return HttpResponse("Webhook processed successfully (already completed)", status=200)
+        return HttpResponse(
+            "Webhook processed successfully (already completed)", status=200
+        )
     return HttpResponse("Webhook processed successfully", status=200)
 
 
@@ -6073,8 +6060,12 @@ def _fulfil_insurance_order_webhook(fulfil, order_id, payment_id, payment_entity
     from apps.insurance.views.payments import InsurancePaymentRejected
 
     if not payment_id:
-        logger.error(f"[Webhook] Insurance order {order_id} has no payment id; not fulfilled")
-        return HttpResponse("Webhook ignored: insurance order without payment", status=200)
+        logger.error(
+            f"[Webhook] Insurance order {order_id} has no payment id; not fulfilled"
+        )
+        return HttpResponse(
+            "Webhook ignored: insurance order without payment", status=200
+        )
     payment = payment_entity if payment_entity.get("id") == payment_id else None
     try:
         _obj, fulfilled = fulfil(order_id, payment_id, payment=payment)
@@ -6090,7 +6081,9 @@ def _fulfil_insurance_order_webhook(fulfil, order_id, payment_id, payment_entity
         )
         return HttpResponse("Insurance fulfilment failed", status=500)
     if not fulfilled:
-        return HttpResponse("Webhook processed successfully (already completed)", status=200)
+        return HttpResponse(
+            "Webhook processed successfully (already completed)", status=200
+        )
     return HttpResponse("Webhook processed successfully", status=200)
 
 

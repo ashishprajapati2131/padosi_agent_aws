@@ -1,3 +1,4 @@
+{% load json_tags %}
 <div class="modal fade" id="reviewShareModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered pa-review-dialog">
         <div class="modal-content border-0 shadow-lg pa-review-content">
@@ -694,7 +695,7 @@
     }
 
     // Studio Data & Variables
-    var studioTemplates = {{ studio_templates_json|safe }};
+    var studioTemplates = {{ studio_templates_json|safe_json }};
     var agentName = "{{ studio_agent_name|escapejs }}";
     var profileUrl = "{{ studio_profile_url|escapejs }}";
     var reviewUrl = "{{ studio_review_url|escapejs }}";

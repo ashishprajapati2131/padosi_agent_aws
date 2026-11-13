@@ -798,9 +798,14 @@ def _handle_awaiting_payment(session, text, text_lower):
 
                             client = razorpay_client()
                             if client:
+                                from .payment_service import payment_link_paid_in_full
+
                                 link_data = client.payment_link.fetch(plink_id)
-                                if link_data.get("status") == "paid":
-                                    activate_agent_subscription_after_payment(sub.id)
+                                if payment_link_paid_in_full(link_data, sub):
+                                    paid = (link_data.get("payments") or [{}])[0]
+                                    activate_agent_subscription_after_payment(
+                                        sub.id, payment_id=paid.get("payment_id")
+                                    )
                                     sub.refresh_from_db()
                         except Exception as rz_err:
                             logger.debug(f"[WA-Bot] Razorpay link poll error: {rz_err}")

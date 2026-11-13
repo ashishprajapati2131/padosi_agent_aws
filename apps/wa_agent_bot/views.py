@@ -520,8 +520,10 @@ def payment_callback(request):
             # Query params prove nothing: ask Razorpay whether this subscription's own link was paid.
             if client and link_id and link_id == sub.razorpay_order_id:
                 try:
+                    from .services.payment_service import payment_link_paid_in_full
+
                     plink = client.payment_link.fetch(link_id)
-                    is_verified = (plink or {}).get("status") == "paid"
+                    is_verified = payment_link_paid_in_full(plink, sub)
                     if not is_verified:
                         logger.warning(
                             f"[WA-Bot-Security] Payment link {link_id} not paid: {(plink or {}).get('status')}"
