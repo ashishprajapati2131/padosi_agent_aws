@@ -36,10 +36,9 @@ class PublicProfileService:
         if not agent:
             raise HTTPException(status_code=404, detail="Agent Profile Not found")
             
-        # Security: Return 404 for non-active or admin-restricted agents
-        from apps.agents.services.agent_access import agent_is_admin_restricted
+        # Security: Return 404 for non-active agents
         active_statuses = ['approved', 'active']
-        if agent_is_admin_restricted(agent) or agent.status not in active_statuses:
+        if agent.status not in active_statuses:
             raise HTTPException(status_code=404, detail="Agent Profile Not found")
             
         profile = agent.profile

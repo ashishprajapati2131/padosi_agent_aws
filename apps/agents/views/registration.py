@@ -2210,8 +2210,7 @@ def check_email_availability(request):
                 registered = True
                 from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
 
-                from apps.agents.services.agent_access import agent_is_admin_restricted
-                if existing.status in BLOCKED_DASHBOARD_STATUSES or agent_is_admin_restricted(existing):
+                if existing.status in BLOCKED_DASHBOARD_STATUSES:
                     message = (
                         "This email cannot be used to register. Please contact support."
                     )
@@ -2541,8 +2540,7 @@ def register_step1(request):
         # and mobile and, on "Pay", reset their status.
         from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
 
-        from apps.agents.services.agent_access import agent_is_admin_restricted
-        if existing_agent.status in BLOCKED_DASHBOARD_STATUSES or agent_is_admin_restricted(existing_agent):
+        if existing_agent.status in BLOCKED_DASHBOARD_STATUSES:
             return JsonResponse(
                 {
                     "success": False,
@@ -4000,18 +3998,12 @@ def _activate_paid_subscription(
             agent.upgrade_discount_percent = int(upgrade_discount)
             sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
 
-        from apps.agents.services.agent_access import agent_is_admin_restricted
         is_festive_or_trial_agent = (
             agent.status in ("event_challenge", "trial", "pending_approval")
             or agent.isOnFreeTrial()
             or getattr(agent, "event_referral_participant", None) is not None
         )
-        if agent_is_admin_restricted(agent):
-            # Payment is recorded below. The agent stays suspended until an
-            # admin activates them.
-            agent.status = "suspended"
-            agent.plan_type = plan_type
-        elif is_festive_or_trial_agent:
+        if is_festive_or_trial_agent:
             agent.status = "pending_approval"
             agent.plan_type = plan_type
         elif is_upgrade and agent.status == "active":
@@ -4318,11 +4310,7 @@ def _agent_register_complete_impl(request):
         if draft.email
         else None
     )
-    from apps.agents.services.agent_access import agent_is_admin_restricted
-    if paid_agent and (
-        paid_agent.status in BLOCKED_DASHBOARD_STATUSES
-        or agent_is_admin_restricted(paid_agent)
-    ):
+    if paid_agent and paid_agent.status in BLOCKED_DASHBOARD_STATUSES:
         return JsonResponse(
             {
                 "success": False,
@@ -4714,8 +4702,7 @@ def _agent_register_complete_impl(request):
                 subscription.save()
                 _deactivate_superseded_subscriptions(agent, subscription.pk)
 
-                from apps.agents.services.agent_access import freeze_status_if_restricted
-                agent.status = freeze_status_if_restricted(agent, "pending_approval")
+                agent.status = "pending_approval"
                 agent.plan_type = plan_type
                 agent.registration_step = 2
                 if plan_type == "free_trial":

@@ -32,7 +32,7 @@ def fetch_agent_detail(agent_id):
     """Return the manage-page agent row as a dict, or None if not found."""
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.admin_restricted, a.plan_type, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
             ap.address, ap.license_number, ap.experience_years, ap.office_address, ap.pan_number, ap.profile_photo_path,
             ap.is_profile_visible, ap.is_card_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
             ap.show_experience, ap.show_claims_stats, ap.show_client_base, ap.show_ratings,

@@ -152,12 +152,8 @@ _PUBLIC_HIDDEN_STATUSES = (
 
 def _hidden_from_public(agent):
     """Unpaid or blocked agents get no public card, QR or leads."""
-    from apps.agents.services.agent_access import agent_is_admin_restricted
-
-    return (
-        agent.status in _PUBLIC_HIDDEN_STATUSES
-        or agent_is_admin_restricted(agent)
-        or bool(getattr(agent, "is_blacklisted", False))
+    return agent.status in _PUBLIC_HIDDEN_STATUSES or bool(
+        getattr(agent, "is_blacklisted", False)
     )
 
 

@@ -388,10 +388,7 @@ def agent_dashboard(request):
                 )
 
         # ── Self-Heal: Stuck in pending_payment but subscription completed ──
-        from apps.agents.services.agent_access import agent_is_admin_restricted
-        if agent_is_admin_restricted(agent):
-            completed_sub = None
-        elif (
+        if (
             agent.status
             in ["pending_payment", "pending_accounts_payment", "incomplete"]
             or agent.registration_step < 2
@@ -1313,18 +1310,6 @@ def agent_public_profile(request, slug, state_code=None):
     if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
         raise Http404("Agent not found")
 
-    from apps.agents.services.agent_access import agent_is_admin_restricted
-    if agent_is_admin_restricted(agent):
-        return render(
-            request,
-            "agents/profile_unavailable.html",
-            {
-                "agent": agent,
-                "profile": agent.get_primary_profile(),
-            },
-            status=404,
-        )
-
     is_owner = False
     if request.user.is_authenticated:
         is_owner = Agent.objects.filter(user=request.user, id=agent.id).exists()
@@ -1473,12 +1458,6 @@ def store_review(request, slug, state_code=None):
     from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
     if not agent or _hidden_from_public(agent):  # audit AG3
-        return JsonResponse(
-            {"status": "error", "message": "Agent not found"}, status=404
-        )
-
-    from apps.agents.services.agent_access import agent_is_admin_restricted
-    if agent_is_admin_restricted(agent):
         return JsonResponse(
             {"status": "error", "message": "Agent not found"}, status=404
         )
@@ -3100,8 +3079,7 @@ def apply_profile_update(request, agent, is_admin_edit=False):
             # ── Step 7: Final Submission ──
             if not current_step or str(current_step) == "7":
                 if not is_admin_edit:
-                    from apps.agents.services.agent_access import freeze_status_if_restricted
-                    agent.status = freeze_status_if_restricted(agent, "pending_approval")
+                    agent.status = "pending_approval"
                     agent.save()
 
             if license_payloads:
@@ -3496,8 +3474,7 @@ def agent_upgrade_plan(request):
             subscription.expires_at = timezone.now() + timezone.timedelta(days=365)
             subscription.save()
 
-            from apps.agents.services.agent_access import freeze_status_if_restricted
-            agent.status = freeze_status_if_restricted(agent, "active")
+            agent.status = "active"
             agent.plan_type = plan_type
             agent.save()
             _deactivate_superseded_subscriptions(agent, subscription.pk)
@@ -3717,11 +3694,6 @@ def agent_capture_lead(request):
         from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
 
         if not agent or _hidden_from_public(agent):  # audit AG3
-            return JsonResponse(
-                {"success": False, "message": "Agent not found."}, status=404
-            )
-        from apps.agents.services.agent_access import agent_is_admin_restricted
-        if agent_is_admin_restricted(agent):
             return JsonResponse(
                 {"success": False, "message": "Agent not found."}, status=404
             )
@@ -4160,15 +4132,7 @@ def agent_public_share_profile(request, slug):
     if not agent:
         raise Http404("Agent not found")
 
-    from apps.agents.services.agent_access import agent_is_admin_restricted
     profile = agent.get_primary_profile()
-    if agent_is_admin_restricted(agent):
-        return render(
-            request,
-            "agents/profile_unavailable.html",
-            {"agent": agent, "profile": profile},
-            status=404,
-        )
 
     # Inactive, suspended or deleted checks
     is_active = getattr(agent, "is_active", True)

@@ -166,7 +166,7 @@
                         <!-- Status Toggle -->
                         <td class="text-center">
                             <div class="form-check form-switch d-inline-block">
-                                <input class="form-check-input" type="checkbox" role="switch" {% if agent.status == 'active' and not agent.admin_restricted %}checked{% endif %} onchange="toggleAgentStatus({{ agent.id }}, this.checked)">
+                                <input class="form-check-input" type="checkbox" role="switch" {% if agent.status == 'active' %}checked{% endif %} onchange="toggleAgentStatus({{ agent.id }}, this.checked)">
                             </div>
                         </td>
 
@@ -252,6 +252,30 @@
 </div>
 
 <script>
+function toggleAgentStatus(id, isActive) {
+    const status = isActive ? 'active' : 'inactive';
+    fetch("{% url 'admin_agents_toggle_status' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, status: status })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Status updated successfully', showConfirmButton: false, timer: 3000 });
+            }
+        } else {
+            alert(data.message || 'Error updating status');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
 function collectAndUpdateBadges(agentId) {
     const badges = [];
     document.querySelectorAll('.agent-badge-chk-' + agentId + ':checked').forEach(chk => {
@@ -300,7 +324,7 @@ function toggleAgentStatus(id, isChecked) {
             'Accept': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ id: id, status: isChecked ? 'active' : 'suspended' })
+        body: JSON.stringify({ id: id, status: isChecked ? 'active' : 'inactive' })
     })
     .then(res => res.json())
     .then(data => {

@@ -772,10 +772,7 @@ def fulfil_event_registration(reg_id, order_id, payment_id, signature=None, paym
         plan_key_agent = agent.plan_type or locked.selected_plan or 'professional'
         plan_data = pricing.get(plan_key_agent, pricing['professional'])
 
-        from apps.agents.services.agent_access import agent_is_admin_restricted
-        if agent_is_admin_restricted(agent):
-            agent.status = 'suspended'
-        elif agent.status != 'active':  # never demote an already-approved agent
+        if agent.status != 'active':  # never demote an already-approved agent
             agent.status = 'pending_approval'
         agent.registration_step = 3
         agent.plan_type = plan_key_agent
