@@ -18,7 +18,7 @@ from password_hashing import check_password_hash, hash_password, is_bcrypt_hash
 logger = logging.getLogger(__name__)
 
 INCOMPLETE_STATUSES = ('incomplete', 'pending_payment', 'pending_accounts_payment')
-BLOCKED_DASHBOARD_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
+BLOCKED_DASHBOARD_STATUSES = ('suspended', 'inactive', 'blacklisted', 'rejected', 'deleted')
 DJANGO_AUTH_BACKEND = 'django.contrib.auth.backends.ModelBackend'
 
 
@@ -77,7 +77,8 @@ def agent_can_access_dashboard(agent):
     """
     if not agent:
         return False
-    if agent.status in BLOCKED_DASHBOARD_STATUSES:
+    from apps.agents.services.agent_access import agent_is_admin_restricted
+    if agent_is_admin_restricted(agent) or agent.status in BLOCKED_DASHBOARD_STATUSES:
         return False
     if agent_has_completed_payment(agent):
         return True

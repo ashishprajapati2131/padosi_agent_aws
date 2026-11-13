@@ -332,6 +332,13 @@ def process_post_login_message(agent, user_text):
     Returns:
         str: Reply message text
     """
+    from apps.agents.services.agent_access import (
+        RESTRICTED_LOGIN_MESSAGE,
+        agent_is_admin_restricted,
+    )
+    if agent_is_admin_restricted(agent):
+        return RESTRICTED_LOGIN_MESSAGE
+
     command = _match_command(user_text)
 
     if command == "help":

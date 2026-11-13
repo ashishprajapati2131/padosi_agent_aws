@@ -363,6 +363,12 @@ class Agent(models.Model):
     blacklisted_at = models.DateTimeField(blank=True, null=True)
     blacklist_source = models.CharField(max_length=50, blank=True, null=True)
 
+    # Admin Activate/Deactivate. Kept separate from workflow status so a
+    # payment or event-referral update cannot put the agent back online.
+    admin_restricted = models.BooleanField(default=False, db_index=True)
+    status_before_restriction = models.CharField(max_length=50, blank=True, default="")
+    restricted_at = models.DateTimeField(null=True, blank=True)
+
     payment_method = models.CharField(max_length=100, blank=True, default="")
     payment_reference = models.CharField(max_length=255, blank=True, default="")
     payment_recorded_at = models.DateTimeField(null=True, blank=True)

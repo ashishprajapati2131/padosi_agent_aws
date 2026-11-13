@@ -1246,9 +1246,7 @@ def _get_or_create_pincode(pincode):
 
 
 def _pincode_matching_agents(pincode):
-    """Count/fetch agents servicing a pincode — mirrors HomeController@checkPincode:
-    agents.agent_pincode match OR agent_profiles.service_pincodes JSON contains the pin
-    OR agent_service_pincodes rows, restricted to registered statuses."""
+    """Agents servicing a pincode who are still on the public directory."""
     pin = str(pincode or '').strip()
     q = (
         Q(agent_pincode=pin)
@@ -1257,9 +1255,7 @@ def _pincode_matching_agents(pincode):
     )
     if pin.isdigit():
         q |= Q(profile__service_pincodes__contains=int(pin))
-    return Agent.objects.filter(
-        status__in=['active', 'pending_manager_approval', 'pending_accounts_payment', 'pending_admin_approval']
-    ).filter(q).distinct()
+    return listed_agents_queryset().filter(q).distinct()
 
 
 def check_pincode(request):

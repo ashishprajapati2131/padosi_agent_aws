@@ -21,8 +21,8 @@ import time
 # Simple in-memory throttle store: {ip: {"attempts": int, "expires_at": float}}
 login_attempts_store = {}
 
-# Mirrors apps/agents/views/auth.py: the only agent statuses that deny a session.
-BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected", "deleted")
+# Mirrors apps/agents/views/auth.py. suspended/inactive are the admin restriction.
+BLOCKED_AGENT_STATUSES = ("suspended", "inactive", "blacklisted", "rejected", "deleted")
 
 LOGIN_IP_MAX_ATTEMPTS = 6
 LOGIN_IP_WINDOW_SECONDS = 60
@@ -297,9 +297,21 @@ class AuthService:
             )
 
         # Check Agent status specifically matching Django.
-        # Django's agent_login only hard-blocks suspended/blacklisted/rejected;
         # `pending_approval` must stay able to sign in because submitting a
         # profile edit puts an otherwise healthy agent into that state.
+        from apps.agents.services.agent_access import (
+            RESTRICTED_LOGIN_MESSAGE,
+            agent_is_admin_restricted,
+        )
+        if agent_is_admin_restricted(agent):
+            record_login_attempt(ip)
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": False,
+                    "message": RESTRICTED_LOGIN_MESSAGE,
+                },
+            )
         if agent.status in BLOCKED_AGENT_STATUSES:
             record_login_attempt(ip)
             return JSONResponse(

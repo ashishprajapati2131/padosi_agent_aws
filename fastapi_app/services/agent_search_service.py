@@ -75,7 +75,12 @@ class AgentSearchService:
     @staticmethod
     def _build_agent_queryset(req: FindAgentsRequest):
         # Base query
-        query = Agent.objects.filter(status='active').exclude(profile__is_card_visible=False)
+        query = (
+            Agent.objects.filter(status='active')
+            .exclude(admin_restricted=True)
+            .exclude(is_blacklisted=True)
+            .exclude(profile__is_card_visible=False)
+        )
         from apps.agents.services.subscription_expiry import exclude_expired_agents
         query = exclude_expired_agents(query)  # no-op while the expiry switch is off
         query = query.select_related('profile', 'performanceStats').prefetch_related(

@@ -13,7 +13,7 @@ from apps.agents.models import PaymentStatus
 logger = logging.getLogger("apps.admin_panel.views.agents")
 
 
-def after_status_change(agent_id, admin_id, ip_address, old_status, new_status):
+def after_status_change(agent_id, admin_id, ip_address, old_status, new_status, action=None):
     """Lead sync, edit log and WhatsApp notice once toggle_status has saved the status."""
     try:
         from apps.agents.models import Agent
@@ -26,12 +26,14 @@ def after_status_change(agent_id, admin_id, ip_address, old_status, new_status):
         logger.exception("Quick-registration lead sync failed after status change")
 
     # Log boundary change
-    if new_status in ["active", "suspended", "rejected"]:
+    if action == "activate" or new_status in ["active", "suspended", "rejected"]:
         step_label = "Status Changed by Admin"
-        if new_status == "active":
-            step_label = "Approved by Admin"
-        elif new_status == "suspended":
+        if action == "activate":
+            step_label = "Activated by Admin"
+        elif action == "deactivate" or new_status == "suspended":
             step_label = "Suspended by Admin"
+        elif new_status == "active":
+            step_label = "Approved by Admin"
 
         try:
             from ..models.agent_profile_edit_log import AgentProfileEditLog

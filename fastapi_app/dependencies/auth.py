@@ -72,7 +72,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     return user
 
 # Mirrors AuthService.BLOCKED_AGENT_STATUSES and Django's agent_login guard.
-BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected", "deleted")
+BLOCKED_AGENT_STATUSES = ("suspended", "inactive", "blacklisted", "rejected", "deleted")
 
 def get_current_agent(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Agent:
     agent_repo = AgentRepository(db)
@@ -89,6 +89,15 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
             detail="Agent profile not found."
         )
 
+    from apps.agents.services.agent_access import (
+        RESTRICTED_LOGIN_MESSAGE,
+        agent_is_admin_restricted,
+    )
+    if agent_is_admin_restricted(agent):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=RESTRICTED_LOGIN_MESSAGE,
+        )
     if agent.status in BLOCKED_AGENT_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

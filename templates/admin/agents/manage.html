@@ -18,13 +18,16 @@
       <p style="color:#5f6b7a;font-size:14px;margin:4px 0 0;">{{ agent.email }} &nbsp;·&nbsp; {{ agent.mobile|default:'No phone' }}</p>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <span class="badge {% if agent.status == 'active' %}badge-green{% else %}badge-destructive{% endif %}" style="font-size:13px;padding:6px 14px;">
-        {% if agent.status == 'active' %}🟢 Active{% else %}🔴 Inactive{% endif %}
+      <span class="badge {% if agent.status == 'active' and not agent.admin_restricted %}badge-green{% else %}badge-secondary{% endif %}" style="font-size:13px;padding:6px 14px;">
+        {{ agent.status|default:'unknown' }}
       </span>
+      {% if agent.admin_restricted or agent.status == 'suspended' or agent.status == 'inactive' %}
+      <span class="badge badge-destructive" style="font-size:13px;padding:6px 14px;">Restricted</span>
+      {% endif %}
       <form method="POST" action="javascript:void(0);" style="margin:0;">
         {% csrf_token %}
-        <button type="button" class="btn" style="font-size:13px;" onclick="toggleStatus({{ agent.id }}, '{% if agent.status == 'active' %}suspended{% else %}active{% endif %}')">
-          {% if agent.status == 'active' %}⏸ Deactivate{% else %}▶ Activate{% endif %}
+        <button type="button" class="btn" style="font-size:13px;" onclick="toggleStatus({{ agent.id }}, '{% if agent.status == 'active' and not agent.admin_restricted %}suspended{% else %}active{% endif %}')">
+          {% if agent.status == 'active' and not agent.admin_restricted %}⏸ Deactivate{% else %}▶ Activate{% endif %}
         </button>
       </form>
       <a href="{% url 'admin_agents_edit_profile' agent.id %}" class="btn btn-primary" style="font-size:13px;" title="Full Profile Editor"><i class="fas fa-edit"></i> Full Profile Editor</a>

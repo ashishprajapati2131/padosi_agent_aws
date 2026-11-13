@@ -146,6 +146,21 @@ def _clear_admin_session_on(response, request):
 
 
 def _finish_agent_session_login(request, django_user, ip, agent=None):
+    from apps.agents.services.agent_access import (
+        RESTRICTED_LOGIN_MESSAGE,
+        agent_is_admin_restricted,
+    )
+    if agent is None:
+        agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
+    if agent and agent_is_admin_restricted(agent):
+        portal_error(request, RESTRICTED_LOGIN_MESSAGE, PORTAL_AGENT)
+        return render(request, 'agents/login.html', {
+            'email': getattr(agent, 'email', ''),
+            'hide_site_nav': True,
+            'hide_footer': True,
+            'hide_chatbot': True,
+        })
+
     clear_login_throttle(ip)
     cache.delete(_email_throttle_key(getattr(django_user, 'email', '')))
     if agent is not None and getattr(agent, 'email', None):
@@ -160,9 +175,6 @@ def _finish_agent_session_login(request, django_user, ip, agent=None):
     login(request, django_user, backend=DJANGO_AUTH_BACKEND)
     logger.info("Agent/Admin user %s logged in successfully.", getattr(django_user, 'email', ''))
 
-    if agent is None:
-        agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
-
     if agent:
         try:
             from apps.event_referral.models import TrialAgentActivityLog
@@ -170,13 +182,13 @@ def _finish_agent_session_login(request, django_user, ip, agent=None):
                 agent=agent,
                 activity_type=TrialAgentActivityLog.ACTIVITY_LOGIN,
                 title='Agent Logged In',
-                description=f'Agent logged in successfully',
+                description='Agent logged in successfully',
                 details={'email': getattr(agent, 'email', ''), 'plan_type': getattr(agent, 'plan_type', ''), 'status': getattr(agent, 'status', '')},
                 request=request,
             )
         except Exception as e:
             logger.warning("Trial login logging failed: %s", e)
-    
+
     is_admin = getattr(django_user, 'is_staff', False) or getattr(django_user, 'is_superuser', False)
     if not is_admin:
         if not agent or not agent_can_access_dashboard(agent):
@@ -308,23 +320,35 @@ def agent_login(request):
                 except Exception:
                     pass
 
-                if agent.status in ['suspended', 'blacklisted', 'rejected']:
+                from apps.agents.services.agent_access import (
+                    RESTRICTED_LOGIN_MESSAGE,
+                    agent_is_admin_restricted,
+                )
+                # An event-referral block can leave status=suspended without
+                # the admin-restrict flag. That path may still reopen a
+                # challenger who is allowed back onto payment. An admin
+                # Deactivate must not.
+                if agent.status == 'suspended' and not agent.admin_restricted:
                     from apps.event_referral.services.participant_service import (
                         event_referral_grants_dashboard,
                         get_participant_for_agent,
                     )
                     ev_part = get_participant_for_agent(agent)
                     if (
-                        agent.status == 'suspended'
-                        and ev_part
+                        ev_part
                         and ev_part.status == 'blocked'
                         and event_referral_grants_dashboard(agent)
                     ):
                         agent.status = 'pending_payment'
                         agent.save(update_fields=['status', 'updated_at'])
-                    else:
-                        portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
-                        return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+
+                if agent_is_admin_restricted(agent):
+                    portal_error(request, RESTRICTED_LOGIN_MESSAGE, PORTAL_AGENT)
+                    return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+
+                if agent.status in ('blacklisted', 'rejected', 'deleted'):
+                    portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
+                    return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
                 if agent.status in INCOMPLETE_STATUSES:
                     try:
@@ -407,6 +431,14 @@ def app_upgrade_handoff(request):
         })
 
     agent = row.agent
+    from apps.agents.services.agent_access import (
+        RESTRICTED_LOGIN_MESSAGE,
+        agent_is_admin_restricted,
+    )
+    if agent_is_admin_restricted(agent):
+        mark_plan_upgrade_handoff_used(row)
+        portal_error(request, RESTRICTED_LOGIN_MESSAGE, PORTAL_AGENT)
+        return redirect('agents:agent_login')
     if agent.status in BLOCKED_DASHBOARD_STATUSES:
         mark_plan_upgrade_handoff_used(row)
         portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)

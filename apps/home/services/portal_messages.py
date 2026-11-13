@@ -44,6 +44,7 @@ _AUTH_TEXT_MARKERS = (
     'too many login',
     'enter both email',
     'account is currently',
+    'restricted by the admin',
     'account type',
     'temporarily unavailable',
     'unauthorized',

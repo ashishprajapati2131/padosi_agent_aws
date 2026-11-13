@@ -45,7 +45,7 @@ def _build_agent_list_query(
     """
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.badge, a.is_blacklisted,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.badge, a.is_blacklisted, a.admin_restricted,
             ap.address, ap.state, ap.display_name,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS avg_rating,
@@ -351,55 +351,96 @@ def toggle_status(request):
             {"success": False, "message": "Unknown status."}, status=400
         )
 
-    # Fetch agent to get old_status
+    # The old agent-list switch sent "inactive", which did not block login.
+    # Treat that payload as Deactivate.
+    requested = 'suspended' if new_status == 'inactive' else new_status
+
+    from apps.agents.models import Agent
+    from apps.agents.services.agent_access import activate_agent, deactivate_agent
+
+    agent = Agent.objects.filter(pk=agent_id).first()
+    if not agent:
+        return JsonResponse({'success': False, 'message': 'Agent not found'})
+    old_status = agent.status
+
+    # Approvals-only staff decide queue entries; they cannot change
+    # other agents (the route also admits the Approvals permission).
+    if not _admin_can_manage_all_agents(request) and not (
+        old_status == 'pending_approval' and requested in QUEUE_DECISIONS
+    ):
+        return JsonResponse({
+            'success': False,
+            'message': 'You can only approve or reject agents awaiting approval.',
+        }, status=403)
+
+    action = "status"
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT status FROM agents WHERE id = %s", [agent_id])
-            row = cursor.fetchone()
-            if not row:
-                return JsonResponse({"success": False, "message": "Agent not found"})
-            old_status = row[0]
-
-            # Approvals-only staff decide queue entries; they cannot change
-            # other agents (the route also admits the Approvals permission).
-            if not _admin_can_manage_all_agents(request) and not (
-                old_status == "pending_approval" and new_status in QUEUE_DECISIONS
-            ):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "You can only approve or reject agents awaiting approval.",
-                    },
-                    status=403,
-                )
-
+        if not Agent.objects.filter(pk=agent_id, status=old_status).exists():
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "This agent's status was just changed. Refresh the page.",
+                },
+                status=409,
+            )
+        if requested == "suspended":
+            agent.refresh_from_db()
+            deactivate_agent(agent)
+            action = "deactivate"
+            new_status = "suspended"
+        elif requested == "active" and agent.admin_restricted:
+            agent.refresh_from_db()
+            new_status = activate_agent(agent)
+            action = "activate"
+        elif requested == "active" and old_status == "inactive":
+            # Legacy list-switch rows have no saved status to restore.
+            agent.refresh_from_db()
+            new_status = activate_agent(agent)
+            action = "activate"
+        elif requested == "active" and old_status == "suspended":
+            # Event blocks and older suspensions are not this switch.
+            return JsonResponse({
+                "success": False,
+                "message": (
+                    "This suspension was not set by Deactivate. "
+                    "Restore the agent from the approval or event screen."
+                ),
+            }, status=400)
+        else:
             # Update status only if nobody changed it meanwhile: a double-clicked Approve
             # otherwise ran twice and sent two WhatsApp approval messages.
-            if new_status == "active":
-                cursor.execute(
-                    "UPDATE agents SET status = %s, is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id = %s AND status = %s",
-                    [new_status, timezone.now(), agent_id, old_status],
-                )
-            else:
-                cursor.execute(
-                    "UPDATE agents SET status = %s WHERE id = %s AND status = %s",
-                    [new_status, agent_id, old_status],
-                )
-            if cursor.rowcount == 0:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "This agent's status was just changed. Refresh the page.",
-                    },
-                    status=409,
-                )
-            cache.delete("homepage_reviews")
+            with connection.cursor() as cursor:
+                if requested == "active":
+                    cursor.execute(
+                        "UPDATE agents SET status = %s, is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id = %s AND status = %s",
+                        [requested, timezone.now(), agent_id, old_status],
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE agents SET status = %s WHERE id = %s AND status = %s",
+                        [requested, agent_id, old_status],
+                    )
+                if cursor.rowcount == 0:
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "This agent's status was just changed. Refresh the page.",
+                        },
+                        status=409,
+                    )
+            new_status = requested
+        cache.delete("homepage_reviews")
     except Exception as e:
         logger.error(f"Error updating agent status: {e}")
         return JsonResponse({"success": False, "message": "Database error"})
 
     agents_service.after_status_change(
-        agent_id, admin_id, request.META.get("REMOTE_ADDR"), old_status, new_status
+        agent_id,
+        admin_id,
+        request.META.get("REMOTE_ADDR"),
+        old_status,
+        new_status,
+        action=action,
     )
 
     from apps.admin_panel.models import AdminActivityLog

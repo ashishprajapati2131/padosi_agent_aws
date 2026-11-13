@@ -299,4 +299,10 @@ def login_agent_user(request, user):
         # Such accounts sign in through their own login page.
         logger.warning('Refused payment auto-login into portal user #%s', user.pk)
         return
+    from apps.agents.services.account_auth import find_agent
+    from apps.agents.services.agent_access import agent_is_admin_restricted
+    agent = find_agent(getattr(user, 'email', ''))
+    if agent and agent_is_admin_restricted(agent):
+        logger.warning('Refused payment auto-login for restricted agent #%s', agent.pk)
+        return
     login(request, user, backend=DJANGO_AUTH_BACKEND)
