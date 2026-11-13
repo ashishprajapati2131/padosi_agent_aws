@@ -415,7 +415,15 @@ def _generate_bio_with_retries(
     last_response = None
     last_provider = ""
 
+    import time as _time
+
+    started = _time.monotonic()
     for attempt in attempts:
+        # Don't start another full provider chain once ~45s are spent: each attempt can walk
+        # every provider and held a web worker for minutes (audit AG11).
+        if _time.monotonic() - started > 45:
+            logger.warning("Bio generation stopped after %.0fs", _time.monotonic() - started)
+            break
         llm_kwargs = {key: value for key, value in attempt.items() if key != "messages"}
         try:
             response, provider = call_llm_with_fallback(

@@ -33,11 +33,18 @@ _PLAN_DISPLAY = {
 
 def _renewal_price_paise(plan_type, pricing_config):
     """Return renewal amount in paise (same as new-signup full price, incl. GST)."""
+    # Same whole-rupee GST bundle as the signup checkout. int(total * 100) truncated
+    # (2358.82 -> 235881 paise) and differed from what the signup page charges (audit PAY13).
+    from apps.agents.views.registration import _gst_bundle_from_base
+
+    _base, _gst, total = _gst_bundle_from_base(_renewal_base(plan_type, pricing_config))
+    return int(total) * 100
+
+
+def _renewal_base(plan_type, pricing_config):
     cfg_key = 'starter' if plan_type == 'starter' else 'professional'
     defaults = {'starter': 1999, 'professional': 9999}
-    base = float(pricing_config.get(cfg_key, {}).get('full_price', defaults[cfg_key]))
-    total = round(base + (base * 0.18), 2)
-    return int(total * 100)
+    return float(pricing_config.get(cfg_key, {}).get('full_price', defaults[cfg_key]))
 
 
 @login_required(login_url='agents:agent_login')
@@ -67,10 +74,9 @@ def renew_plan(request):
 
     if request.method == 'GET':
         amount_paise = _renewal_price_paise(plan_type, pricing_config)
-        cfg = pricing_config.get('starter' if plan_type == 'starter' else 'professional', {})
-        base_price = float(cfg.get('full_price', 1999 if plan_type == 'starter' else 9999))
-        gst = round(base_price * 0.18, 2)
-        total = round(base_price + gst, 2)
+        from apps.agents.views.registration import _gst_bundle_from_base
+
+        base_price, gst, total = _gst_bundle_from_base(_renewal_base(plan_type, pricing_config))
 
         new_expiry = None
         if active_sub and active_sub.expires_at:

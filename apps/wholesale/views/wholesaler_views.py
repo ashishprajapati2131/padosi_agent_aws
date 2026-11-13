@@ -8,6 +8,8 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 from apps.wholesale.adapters.auth_bridge import wholesaler_required, get_wholesaler_profile, is_wholesale_admin
 from apps.wholesale.models.product import WholesaleProduct, ProductImage, ProductVariant
 from apps.wholesale.models.category import ProductCategory
@@ -16,6 +18,30 @@ from apps.wholesale.forms.product_forms import ProductWizardForm
 from apps.wholesale.services.approval_service import ApprovalService
 from apps.wholesale.services.pricing_service import PricingService
 from apps.wholesale.services.bulk_import_service import BulkImportService
+
+def _parse_variants(variants_json):
+    """Validate the whole variants payload before anything is deleted; None means leave variants alone."""
+    if not variants_json:
+        return None
+    data = json.loads(variants_json)
+    if not isinstance(data, list):
+        raise ValueError("Variants payload must be a list.")
+    parsed = []
+    for v in data:
+        if not isinstance(v, dict):
+            raise ValueError("Each variant must be an object.")
+        v_title = v.get('title') or v.get('name')
+        if not v_title:
+            continue
+        price_delta = Decimal(str(v['price'])) if v.get('price') else Decimal('0.00')
+        if not price_delta.is_finite():
+            raise ValueError(f"Invalid variant price: {v['price']!r}")
+        stock = int(v.get('stock', 0))
+        if stock < 0:
+            raise ValueError(f"Variant stock cannot be negative: {stock}")
+        parsed.append({'name': str(v_title), 'sku': v.get('sku'), 'price_delta': price_delta, 'stock_quantity': stock})
+    return parsed
+
 
 @wholesaler_required
 def wholesaler_dashboard_view(request):
@@ -109,11 +135,18 @@ def product_wizard_view(request, product_id=None):
         action = request.POST.get('wizard_action', 'save_draft')
         if form.is_valid():
             try:
+                variants_data = _parse_variants(form.cleaned_data.get('variants_json'))
                 with transaction.atomic():
                     new_product = form.save(commit=False)
                     new_product.wholesaler = profile
+                    resubmitted = False
                     if not product:
                         new_product.approval_status = 'DRAFT'
+                    elif new_product.approval_status in ('APPROVED', 'PUBLISHED', 'PAUSED'):
+                        # Edits to a live listing go back through admin review before going live.
+                        new_product.approval_status = 'SUBMITTED'
+                        new_product.submitted_at = timezone.now()
+                        resubmitted = True
                     new_product.save()
 
                     # 1. Handle Primary Image
@@ -145,28 +178,23 @@ def product_wizard_view(request, product_id=None):
                         except Exception as tier_err:
                             messages.warning(request, f"Price tiers warning: {str(tier_err)}")
 
-                    # 4. Handle Variants JSON
-                    variants_json = form.cleaned_data.get('variants_json')
-                    if variants_json:
-                        try:
-                            var_data = json.loads(variants_json)
-                            new_product.variants.all().delete()
-                            for v in var_data:
-                                if v.get('title') or v.get('name'):
-                                    v_title = v.get('title') or v.get('name')
-                                    ProductVariant.objects.create(
-                                        product=new_product,
-                                        name=v_title,
-                                        sku=v.get('sku') or f"{new_product.sku}-{v_title[:10]}",
-                                        price_delta=Decimal(str(v['price'])) if v.get('price') else Decimal('0.00'),
-                                        stock_quantity=int(v.get('stock', 0)),
-                                        is_active=True
-                                    )
-                        except Exception as var_err:
-                            messages.warning(request, f"Variants warning: {str(var_err)}")
+                    # 4. Handle Variants (payload validated above; a DB error here rolls back the whole save)
+                    if variants_data is not None:
+                        new_product.variants.all().delete()
+                        for v in variants_data:
+                            ProductVariant.objects.create(
+                                product=new_product,
+                                name=v['name'],
+                                sku=v['sku'] or f"{new_product.sku}-{v['name'][:10]}",
+                                price_delta=v['price_delta'],
+                                stock_quantity=v['stock_quantity'],
+                                is_active=True
+                            )
 
                     # 5. Handle Action: Submit for approval or Save Draft
-                    if action == 'submit_for_approval':
+                    if resubmitted:
+                        messages.success(request, f"'{new_product.title}' was updated and sent back for admin approval.")
+                    elif action == 'submit_for_approval':
                         try:
                             ApprovalService.submit_for_approval(new_product, request.user)
                             messages.success(request, f"'{new_product.title}' has been submitted for admin approval!")
@@ -213,6 +241,7 @@ def product_wizard_view(request, product_id=None):
 
 
 @wholesaler_required
+@require_POST
 def product_status_toggle_view(request, product_id):
     """Pauses or resumes a listing."""
     profile = get_wholesaler_profile(request)
@@ -254,8 +283,11 @@ def bulk_upload_view(request):
 
     if request.method == 'POST' and request.FILES.get('csv_file'):
         file_obj = request.FILES['csv_file']
-        if not file_obj.name.endswith('.csv'):
+        if not file_obj.name.lower().endswith('.csv'):
             messages.error(request, "Please upload a valid .csv file.")
+            return redirect('wholesale:bulk_upload')
+        if file_obj.size > BulkImportService.MAX_FILE_BYTES:
+            messages.error(request, "CSV file is too large. The maximum size is 5 MB.")
             return redirect('wholesale:bulk_upload')
 
         job = BulkImportJob.objects.create(

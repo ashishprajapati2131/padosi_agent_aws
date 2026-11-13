@@ -480,11 +480,6 @@ def get_public_referral_landing_details(
     ).first()
 
     if not participant:
-        participant = db.query(ChampionshipParticipant).filter(
-            ChampionshipParticipant.campaign_id == campaign.id
-        ).first()
-
-    if not participant:
         raise HTTPException(status_code=404, detail="Referral code not found.")
 
     referring_agent = participant.agent
@@ -525,6 +520,10 @@ def get_public_referral_landing_details(
     )
 
 
+# Same fallback as the Django landing page when the campaign lists no channels.
+_DEFAULT_SOCIAL_PLATFORMS = [{"platform": "instagram"}, {"platform": "facebook"}]
+
+
 @router.post("/public/social-follow")
 def record_social_follow(
     payload: SocialFollowRequest,
@@ -536,13 +535,18 @@ def record_social_follow(
     platform = payload.platform.strip().lower()
     if not platform:
         raise HTTPException(status_code=400, detail="Platform required.")
+    channels = get_current_campaign(db).social_channels or _DEFAULT_SOCIAL_PLATFORMS
+    allowed = {str(c.get("platform", "")).strip().lower() for c in channels if isinstance(c, dict)}
+    if platform not in allowed:
+        raise HTTPException(status_code=400, detail="Unknown platform.")
 
-    action = ChampionshipSocialAction(
-        session_id=payload.session_id,
-        platform=platform
-    )
-    db.add(action)
-    db.commit()
+    already = db.query(ChampionshipSocialAction.id).filter(
+        ChampionshipSocialAction.session_id == payload.session_id,
+        ChampionshipSocialAction.platform == platform,
+    ).first()
+    if not already:
+        db.add(ChampionshipSocialAction(session_id=payload.session_id, platform=platform))
+        db.commit()
 
     followed = db.query(ChampionshipSocialAction.platform).filter(
         ChampionshipSocialAction.session_id == payload.session_id

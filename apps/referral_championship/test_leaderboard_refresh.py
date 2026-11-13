@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 
 from apps.agents.models import Agent, AgentSubscription, City
@@ -32,6 +33,7 @@ def _agent(n, **extra):
 
 class LeaderboardRefreshTests(TestCase):
     def setUp(self):
+        cache.clear()  # the 30s refresh debounce (audit CH17) lives in the shared test cache
         self.campaign = live_campaign()
         self.referrer = _agent(1)
         self.candidate = _agent(2)

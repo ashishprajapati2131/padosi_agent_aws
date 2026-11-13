@@ -15,7 +15,6 @@ from apps.referral_championship.models import (
     ChampionshipReferral,
     ChampionshipRewardSlab,
 )
-from apps.agents.models import Agent
 from apps.agents.services.og_urls import build_og_absolute_url
 from apps.referral_championship.services.attribution_service import bind_referral_session
 from apps.referral_championship.services.og_meta import championship_og_context
@@ -40,36 +39,43 @@ def referral_landing_page(request, ref_id):
         campaign=campaign
     ).first()
 
-    if not participant:
+    # Audit CH8: an unknown ref goes to the general landing; only a valid ref writes tracking rows.
+    is_valid_ref = participant is not None
+    if not is_valid_ref:
+        if ref_id != 'GENERAL':
+            return redirect('championship:public_root')
         participant = ChampionshipParticipant.objects.filter(campaign=campaign).first()
-        if not participant:
-            agent = Agent.objects.first()
-            if agent:
-                from apps.referral_championship.services.attribution_service import get_or_create_participant
-                participant = get_or_create_participant(agent, campaign)
 
     if not participant:
         return redirect(reverse('agents:agent_registration'))
 
-    # Lock attribution in visitor session
-    bind_referral_session(request, ref_id)
+    log_flag = f'ch_landing_logged_{ref_id}'
+    if is_valid_ref and not request.session.get(log_flag):
+        # Lock attribution in visitor session
+        bind_referral_session(request, ref_id)
 
-    # Log visitor referral entry in 'started' state
-    session_key = request.session.session_key or request.session.save() or request.session.session_key
-    utm_source = request.GET.get('utm_source', '')
-    utm_medium = request.GET.get('utm_medium', '')
-    utm_campaign = request.GET.get('utm_campaign', '')
+        # Log visitor referral entry in 'started' state
+        session_key = request.session.session_key or request.session.save() or request.session.session_key
+        utm_source = request.GET.get('utm_source', '')
+        utm_medium = request.GET.get('utm_medium', '')
+        utm_campaign = request.GET.get('utm_campaign', '')
 
-    ChampionshipReferral.objects.get_or_create(
-        campaign=campaign,
-        referrer=participant,
-        session_id=session_key,
-        referral_id=participant.referral_id,
-        defaults={
-            'registration_state': 'started',
-            'utm_params': {'source': utm_source, 'medium': utm_medium, 'campaign': utm_campaign},
-        }
-    )
+        ChampionshipReferral.objects.get_or_create(
+            campaign=campaign,
+            referrer=participant,
+            session_id=session_key,
+            referral_id=participant.referral_id,
+            defaults={
+                'registration_state': 'started',
+                'utm_params': {'source': utm_source, 'medium': utm_medium, 'campaign': utm_campaign},
+            }
+        )
+        # Log Google Review prompt shown
+        ChampionshipGoogleReviewLog.objects.get_or_create(
+            session_id=session_key,
+            defaults={'ip_address': request.META.get('REMOTE_ADDR')}
+        )
+        request.session[log_flag] = True
 
     referring_agent = participant.agent
     profile = referring_agent.get_primary_profile() if hasattr(referring_agent, 'get_primary_profile') else getattr(referring_agent, 'profile', None)
@@ -100,12 +106,6 @@ def referral_landing_page(request, ref_id):
     pricing = campaign.pricing_config or {}
     digital_cfg = pricing.get('digital', {'regular_price': 1999, 'campaign_price': 999})
     pro_cfg = pricing.get('professional', {'regular_price': 9999, 'campaign_price': 4999})
-
-    # Log Google Review prompt shown
-    ChampionshipGoogleReviewLog.objects.get_or_create(
-        session_id=session_id,
-        defaults={'ip_address': request.META.get('REMOTE_ADDR')}
-    )
 
     # Rewards slabs and draws for preview
     slabs = ChampionshipRewardSlab.objects.filter(campaign=campaign, is_active=True).order_by('threshold')

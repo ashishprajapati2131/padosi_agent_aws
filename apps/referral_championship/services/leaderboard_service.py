@@ -24,6 +24,9 @@ def refresh_leaderboard_cache(campaign=None):
         campaign = ChampionshipCampaign.get_current()
     if not campaign:
         return
+    # Admin froze the leaderboard: keep ranks and rows exactly as they are.
+    if ChampionshipLeaderboardCache.objects.filter(campaign=campaign, is_frozen=True).exists():
+        return
 
     participants = ChampionshipParticipant.objects.filter(
         campaign=campaign,
@@ -63,6 +66,10 @@ def refresh_leaderboard_cache(campaign=None):
     )
     # ignore_conflicts: a concurrent refresh may have inserted the same row; both compute the same ranks.
     ChampionshipLeaderboardCache.objects.bulk_create(cache_creates, batch_size=500, ignore_conflicts=True)
+    # Drop rows of participants no longer ranked (e.g. fraud-blocked since the last refresh).
+    ChampionshipLeaderboardCache.objects.filter(campaign=campaign).exclude(
+        participant__in=participants
+    ).delete()
 
     cache.delete(CACHE_KEY_LEADERBOARD)
 
@@ -73,6 +80,10 @@ def get_leaderboard_data(campaign=None, limit=50):
         campaign = ChampionshipCampaign.get_current()
     if not campaign:
         return []
+    # Audit CH17: apply a re-rank that the payment-path debounce skipped.
+    if cache.get(f"lb_dirty_{campaign.pk}") and cache.add(f"lb_refresh_{campaign.pk}", 1, 30):
+        cache.delete(f"lb_dirty_{campaign.pk}")
+        refresh_leaderboard_cache(campaign)
 
     entries = ChampionshipLeaderboardCache.objects.filter(
         campaign=campaign

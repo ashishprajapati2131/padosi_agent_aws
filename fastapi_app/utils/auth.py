@@ -39,24 +39,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    now = datetime.now(timezone.utc)
-    if expires_delta:
-        expire = now + expires_delta
-    else:
-        expire = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    jti = to_encode.get("jti") or str(uuid4())
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "nbf": now,
-        "jti": jti,
-        "type": "refresh",
-    })
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
-
 from sqlalchemy.orm import Session
 def generate_and_register_token(db: Session, email: str, role: str, user_id: int, expires_delta: Optional[timedelta] = None) -> str:
     from fastapi_app.models.user_token import UserToken

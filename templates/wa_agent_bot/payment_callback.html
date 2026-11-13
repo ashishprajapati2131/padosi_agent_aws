@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Received — PadosiAgent</title>
+    <link rel="icon" type="image/png" href="/static/img/logo-icon.webp">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #ffffff;
+            background-image: radial-gradient(1200px circle at 50% -10%, #edf2f7 0%, #ffffff 70%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            color: #0f172a;
+        }
+        .card-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 28px;
+            padding: 44px 36px 36px;
+            max-width: 490px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 60px -15px rgba(39, 60, 142, 0.1), 0 4px 16px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s ease;
+        }
+        .logo-box {
+            margin-bottom: 24px;
+        }
+        .logo-box img {
+            height: 48px;
+            width: auto;
+            max-width: 200px;
+            object-fit: contain;
+            display: inline-block;
+        }
+        .icon-circle {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 32px;
+            margin-bottom: 18px;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.38);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        h1 {
+            font-size: 25px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #047857;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .badge-pill i {
+            font-size: 14px;
+            color: #10b981;
+        }
+        p.desc {
+            font-size: 14.5px;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        p.desc strong.brand {
+            color: #273c8e;
+            font-weight: 700;
+        }
+
+        /* Delivery Channels Box */
+        .delivery-box {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .delivery-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+        }
+        .delivery-item:not(:last-child) {
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .del-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .del-icon.wa {
+            background: #ecfdf5;
+            color: #10b981;
+            border: 1px solid #a7f3d0;
+        }
+        .del-icon.em {
+            background: #eff6ff;
+            color: #273c8e;
+            border: 1px solid #bfdbfe;
+        }
+        .del-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .del-info strong {
+            display: block;
+            font-size: 13px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+        .del-info span {
+            display: block;
+            font-size: 11.5px;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .del-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #059669;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            padding: 3px 8px;
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Credentials Box */
+        .cred-box {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 18px 20px;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .cred-box-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #273c8e;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cred-item {
+            margin-bottom: 10px;
+        }
+        .cred-item:last-child {
+            margin-bottom: 0;
+        }
+        .cred-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .cred-val {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            word-break: break-all;
+        }
+        .secure-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #047857;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            padding: 3px 8px;
+            border-radius: 20px;
+        }
+        .cred-hint {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        .copy-btn {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+        .copy-btn:hover {
+            background: #f1f5f9;
+            border-color: #273c8e;
+            color: #273c8e;
+        }
+        .status-badge-inline {
+            display: inline-block;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* Action Buttons */
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.25s ease;
+            box-shadow: 0 10px 22px -5px rgba(39, 60, 142, 0.35);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 26px -5px rgba(39, 60, 142, 0.45);
+        }
+        .btn-whatsapp {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 20px;
+            background: #ffffff;
+            border: 1.5px solid #25D366;
+            color: #128C7E;
+            text-decoration: none;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.25s ease;
+        }
+        .btn-whatsapp:hover {
+            background: #f0fdf4;
+            transform: translateY(-1px);
+        }
+        .btn-whatsapp i {
+            color: #25D366;
+            font-size: 18px;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 22px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="card-container">
+        <!-- PadosiAgent Brand Logo -->
+        <div class="logo-box">
+            <a href="/">
+                <img src="/static/img/logo.webp" alt="PadosiAgent Logo" onerror="this.onerror=null; this.src='/static/img/logo.png';">
+            </a>
+        </div>
+
+        <!-- Success Check Icon -->
+        <div class="icon-circle">
+            <i class="fa-solid fa-check"></i>
+        </div>
+
+        <h1>Payment Received!</h1>
+
+        <div class="badge-pill">
+            <i class="fa-solid fa-shield-check"></i> Credentials Sent to WhatsApp & Email
+        </div>
+
+        <p class="desc">
+            Thank you, <strong>{{ fullname }}</strong>! Your payment was verified and your registration is submitted for <strong class="brand">Admin Approval</strong>.
+            For your security, your login credentials have been dispatched directly to your <strong>WhatsApp</strong> and <strong>Email</strong>.
+        </p>
+
+        <!-- Dispatch Confirmation Box -->
+        <div class="delivery-box">
+            <div class="delivery-item">
+                <div class="del-icon wa"><i class="fa-brands fa-whatsapp"></i></div>
+                <div class="del-info">
+                    <strong>WhatsApp Credentials</strong>
+                    <span>Sent to {{ masked_mobile }}</span>
+                </div>
+                <span class="del-status"><i class="fa-solid fa-circle-check"></i> Sent</span>
+            </div>
+            <div class="delivery-item">
+                <div class="del-icon em"><i class="fa-solid fa-envelope"></i></div>
+                <div class="del-info">
+                    <strong>Welcome Email & Invoice</strong>
+                    <span>Sent to {{ email|default:"registered email" }}</span>
+                </div>
+                <span class="del-status"><i class="fa-solid fa-circle-check"></i> Sent</span>
+            </div>
+        </div>
+
+        <!-- Portal Login Credentials Card -->
+        <div class="cred-box">
+            <div class="cred-box-header">
+                <span><i class="fa-solid fa-id-card me-1"></i> Account Details</span>
+                <span style="font-size: 11px; text-transform: none; color: #10b981;"><i class="fa-solid fa-lock"></i> Protected</span>
+            </div>
+
+            <div class="cred-item">
+                <div class="cred-label">Login User ID (Email)</div>
+                <div class="cred-val">
+                    <span>{{ email|default:"Your registered email" }}</span>
+                    {% if email %}<button type="button" class="copy-btn" onclick="copyText({{ email_json }}, this)">Copy</button>{% endif %}
+                </div>
+            </div>
+
+            <div class="cred-item">
+                <div class="cred-label">Password</div>
+                <div class="cred-val">
+                    <span style="letter-spacing: 2.5px; font-family: monospace; font-size: 15px; color: #334155; font-weight: 800;">••••••••••</span>
+                    <span class="secure-badge"><i class="fa-solid fa-check"></i> Sent</span>
+                </div>
+                <div class="cred-hint">💡 Default password is your 10-digit registered mobile number</div>
+            </div>
+
+            <div class="cred-item">
+                <div class="cred-label">Selected Membership Plan</div>
+                <div class="cred-val" style="color: #273c8e;">
+                    <span>{{ plan_name }}</span>
+                </div>
+            </div>
+
+            <div class="cred-item">
+                <div class="cred-label">Account Status</div>
+                <div class="cred-val">
+                    <span class="status-badge-inline">⏳ Pending Admin Approval</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <a href="{{ login_url }}" class="btn-primary">
+            Proceed to Agent Login <i class="fa-solid fa-arrow-right"></i>
+        </a>
+
+        <a href="/wa-bot/simulator/" class="btn-whatsapp">
+            <i class="fa-brands fa-whatsapp"></i> Return to WhatsApp Chat
+        </a>
+
+        <div class="footer-note">
+            PadosiAgent &bull; India's #1 Insurance Agent Network
+        </div>
+    </div>
+
+    <script>
+        function copyText(txt, btn) {
+            if (!txt) return;
+            navigator.clipboard.writeText(txt).then(function() {
+                const orig = btn.innerText;
+                btn.innerText = 'Copied! ✓';
+                btn.style.color = '#10b981';
+                btn.style.borderColor = '#10b981';
+                setTimeout(function() {
+                    btn.innerText = orig;
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

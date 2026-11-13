@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -92,12 +93,14 @@ def get_password_reset_service(db: Session = Depends(get_db)) -> PasswordResetSe
     return PasswordResetService(db)
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
-async def forgot_password(
+def forgot_password(
     request: ForgotPasswordRequest,
     req: Request,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service)
 ):
-    return await password_reset_service.send_reset_link(request, req)
+    # Plain def: FastAPI runs it in a worker thread, so the service's blocking
+    # DB/cache calls stay off the event loop; the coroutine gets its own loop here.
+    return asyncio.run(password_reset_service.send_reset_link(request, req))
 
 @router.post("/reset-password", response_model=ResetPasswordResponse)
 def reset_password(

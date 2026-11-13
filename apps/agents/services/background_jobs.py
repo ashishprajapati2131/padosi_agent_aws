@@ -204,6 +204,26 @@ def _wa_log_prune_job():
         )
 
 
+def _user_token_prune_job():
+    """Drop FastAPI JWT registry rows (user_tokens) expired or revoked over 30 days ago."""
+    from django.db import connection
+
+    cutoff = datetime.now() - timedelta(days=30)
+    deleted = 0
+    with connection.cursor() as cursor:
+        while True:
+            cursor.execute(
+                "DELETE FROM user_tokens WHERE expires_at < %s"
+                " OR (is_revoked = 1 AND created_at < %s) LIMIT 1000",
+                [cutoff, cutoff],
+            )
+            deleted += cursor.rowcount
+            if cursor.rowcount < 1000:
+                break
+    if deleted:
+        logger.info("[bgjobs] pruned %s old user_tokens row(s)", deleted)
+
+
 DAILY_BACKUP_RETENTION = 14
 
 
@@ -249,6 +269,7 @@ JOBS = (
     ("invoice-retry", 60 * 60, _invoice_job),
     ("paldi-expirations", 30 * 60, _paldi_expiry_job),
     ("wa-log-prune", 24 * 60 * 60, _wa_log_prune_job),
+    ("user-token-prune", 24 * 60 * 60, _user_token_prune_job),
     ("daily-db-backup", 24 * 60 * 60, _daily_backup_job),
 )
 

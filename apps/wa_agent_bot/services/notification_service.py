@@ -23,7 +23,7 @@ def notify_agent_approved_whatsapp(agent_id):
     """
     from apps.agents.models import Agent
     from apps.wa_agent_bot.models import WaBotSession
-    from apps.wa_agent_bot.services.message_sender import send_text_message
+    from apps.wa_agent_bot.services.message_sender import mask_phone, send_text_message
     from apps.wa_agent_bot.views import is_wa_bot_enabled
 
     try:
@@ -73,10 +73,10 @@ def notify_agent_approved_whatsapp(agent_id):
         # Send via OpenWA
         send_res = send_text_message(target_phone, approval_msg, category='approval', session=session)
         if send_res.get('success'):
-            logger.info(f"[WA-Bot-Notification] Sent approval notification to {target_phone} for agent #{agent.id}")
+            logger.info(f"[WA-Bot-Notification] Sent approval notification to {mask_phone(target_phone)} for agent #{agent.id}")
             return True, "Notification sent"
         else:
-            logger.warning(f"[WA-Bot-Notification] Failed sending approval notification to {target_phone}: {send_res.get('error')}")
+            logger.warning(f"[WA-Bot-Notification] Failed sending approval notification to {mask_phone(target_phone)}: {send_res.get('error')}")
             return False, send_res.get('error')
 
     except Exception as e:
@@ -91,7 +91,7 @@ def notify_agent_rejected_whatsapp(agent_id, reason=None):
     """
     from apps.agents.models import Agent
     from apps.wa_agent_bot.models import WaBotSession
-    from apps.wa_agent_bot.services.message_sender import send_text_message
+    from apps.wa_agent_bot.services.message_sender import mask_phone, send_text_message
     from apps.wa_agent_bot.views import is_wa_bot_enabled
 
     try:

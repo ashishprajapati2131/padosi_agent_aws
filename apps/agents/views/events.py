@@ -946,8 +946,17 @@ def verify_promo_code(request):
     if not code:
         return JsonResponse({'success': False, 'message': 'Please enter a promo code.'}, status=400)
 
+    # Same brute-force limiter as the signup promo check (audit AG12).
+    from apps.agents.views.registration import _promo_checks_paused, _record_promo_failure
+    if _promo_checks_paused(request):
+        return JsonResponse(
+            {'success': False, 'message': 'Too many attempts. Please try again after 15 minutes.'},
+            status=429,
+        )
+
     promo = PromoCode.objects.filter(code=code).first()
     if not promo or not promo.is_valid():
+        _record_promo_failure(request)
         return JsonResponse({'success': False, 'message': 'Invalid or expired promo code.'})
 
     discount = promo.calculate_discount(PROFESSIONAL_BASE)

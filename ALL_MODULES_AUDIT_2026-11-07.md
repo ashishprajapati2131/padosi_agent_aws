@@ -49,6 +49,174 @@ These are account takeovers, money leaks, or things already broken in production
 7. **API1 ✅:** the FastAPI account-deletion status endpoint has no authentication, accepts guessable reference IDs, and returns the email, mobile and name.
 8. **INS2 ✅:** the insurance *sales* role can record payments and send agents for activation.
 
+## Phase 7 status (2026-11-14) — FastAPI (API5–API20)
+
+Tests: `fastapi_app/test_phase_api_security.py`, `test_phase_api_profile.py`, `test_phase_api_dashboard.py`.
+
+| Item | Status | Fix |
+|---|---|---|
+| API5 | ✅ | `/forgot-password` is a plain `def` (runs in the threadpool). Upload endpoints stay async but read at most limit+1 bytes, and Pillow / DB / Cloudinary work runs in `run_in_threadpool`. |
+| API6 | ✅ | While *Enforce subscription expiry* is ON, `get_current_agent` returns 403 "subscription expired", with the same rule as Django (NULL expiry never expires; Paldi challengers keep access). `/agents/me`, logout, plans and plan-upgrade stay open so renewal works. Public profile and feature map are unchanged, matching Django (which only gates at the dashboard). |
+| API7 | ✅ | Dashboard counts a subscription with NULL `expires_at` as active (as Django does). |
+| API8 | ✅ | GET `/leads` returns an empty list (same shape, `is_locked=true`) when lead management is locked. |
+| API9 | ✅ | Website/social links are validated with Django's URL rules (no `javascript:`) and saved under Django's keys (`linkedin`, …), so links edited in the app show on the public card again. Old keys are still read. |
+| API10 | ✅ | City names validated (2–60 chars, letters, spaces, `.-'`), existing cities reused, max 5 new cities per agent per day. New cities stay active as before (there is no admin approval screen). |
+| API11 | ✅ | The WAF still logs and blocks matches, but signed-in (valid, non-revoked token) users no longer count toward the 24h IP auto-ban. 64 KB scan cap; template-injection patterns bounded. |
+| API12 | ✅ (partial) | Blocked IPs cached in memory for 60s (no DB session per request); rate-limit cache calls run in the threadpool. `LOWER(email)` kept: the Laravel tables' collation isn't recorded in the repo. |
+| API13 | ✅ | Naive IST (`datetime.now()` / Python cutoffs) instead of UTC in account deletion, leads, device tokens, user tokens, dashboard month start and agent search. Other models with `utcnow` defaults (`agent_subscription`, `referral_code`, championship) are not written by the API in the audited paths. |
+| API14 | ✅ | Unknown championship `ref_id` → 404 instead of the first participant. |
+| API15 | ✅ | Public social-follow / scratch: `session_id` ≤ 64, `platform` ≤ 32 and must be one of the campaign's channels; repeat follows are not stored again. |
+| API16 | ✅ | The feature map is computed once per request and reused by every feature check in that request. |
+| API17 | ✅ | Referral codes use `secrets`, retry on a unique clash, and pick up a code a parallel request already created. |
+| API18 | ✅ | Lead preferences: fees 0–10,000,000, percentages 0–100, null accepted (saved as 0); charging fields ≤ 50 chars. Career timeline POST/PUT use a schema (year 1950..next year, text caps). |
+| API19 | ✅ | Removed unused `require_admin`, `create_refresh_token` and the broken `UserModel` login branch. |
+| API20 | ✅ | Deletion OTP: never logged; if no email channel works the API returns 503 instead of a false success; hash is HMAC with `SECRET_KEY`. New daily `user-token-prune` job (`docs/CRON_JOBS.md`). |
+
+Deploy notes: deletion OTPs issued in the 10 minutes before the deploy fail once (new hash). With expiry enforcement ON, the mobile app must show the new 403 message (not tested on a device). An admin unblocking an IP can take up to 60s to reach the API.
+
+## Phase 6 status (2026-11-14) — big-file split
+
+Pure moves, no logic change. Each original file stays as a façade that re-exports every old name, so URLs, imports and test patches keep working. Details and rules: `CLAUDE.md` → "Big view modules".
+
+| File | Before | After | New modules |
+|---|---|---|---|
+| `apps/agents/views/registration.py` | 6,390 | 2,956 | `registration_common` (382), `_pricing` (853), `_fulfilment` (357), `_forms` (1,345), `_offers` (275), `_public` (433) |
+| `apps/agents/views/dashboard.py` | 4,658 | 1,135 | `dashboard_common` (229), `_public` (578), `_profile` (1,513), `_leads` (441), `_account` (506), `_settings` (404) |
+| `apps/home/views/pages.py` | 2,729 | 1,043 | `leads` (163), `homepage` (214), `agent_search` (482), `pincode` (230), `city_directory` (672) |
+
+Checks run:
+- Façade: every old name is still exposed (159 / 82 / 98), and every moved definition is the same object; `registration` defs also match the original bytecode.
+- URL map: all 762 routes identical (path, name, view, order) against a baseline taken before the split.
+- No import cycles: no submodule imports its façade; each imports cleanly on its own.
+- `pyflakes` over the whole project: no undefined names, except one in dead code after a `return` in `wholesale/views/public_views.py` (never runs).
+- `manage.py check` clean, no pending migrations, every file compiles.
+
+Bug found during the split and fixed: `agent_dashboard` used `time.time()` without importing `time`. The `NameError` was swallowed, so every dashboard visit silently skipped the trial-activity log.
+
+Still large (left on purpose): `apply_profile_update` (one ~975-line function, now in `dashboard_profile.py`) and the payment core in `registration.py`. Splitting those means changing logic, not moving it.
+
+## Phase 5 status (2026-11-14) — safe structure work
+
+| Item | Status | Change |
+|---|---|---|
+| CH15 | ✅ | `EventReferralParticipant.win_emailed_at` (migration `event_referral/0010`), set only after a successful send; re-runs email only those missed; `--force` re-sends. Migration `0011` backfills existing winners so nobody is emailed twice after deploy. |
+| Unique-rule check | ✅ (tool) | New read-only `python manage.py audit_duplicates` reports duplicate reviews (agent + mobile), championship referrals (campaign + agent) and invoices (payment id). Run it on production; if all three are 0, the AG17 / CH4 / PAY13 unique migrations are safe. |
+| INS-S | ✅ | One `create_onboarded_agent()` helper (`apps/insurance/services/onboarding.py`) replaces the 3 copied create blocks; a characterisation test checks every field each path creates, before and after. |
+| WA-S | ✅ | `payment_callback` and the simulator page HTML moved into `templates/wa_agent_bot/` (−1,020 lines of Python). Output identical; simulator logs now use `safe_json`. |
+| AG14 | ❗ Finding, nothing removed | The events signup is not dead: `register/` and `plans/` each appear twice in `urls_events.py`, so the form POST lands on the GET view and the registration/plan-choice code never runs. **Decision needed:** fix the routing (switches on a signup path never exercised in production) or retire the funnel. |
+
+Not done in Phase 5 (high risk for little gain right now): splitting `registration.py` (6.3K lines), `apply_profile_update` and `pages.py`. Many tests patch names inside these modules, so a split needs its own careful change.
+
+## Phase 4 status (2026-11-14) — remaining fixes outside FastAPI
+
+FastAPI is still parked until the end. Two migrations, both index-only: `agents/0044_agent_leads_ip_created_idx` (AG9) and `wa_agent_bot/0008_message_log_phone_category_index` (WA13).
+
+| Item | Status | Fix |
+|---|---|---|
+| WA3 (rest) | ✅ | The temp password is cleared from the bot session once the welcome message is delivered (kept only until a failed delivery is retried). |
+| WA7 | ✅ | Incoming messages are processed under a row lock on the session, so a payment activation can't be overwritten. Edge case: a user message and a webhook arriving together can deadlock; MySQL cancels one, the webhook is retried and the user gets "try again". |
+| WA11 | ✅ | Chatbot gets a per-chat-session daily cap and a warning at 80% of the global cap. Existing caps unchanged. |
+| WA12 | ✅ | The LLM fallback chain stops trying more providers after a 25s total deadline. |
+| WA13 | ✅ | Broadcast "already sent" check matches the exact phone; index migration; message logs older than 90 days are pruned by the background jobs (`wa-log-prune`, daily). |
+| WA14 | ✅ | A plan change marks the old pending bot subscription failed and cancels its Razorpay link (best effort). The row and its order id stay, so a late payment on the old link still activates. |
+| WA16 | ✅ | Phone numbers and emails are masked in bot logs. |
+| WEB8 | ✅ (safe part) | find-agents no longer prefetches every review; rating and count come from two subqueries. Ranking and output unchanged. |
+| WEB9 | ✅ | Search writes the session only when a value changes, and only stores a valid pincode or in-India coordinates. |
+| WEB14 | ✅ | Contact and quick-lead limits count every attempt atomically; a hidden honeypot field drops bot posts silently. |
+| custom_page | ✅ | One slug query instead of two. |
+| JSON escapers | ⏸ Kept | The two page helpers also HTML-escape for `innerHTML`; swapping in `safe_json` would reopen XSS. |
+| INS4 (reason) | ✅ | Rejection reason is appended to `agent.admin_notes` with a timestamp (no migration). |
+| INS7 | ✅ | Variant payload is validated before anything is deleted; a DB error rolls back the whole product save. |
+| INS10 | ✅ | Product pause/resume is POST with a CSRF token; buttons look the same. |
+| INS12 | ✅ | Bulk import: 5 MB / 2000-row caps, case-insensitive `.csv`, SKUs/categories preloaded, unknown category = row error. A blank category still uses the default category as before. |
+| INS16 | ✅ | Saving an invite message no longer creates a `users` row. |
+| INS19 | ✅ | Distributor agent list pages in the DB; insurance agent and payment lists paginate (25/page); dashboard counts use one aggregate. |
+| CH8 | ✅ | Unknown referral link redirects to the general championship page; tracking rows are written only for a valid ref, once per session. |
+| CH9 | ✅ | Public Paldi leaderboard is cached for 45s and no longer builds referral lists (which held mobile/email). |
+| CH11 | ✅ | A payment for a blocked referrer is recorded as paid-but-not-counting and counts after the participant is restored. |
+| CH16 | ✅ | Slab counts in one aggregate; `select_related` on claims and recent referrals. |
+| CH17 | ✅ (partial) | Leaderboard refresh is debounced to once per 30s, with no lost update. Ranks can be up to ~45s stale. Zero-referral participants are still ranked because dashboards show their rank. |
+| CH15 | ⏸ Migration | Needs an "emailed" field on the participant. |
+
+## Section 3 close-out (2026-11-13): agents dashboard / profile / public
+
+| Item | Status | Fix | Test |
+|---|---|---|---|
+| AG1, AG2, AG3, AG4, AG6, AG12, AG15, AG16, AG20 | ✅ | Fixed in Phases 0–3. | – |
+| AG5 | ✅ | A profile save that fails validation now rolls back the whole save (`transaction.set_rollback(True)` before each of the 12 error returns). The 500 reply no longer shows `str(e)`. | `agents/test_section3_dashboard.RejectedProfileSaveWritesNothingTests` |
+| AG8 | ✅ | Dashboard lead list shows the newest 500 leads, not every lead ever. | – |
+| AG10 | ✅ (scoped) | Chromium already ran one at a time with a Pillow fallback, and hidden agents 404 since AG3. Added a 10s timeout on `set_content`. | – |
+| AG11 | ✅ (scoped) | Bio generation stops starting new LLM attempts after 45s. Each attempt's provider chain is in `chatbot/llm_client.py` (WA12, chatbot section). | – |
+| AG17 | ✅ (partial) | Review rate limit uses atomic `cache.add`/`incr`. A unique constraint on (agent, reviewer_mobile) needs a migration and a duplicate clean-up first — not done. | `ReviewRateLimitTests` |
+| AG18 | ✅ | A slug collision on insert retries once with a random suffix instead of failing the signup. | `SlugRaceTests` |
+| AG19 | ✅ | The lead FCM and lead email threads close their DB connection when done. | `ThreadConnectionCleanupTests` |
+| AG7 | ⏸ Needs a check | Professional-only profile fields may be saved by a lower plan through a direct POST (UNVERIFIED). Needs a plan-vs-field decision. | – |
+| AG9 | ⏸ Migration | `(ip_address, created_at)` index on `AgentLead` — needs a migration, best applied with the other indexes in one deploy. | – |
+| AG14 | ⏸ Dead code | The unreachable events signup (~1000 lines) is left in place; the webhook fulfilment in that file is still used. Removal belongs to Phase 5. | – |
+| AG-S | ⏸ Phase 5 | Splitting `apply_profile_update` (975 lines) and `agent_dashboard` (775 lines). | – |
+
+## Section 2 close-out (2026-11-13): agents registration / payment / auth
+
+Kept out of scope by the owner: registration OTP, and anything that changes the login id / password scheme (so PAY8 and PAY14 stay as they are).
+
+| Item | Status | Fix | Test |
+|---|---|---|---|
+| PAY1–PAY7, PAY9, PAY11, PAY15 | ✅ | Fixed in Phases 0–3 (see those tables). | – |
+| PAY10 | ✅ | Retries already ran only for a genuine payer. Added: anonymous `/agent-register/payment-callback/` is capped at 20/min per IP; the payer's own checkout session is never limited. | `agents/test_pay_section2.PaymentCallbackRateLimitTests` |
+| PAY12 | ✅ | `_activate_paid_subscription` locks and re-reads the agent before saving, so an admin approval or profile edit made in between is kept. | `ActivationReReadsAgentTests` |
+| PAY13 | ✅ | Renewal price uses the same whole-rupee GST bundle as signup (₹2359, not truncated 2358.81). Invoice base/GST split uses Decimal. | `RenewalPriceTests`, `InvoiceSplitTests` |
+| PAY16 | ✅ (scoped) | The gate middleware looks the agent up once per request (was twice on dashboard pages). Not cached across requests, so a restriction or new payment applies on the next click. | `GateResolvesAgentOncePerRequestTests` |
+| PAY-S | ✅ (small) | One `_clear_checkout_session()` helper replaces 4 copied blocks; duplicate `csrf_exempt` import removed; `agent_register_complete` returns 500 (not 200) on an unexpected error — the page reads the JSON either way. | existing e2e tests |
+| PAY8, PAY14 | ⏸ Owner decision | Both concern the login password scheme, which stays unchanged. | – |
+
+Not done: splitting `registration.py` (6.3K lines) into modules. That is the Phase 5 structure work; doing it now would mix a large move with these behaviour fixes.
+
+Renewal price note: renewals now cost the same rounded total as a new signup (₹2359 for a ₹1999 plan, ₹11799 for ₹9999) instead of ₹2358.82 / ₹11798.82.
+
+## Phase 3 status (2026-11-13) — quick fixes
+
+FastAPI items are still parked until the end, at the owner's request. Each fix has a test in that app's `test_phase3_quick.py`. No migrations.
+
+| Item | Status | Fix |
+|---|---|---|
+| WA6 | ✅ | The Razorpay event is marked processed only after activation succeeds, so a failed activation can be retried. |
+| WA10 | ✅ | Group, `@lid` and broadcast chat ids are ignored; only personal chats reach the bot. |
+| WA15 | ✅ | The bot simulator returns 404 in production (DEBUG off). |
+| WA17 | ✅ | One neutral reply instead of "account with email/mobile X already exists". |
+| PAY9 | ✅ | An agent login never changes a distributor's or insurance user's `users.role`. |
+| PAY15 | ✅ | The promo use count is a conditional UPDATE, so it can't pass `max_uses`. A paid order after the cap still goes through. |
+| AG4 | ✅ | The lead email escapes customer fields; leads are capped at 5 per 10 minutes and 20 per day per IP+agent (same limits as the card form). |
+| AG12 | ✅ | `/events/verify-promo/` pauses after repeated wrong codes, like the signup check. |
+| AG15 | ✅ | Only the notifications actually shown are marked read. |
+| AG16 | ✅ | Career timeline returns 404 JSON instead of 500 for an admin with no agent. |
+| AG20 | ✅ | The lead-email link uses `APP_URL` instead of a hard-coded domain. |
+| WEB7 | ✅ | Quick-lead phone: "+91 98765 43210" → 9876543210; must be a valid Indian mobile. A bad email is rejected. |
+| WEB10 | ✅ | Search analytics / "card seen" alerts only run for a valid 6-digit pincode (or no pincode). |
+| WEB11 | ✅ | City pages stop counting at 3 or 5 rows; the page is unchanged. |
+| WEB13 | ✅ | Bad banner/popup JSON is cached as `{}`, so the DB is not hit on every page. |
+| WEB16 | ✅ | Removed the unreachable `seo.robots_txt` view and route. |
+| INS4 | ✅ (partial) | Approve/reject only for `pending_manager_approval`. The rejection reason is not saved: that needs a new column. |
+| INS6 | ✅ | Editing an approved/published/paused product sends it back to admin review. |
+| INS8 | ✅ | Distributor password change uses `check_password_hash`; no match → refused; missing fields no longer crash. |
+| INS9 | ✅ | `_distributor_laravel_id` returns None with no `users` row; every caller denies. |
+| INS11 | ✅ | RFQ, price API and cross-sell open only published products from approved wholesalers; a variant must belong to its product. |
+| INS13 | ✅ | RFQ quote is a Decimal > 0 (no NaN or infinity). |
+| INS14 | ✅ | `record_payment`, `checkout_online_success` and `save_invite_message` log the error and show a generic message. |
+| INS15 | ✅ | `notify_send` is manager-only; `request_status_change` is manager/onboarding and only accepts activate/deactivate. |
+| INS17 | ✅ | Removed the `session['wholesaler_id']` / raw `session['admin_id']` auth fallbacks. |
+| INS18 | ✅ | The wholesale product wizard and categories page escape what they put on the page. |
+| CH5 | ✅ | A refund recount locks the referrer row first. |
+| CH6 | ✅ | "Freeze leaderboard" now stops re-ranking. |
+| CH7 | ✅ | Blocked participants are removed from the leaderboard cache. |
+| CH10 | ✅ | Self-referral compares the last 10 digits (+91 / 0 handled). |
+| CH12 | ✅ | `_grant_win` leaves suspended, blacklisted and rejected agents blocked. |
+| CH13 | ✅ | Claim updates are locked; delivered/redeemed can't move back. |
+| CH14 | ✅ | The Paldi activity CSV uses `safe_csv_writer`. |
+
+Still open from this batch, both needing a decision:
+- The distributor `dashboard` view still falls back to `auth_user.id` when no `users` row exists. In practice that is only superusers, and removing it could lock them out.
+- Moving a delivered claim to cancelled/expired is still allowed.
+
 ## Phase 2 status (2026-11-13)
 
 FastAPI items are parked until the end, at the owner's request.

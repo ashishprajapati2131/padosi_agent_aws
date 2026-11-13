@@ -173,15 +173,18 @@
                                 <a href="{% url 'wholesale:product_detail' slug=product.slug %}" target="_blank" class="btn btn-outline-secondary" title="View Public Page">
                                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                 </a>
-                                <a href="{% url 'wholesale:product_toggle' product_id=product.id %}" class="btn btn-outline-warning" title="Pause Listing" onclick="return confirm('Pause this listing from the public marketplace?');">
+                                <button type="submit" form="toggle-form-{{ product.id }}" class="btn btn-outline-warning" title="Pause Listing" onclick="return confirm('Pause this listing from the public marketplace?');">
                                     <i class="fa-solid fa-pause"></i>
-                                </a>
+                                </button>
                                 {% elif product.approval_status == 'PAUSED' %}
-                                <a href="{% url 'wholesale:product_toggle' product_id=product.id %}" class="btn btn-outline-success" title="Resume Listing">
+                                <button type="submit" form="toggle-form-{{ product.id }}" class="btn btn-outline-success" title="Resume Listing">
                                     <i class="fa-solid fa-play"></i>
-                                </a>
+                                </button>
                                 {% endif %}
                             </div>
+                            {% if product.is_live or product.approval_status == 'PAUSED' %}
+                            <form id="toggle-form-{{ product.id }}" method="post" action="{% url 'wholesale:product_toggle' product_id=product.id %}" class="d-none">{% csrf_token %}</form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

@@ -633,6 +633,9 @@ def sync_verified_password(email, fullname, password, role='agent', agent=None):
     django_user = find_django_user(email)
     bcrypt_hash = _hash_for_verified_password(password, laravel_user, django_user)
     django_user = ensure_django_user(email, fullname, bcrypt_hash, overwrite_password=True)
+    # Never turn an existing distributor / insurance `users` row into an agent (audit PAY9).
+    if _non_agent_laravel_role(laravel_user):
+        role = None
     ensure_laravel_user(email, fullname, bcrypt_hash, role=role, overwrite_password=True)
     if agent is None:
         agent = find_agent(email)

@@ -141,7 +141,7 @@ class EventReferralRegistrationTests(TestCase):
         resp2 = client.get('/stall-leaderboard/')
         self.assertEqual(resp2.status_code, 200)
 
-    def test_public_leaderboard_referrals_newest_first(self):
+    def test_public_leaderboard_rows_carry_no_referral_entries(self):
         from apps.event_referral.services.public_leaderboard import get_public_leaderboard_payload
 
         agent = Agent.objects.create(
@@ -186,9 +186,8 @@ class EventReferralRegistrationTests(TestCase):
         )
         payload = get_public_leaderboard_payload(limit=5)
         row = next(r for r in payload['leaderboard'] if r['agent_id'] == agent.id)
-        names = [item['name'] for item in row['referrals']]
-        self.assertEqual(names[0], 'Newest Person')
-        self.assertEqual(names[1], 'Older Person')
+        # Audit CH9: referral entries (with contacts) were never rendered; no longer built.
+        self.assertNotIn('referrals', row)
 
     def test_event_referral_championship_funnel_context(self):
         from apps.event_referral.services.championship_dashboard import (

@@ -1,6 +1,7 @@
 import logging
 from functools import wraps
 
+from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -110,6 +111,9 @@ def sub_distributors_index(request):
     Distributor console to manage sub-distributors, view invite link, and track analytics.
     """
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        messages.error(request, "Your distributor account is not set up. Please contact support.")
+        return redirect('distributors:dashboard')
     search = request.GET.get('search', '').strip()
     status = request.GET.get('status', 'all')
 
@@ -193,6 +197,9 @@ def sub_distributor_create(request):
         return redirect('distributors:sub_distributors_index')
 
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        messages.error(request, "Your distributor account is not set up. Please contact support.")
+        return redirect('distributors:dashboard')
 
     fullname = request.POST.get('fullname', '').strip()
     email = request.POST.get('email', '').strip().lower()
@@ -233,6 +240,8 @@ def sub_distributor_toggle_status(request, pk):
     Toggle sub-distributor status between active and suspended.
     """
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        raise Http404
     sub_dist = get_object_or_404(SubDistributor, pk=pk, distributor_id=distributor_id)
 
     if sub_dist.status == 'active':
@@ -254,6 +263,8 @@ def sub_distributor_agents(request, pk):
     View all agents recruited by this specific sub-distributor.
     """
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        raise Http404
     sub_dist = get_object_or_404(SubDistributor, pk=pk, distributor_id=distributor_id)
 
     search = request.GET.get('search', '').strip()
@@ -534,6 +545,8 @@ def sub_distributor_reset_password(request, pk):
         return redirect('distributors:sub_distributors_index')
 
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        raise Http404
     sub_dist = get_object_or_404(SubDistributor, pk=pk, distributor_id=distributor_id)
 
     password = request.POST.get('password', '')

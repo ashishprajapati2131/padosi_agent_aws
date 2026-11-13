@@ -442,7 +442,8 @@ def admin_trial_activity_logs(request):
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="trial_agent_activity_logs_{now.strftime("%Y%m%d_%H%M")}.csv"'
-        writer = csv.writer(response)
+        from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
+        writer = safe_csv_writer(response)
         writer.writerow(['ID', 'Timestamp', 'Agent ID', 'Agent Name', 'Mobile', 'Email', 'Activity Type', 'Title', 'Description', 'IP Address', 'User Agent'])
         for item in logs_qs[:5000].iterator():
             writer.writerow([

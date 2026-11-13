@@ -24,6 +24,9 @@ def approvals_approve(request, agent_id):
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
     if request.method == 'POST':
+        if agent.status != 'pending_manager_approval':
+            messages.error(request, 'This agent is not awaiting manager approval.')
+            return redirect('insurance:approvals_index')
         agent.status = 'pending_accounts_payment'
         agent.save()
         messages.success(request, f"Agent {agent.fullname}'s onboarding request has been approved and moved to the accounts payment queue.")
@@ -38,15 +41,20 @@ def approvals_reject(request, agent_id):
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
     if request.method == 'POST':
+        if agent.status != 'pending_manager_approval':
+            messages.error(request, 'This agent is not awaiting manager approval.')
+            return redirect('insurance:approvals_index')
         rejection_reason = request.POST.get('rejection_reason')
         if not rejection_reason:
             messages.error(request, 'Rejection reason is required.')
             return redirect('insurance:approvals_index')
 
         agent.status = 'rejected'
+        # Keep the manager's reason for the admin team (audit INS4); admin_notes is shown in admin.
+        from datetime import datetime
+        note = f"[{datetime.now():%Y-%m-%d %H:%M}] Insurance manager rejected: {rejection_reason.strip()[:1000]}"
+        agent.admin_notes = f"{agent.admin_notes}\n{note}".strip() if agent.admin_notes else note
         agent.save()
-        
-        # Here we could also log the reason to a separate model if needed.
         messages.success(request, f"Agent {agent.fullname}'s onboarding request has been rejected.")
     
     return redirect('insurance:approvals_index')

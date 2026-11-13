@@ -80,21 +80,29 @@ class RfqAttachmentTests(WholesaleSecurityBase):
 
 
 class WholesaleAdminPermissionTests(TestCase):
-    def _request(self, admin):
+    def _is_admin(self, admin):
         request = RequestFactory().get('/')
-        request.session = {'admin_id': admin.pk}
+        request.session = {}
         request.user = type('Anon', (), {'is_authenticated': False})()
-        return request
+        with patch('apps.admin_panel.auth._get_admin_from_session', return_value=admin.pk):
+            return is_wholesale_admin(request)
 
     def test_staff_admin_without_wholesale_permission_is_not_wholesale_admin(self):
         admin = Admin.objects.create(name='S', email='s@example.com', password='x', role='staff', permissions=['agents'])
-        self.assertFalse(is_wholesale_admin(self._request(admin)))
+        self.assertFalse(self._is_admin(admin))
 
     def test_staff_admin_with_wholesale_permission_and_super_admin(self):
         staff = Admin.objects.create(name='W', email='w@example.com', password='x', role='staff', permissions=['wholesale'])
         sup = Admin.objects.create(name='U', email='u@example.com', password='x', role='super', permissions=[])
-        self.assertTrue(is_wholesale_admin(self._request(staff)))
-        self.assertTrue(is_wholesale_admin(self._request(sup)))
+        self.assertTrue(self._is_admin(staff))
+        self.assertTrue(self._is_admin(sup))
+
+    def test_raw_session_admin_id_is_not_trusted(self):
+        sup = Admin.objects.create(name='R', email='r@example.com', password='x', role='super', permissions=[])
+        request = RequestFactory().get('/')
+        request.session = {'admin_id': sup.pk}
+        request.user = type('Anon', (), {'is_authenticated': False})()
+        self.assertFalse(is_wholesale_admin(request))
 
 
 class WholesaleLoginThrottleTests(WholesaleSecurityBase):

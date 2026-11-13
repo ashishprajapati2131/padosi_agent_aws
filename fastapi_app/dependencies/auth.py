@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -8,7 +8,6 @@ from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.user import User
-from fastapi_app.middleware.admin_auth import is_valid_admin_session
 from jose.exceptions import ExpiredSignatureError, JWTError
 
 security = HTTPBearer()
@@ -74,7 +73,17 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 # Mirrors AuthService.BLOCKED_AGENT_STATUSES and Django's agent_login guard.
 BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected", "deleted")
 
-def get_current_agent(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Agent:
+# Renewal and sign-out stay open to an expired agent, as Django's payment gate leaves
+# /chooseplan/ and logout open (invariant 12).
+_EXPIRY_EXEMPT_ROUTES = ("/v1/agents/me", "/v1/agents/logout")
+_EXPIRY_EXEMPT_ROUTE_PREFIXES = ("/v1/agents/plans", "/v1/agents/plan-upgrade/")
+
+
+def get_current_agent(
+    request: Request = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Agent:
     agent_repo = AgentRepository(db)
     agent = agent_repo.get_by_email(current_user.email)
     if not agent and current_user.id:
@@ -105,6 +114,20 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
             detail=f"Your account is currently {agent.status}."
         )
 
+    # request is None only for get_optional_agent (plans list, reset password): left open.
+    route_path = getattr((request.scope.get("route") if request is not None else None), "path", "") or ""
+    if (
+        request is not None
+        and route_path not in _EXPIRY_EXEMPT_ROUTES
+        and not route_path.startswith(_EXPIRY_EXEMPT_ROUTE_PREFIXES)
+    ):
+        from fastapi_app.services.lock_unlock_service import agent_subscription_expired
+        if agent_subscription_expired(db, agent):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription has expired. Please renew your plan to continue.",
+            )
+
     return agent
 
 
@@ -121,31 +144,4 @@ def get_optional_agent(
     except Exception:
         return None
 
-
-def require_admin(request: Request) -> Any:
-    """
-    Ensure the request originates from an authenticated administrator.
-    Validates either:
-      1. Django admin session_token cookie against user_sessions / user_session_data
-      2. Bearer JWT with administrative role ('admin', 'staff', 'superuser')
-    """
-    session_token = request.cookies.get("session_token")
-    if session_token and is_valid_admin_session(session_token):
-        return {"auth_type": "session", "session_token": session_token}
-
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ", 1)[1].strip()
-        try:
-            payload = decode_access_token(token)
-            role = payload.get("role", "")
-            if role in ("admin", "staff", "superuser"):
-                return {"auth_type": "bearer", "role": role, "sub": payload.get("sub")}
-        except Exception:
-            pass
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Administrative access required."
-    )
 

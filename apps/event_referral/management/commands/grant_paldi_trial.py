@@ -36,7 +36,12 @@ class Command(BaseCommand):
             "--email-granted",
             action="store_true",
             help="Email-only: email agents who already hold this exact trial (same plan and end) "
-            "and grant nobody new. Sends again on every run with --apply.",
+            "and grant nobody new. Skips agents already emailed unless --force.",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Also re-send to agents whose trial email was already sent.",
         )
 
     def handle(self, *args, **opts):
@@ -49,7 +54,7 @@ class Command(BaseCommand):
         if until <= datetime.now():
             raise CommandError("--until is in the past")
 
-        granted = paid = won = emailed = already = not_granted = 0
+        granted = paid = won = emailed = already = same = not_granted = 0
         failed = []
         qs = EventReferralParticipant.objects.select_related("agent").order_by("id")
         for p in qs.iterator():
@@ -67,10 +72,12 @@ class Command(BaseCommand):
                     if p.agent.status == "pending_approval":
                         p.agent.status = "event_challenge"
                         p.agent.save(update_fields=["status", "updated_at"])
-                if opts["email_granted"] and same_trial:
+                same += same_trial
+                # Granted earlier but the email never went out (failed or the run crashed).
+                if same_trial and (opts["force"] or not p.win_emailed_at):
                     already += 1
                     if opts["apply"]:
-                        if self._email(p.agent, opts["plan"], until):
+                        if self._email_and_mark(p, opts["plan"], until):
                             emailed += 1
                         else:
                             failed.append(p.agent.email or f"agent #{p.agent_id}")
@@ -81,8 +88,8 @@ class Command(BaseCommand):
             granted += 1
             if opts["apply"]:
                 admin_grant_win(p, plan_slug=opts["plan"], expires_at=until)
-                # Re-runs skip won participants, so nobody gets this email twice.
-                if self._email(p.agent, opts["plan"], until):
+                # win_emailed_at lets a re-run send this if it fails or the run crashes here.
+                if self._email_and_mark(p, opts["plan"], until):
                     emailed += 1
                 else:
                     failed.append(p.agent.email or f"agent #{p.agent_id}")
@@ -91,8 +98,9 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"{'Emailing' if opts['apply'] else 'DRY RUN - would email'} {already} agents who "
-                    f"already have this trial. No new grants ({not_granted} without the trial left as they are). "
-                    f"Skipped: {paid} paid, {won - already} won with another plan. "
+                    f"already have this trial ({same - already} already emailed; --force re-sends). "
+                    f"No new grants ({not_granted} without the trial left as they are). "
+                    f"Skipped: {paid} paid, {won - same} won with another plan. "
                     f"Total: {won + paid + not_granted}."
                 )
             )
@@ -101,13 +109,23 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"{mode} {opts['plan']} until {until:%Y-%m-%d %H:%M} to {granted} participants. "
-                    f"Skipped: {paid} paid, {won} already won. Total: {granted + paid + won}."
+                    f"Skipped: {paid} paid, {won} already won. Total: {granted + paid + won}. "
+                    f"{'Emailing' if opts['apply'] else 'Would email'} {already} granted earlier "
+                    f"whose email was not sent."
                 )
             )
         if opts["apply"]:
             self.stdout.write(f"Emails sent: {emailed}, failed: {len(failed)}.")
             for who in failed:
                 self.stderr.write(f"  email failed: {who}")
+
+    def _email_and_mark(self, p, plan, until):
+        if not self._email(p.agent, plan, until):
+            return False
+        EventReferralParticipant.objects.filter(pk=p.pk).update(
+            win_emailed_at=datetime.now()
+        )
+        return True
 
     def _email(self, agent, plan, until):
         """Festive trial email. Returns False (never raises) so one bad address cannot stop the grants."""

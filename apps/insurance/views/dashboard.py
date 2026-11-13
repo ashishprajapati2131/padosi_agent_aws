@@ -4,7 +4,7 @@ from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from apps.agents.models import Agent, AgentLead
 from django.contrib.auth.models import User
-from django.db.models import Count, F
+from django.db.models import Count, F, Q
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
 from django.contrib.auth.views import LoginView
 from apps.home.services.portal_messages import PORTAL_INSURANCE, portal_error
@@ -44,28 +44,34 @@ def dashboard(request):
     }
 
     if profile.is_insurance_manager():
-        total_agents = Agent.objects.filter(insurance_id=insurance_id).count()
-        active_agents = Agent.objects.filter(insurance_id=insurance_id, status='active').count()
-        inactive_agents = Agent.objects.filter(insurance_id=insurance_id, status='inactive').count()
+        now = timezone.now()
+        trend_months = [now - relativedelta(months=i) for i in range(5, -1, -1)]
+        # One aggregate instead of a COUNT per stat / trend month.
+        stats = Agent.objects.filter(insurance_id=insurance_id).aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(status='active')),
+            inactive=Count('id', filter=Q(status='inactive')),
+            pending_manager=Count('id', filter=Q(status='pending_manager_approval')),
+            **{
+                f'm{i}': Count('id', filter=Q(created_at__year=m.year, created_at__month=m.month))
+                for i, m in enumerate(trend_months)
+            },
+        )
+        total_agents = stats['total']
+        active_agents = stats['active']
+        inactive_agents = stats['inactive']
 
         # Real lead count: joins agent_leads → agents on insurance_id (mirrors Laravel)
         total_leads = AgentLead.objects.filter(
             agent__insurance_id=insurance_id
         ).count()
-        
-        now = timezone.now()
-        new_agents_this_month = Agent.objects.filter(
-            insurance_id=insurance_id, 
-            created_at__year=now.year,
-            created_at__month=now.month
-        ).count()
+
+        new_agents_this_month = stats['m5']  # trend_months[-1] is the current month
 
         pending_status_changes = AgentApprovalRequest.objects.filter(
             insurance_id=insurance_id, status='pending'
         ).count()
-        pending_onboardings = Agent.objects.filter(
-            insurance_id=insurance_id, status='pending_manager_approval'
-        ).count()
+        pending_onboardings = stats['pending_manager']
         pending_requests = pending_status_changes + pending_onboardings
 
         pending_manager_approvals = Agent.objects.filter(
@@ -76,17 +82,8 @@ def dashboard(request):
             insurance_profile__insurance_parent_id=user.id
         ).order_by('insurance_profile__insurance_sub_role')
 
-        trend_labels = []
-        trend_data = []
-        for i in range(5, -1, -1):
-            month_date = now - relativedelta(months=i)
-            trend_labels.append(month_date.strftime('%b'))
-            count = Agent.objects.filter(
-                insurance_id=insurance_id,
-                created_at__year=month_date.year,
-                created_at__month=month_date.month
-            ).count()
-            trend_data.append(count)
+        trend_labels = [m.strftime('%b') for m in trend_months]
+        trend_data = [stats[f'm{i}'] for i in range(len(trend_months))]
 
         recent_agents = Agent.objects.filter(
             insurance_id=insurance_id
@@ -108,11 +105,18 @@ def dashboard(request):
         return render(request, 'insurance/dashboard.html', context)
 
     if profile.is_insurance_onboarding():
-        total_onboarded_by_me = Agent.objects.filter(onboarded_by=user.id).count()
-        pending_manager = Agent.objects.filter(onboarded_by=user.id, status='pending_manager_approval').count()
-        pending_payment = Agent.objects.filter(onboarded_by=user.id, status='pending_accounts_payment').count()
-        pending_admin = Agent.objects.filter(onboarded_by=user.id, status='pending_admin_approval').count()
-        active_agents = Agent.objects.filter(onboarded_by=user.id, status='active').count()
+        stats = Agent.objects.filter(onboarded_by=user.id).aggregate(
+            total=Count('id'),
+            pending_manager=Count('id', filter=Q(status='pending_manager_approval')),
+            pending_payment=Count('id', filter=Q(status='pending_accounts_payment')),
+            pending_admin=Count('id', filter=Q(status='pending_admin_approval')),
+            active=Count('id', filter=Q(status='active')),
+        )
+        total_onboarded_by_me = stats['total']
+        pending_manager = stats['pending_manager']
+        pending_payment = stats['pending_payment']
+        pending_admin = stats['pending_admin']
+        active_agents = stats['active']
 
         recent_agents = Agent.objects.filter(onboarded_by=user.id).order_by('-created_at')[:5]
 

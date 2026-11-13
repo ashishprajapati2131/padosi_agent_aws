@@ -45,6 +45,8 @@ MAX_CHAT_MESSAGE_CHARS = 2000
 # LLM spend caps: messages per IP per day, and across all visitors per day.
 CHATBOT_DAILY_IP_LIMIT = int(os.environ.get("CHATBOT_DAILY_IP_LIMIT", "100"))
 CHATBOT_DAILY_GLOBAL_LIMIT = int(os.environ.get("CHATBOT_DAILY_GLOBAL_LIMIT", "5000"))
+# Per browser (Django session) per day, so a few IPs can't drain the global budget (audit WA11).
+CHATBOT_DAILY_SESSION_LIMIT = int(os.environ.get("CHATBOT_DAILY_SESSION_LIMIT", "60"))
 CHAT_IP_LIMIT_REPLY = (
     "You've reached today's chat limit. Please use the agent search on our site, "
     "or contact us and we'll be happy to help."
@@ -239,7 +241,25 @@ def send_message(request):
         # Daily spend caps; per-IP first so a capped IP doesn't use up the global budget.
         if incr_daily_counter(f"chat_ip_{client_ip}") > CHATBOT_DAILY_IP_LIMIT:
             return _canned_reply(session_id, CHAT_IP_LIMIT_REPLY)
-        if incr_daily_counter("chat_global") > CHATBOT_DAILY_GLOBAL_LIMIT:
+        session_key = getattr(request.session, "session_key", None)
+        if session_key is None and hasattr(request.session, "save"):
+            request.session.save()  # new visitor: get a key now so the cap counts from message 1
+            session_key = request.session.session_key
+        if (
+            session_key
+            and incr_daily_counter(f"chat_sess_{session_key}") > CHATBOT_DAILY_SESSION_LIMIT
+        ):
+            return _canned_reply(session_id, CHAT_IP_LIMIT_REPLY)
+        global_count = incr_daily_counter("chat_global")
+        if global_count > CHATBOT_DAILY_GLOBAL_LIMIT * 0.8 and cache.add(
+            f"chatbot_global_80pct_warned_{date.today().isoformat()}", 1, DAILY_COUNTER_TIMEOUT
+        ):
+            logger.warning(
+                "Chatbot global daily usage passed 80%% of its cap (%s of %s messages).",
+                global_count,
+                CHATBOT_DAILY_GLOBAL_LIMIT,
+            )
+        if global_count > CHATBOT_DAILY_GLOBAL_LIMIT:
             alert_key = f"chatbot_global_cap_alerted_{date.today().isoformat()}"
             if cache.add(alert_key, 1, DAILY_COUNTER_TIMEOUT):
                 logger.error(

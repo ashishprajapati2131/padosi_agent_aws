@@ -184,6 +184,10 @@ class WaBotMessageLog(models.Model):
     class Meta:
         db_table = 'wa_bot_message_logs'
         ordering = ['created_at']
+        # Broadcast dedup (already_sent) filters on these together (audit WA13).
+        indexes = [
+            models.Index(fields=['phone_number', 'category', 'created_at'], name='wa_msglog_phone_cat_idx'),
+        ]
         verbose_name = 'WhatsApp Bot Message Log'
         verbose_name_plural = 'WhatsApp Bot Message Logs'
 

@@ -29,11 +29,61 @@ PATTERNS = {
     "RCE / Shell Injection": r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
     "SSRF / Metadata API": r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
     "XML External Entity (XXE)": r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
-    "Server-Side Template Injection": r"({{\s*[\s\S]*\s*}}|{%\s*[\s\S]*\s*%}|\[\[\s*[\s\S]*\s*\]\])",
+    # Bounded spans: the old `{{\s*[\s\S]*\s*}}` backtracked across the whole body.
+    "Server-Side Template Injection": r"(\{\{[\s\S]{0,500}?\}\}|\{%[\s\S]{0,500}?%\}|\[\[[\s\S]{0,500}?\]\])",
     "CRLF / Header Injection": r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
 }
 
 LOCAL_HOSTS = ["127.0.0.1", "::1", "testclient", "localhost", "testserver"]
+
+# Only the start of a body is scanned; payloads are small, free text can be large.
+MAX_SCAN_BYTES = 64 * 1024
+
+# blocked_ips is read once per minute per process instead of once per request.
+# An admin block/unblock made in Django takes effect within this window.
+BLOCKED_IP_CACHE_SECONDS = 60
+_blocked_cache = {"at": None, "ips": {}}
+_blocked_lock = threading.Lock()
+
+
+def _blocked_ips() -> dict:
+    """ip -> (reason, created_at) for every blocked IP, refreshed every 60 s."""
+    now = time.monotonic()
+    with _blocked_lock:
+        at = _blocked_cache["at"]
+        if at is not None and now - at < BLOCKED_IP_CACHE_SECONDS:
+            return _blocked_cache["ips"]
+    ips = None
+    try:
+        db = SessionLocal()
+        try:
+            rows = db.query(BlockedIp.ip_address, BlockedIp.reason, BlockedIp.created_at).all()
+            ips = {r.ip_address: r for r in rows}
+        finally:
+            db.close()
+    except Exception:
+        pass  # DB down: keep the previous set rather than retrying every request
+    with _blocked_lock:
+        if ips is not None:
+            _blocked_cache["ips"] = ips
+        _blocked_cache["at"] = now
+        return _blocked_cache["ips"]
+
+
+def _invalidate_blocked_ips():
+    with _blocked_lock:
+        _blocked_cache["at"] = None
+
+
+def _authenticated_user(db, token):
+    """The user behind a valid, unrevoked agent Bearer token, else None."""
+    from fastapi.security import HTTPAuthorizationCredentials
+    from fastapi_app.dependencies.auth import get_current_user
+
+    try:
+        return get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token), db)
+    except Exception:
+        return None
 
 # One alert email per IP per window (the Django WAF uses the same 10 minutes).
 # Previously every detection sent a synchronous email with no timeout, so a
@@ -136,52 +186,57 @@ def _inspect_request(ip, input_str, url_str, auth_header, user_agent):
 
     Returns None to allow the request, or a (status, body) tuple to reject it.
     """
+    blocked = _blocked_ips().get(ip)
+    if blocked is not None and _auto_block_expired(blocked):
+        # Automatic blocks expire after 24h (shared mobile IPs); manual
+        # admin blocks stay. Mirrors apps.admin_panel.middleware.is_ip_blocked.
+        try:
+            db = SessionLocal()
+            try:
+                row = db.query(BlockedIp).filter(BlockedIp.ip_address == ip).first()
+                if row is not None and _auto_block_expired(row):
+                    db.delete(row)
+                    db.commit()
+                    row = None
+                blocked = row
+            finally:
+                db.close()
+        except Exception:
+            blocked = None
+        _invalidate_blocked_ips()
+    if blocked is not None:
+        return 403, {"error": "Forbidden", "message": "Your IP address has been blocked due to suspicious activity."}
+
+    is_admin_route = "/admin/" in url_str or "/api/v1/championship/admin" in url_str
+    type_matched = _match_threat(input_str, url_str, is_admin_route)
+    if not type_matched:
+        return None
+
     try:
         db = SessionLocal()
     except Exception:
         return None
 
     try:
-        # Check if IP is blocked in database
-        try:
-            is_blocked = db.query(BlockedIp).filter(BlockedIp.ip_address == ip).first()
-            if is_blocked and _auto_block_expired(is_blocked):
-                # Automatic blocks expire after 24h (shared mobile IPs); manual
-                # admin blocks stay. Mirrors apps.admin_panel.middleware.is_ip_blocked.
-                db.delete(is_blocked)
-                db.commit()
-                is_blocked = None
-            if is_blocked:
-                return 403, {"error": "Forbidden", "message": "Your IP address has been blocked due to suspicious activity."}
-        except Exception:
-            pass
-
-        is_admin_route = "/admin/" in url_str or "/api/v1/championship/admin" in url_str
-        type_matched = _match_threat(input_str, url_str, is_admin_route)
-        if not type_matched:
-            return None
-
         # Malicious Activity Detected - Gather Hacker details
         hacker_name = "GUEST / ANONYMOUS"
         hacker_email = None
         hacker_mobile = None
 
+        # hacker_email is set only for a verified token; such rows (free text from a
+        # signed-in app user) are logged but never count toward the IP auto-ban,
+        # which would lock out everyone behind a shared mobile/CGNAT IP.
         if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            try:
-                from fastapi_app.utils.auth import decode_token
-                payload = decode_token(token)
-                if payload and payload.get("sub"):
-                    email = payload.get("sub")
-                    user = db.query(User).filter(User.email == email).first()
-                    if user:
-                        hacker_name = user.fullname
-                        hacker_email = user.email
-                        agent = db.query(Agent).filter(Agent.email == email).first()
-                        if agent:
-                            hacker_mobile = agent.mobile
-            except Exception:
-                pass
+            user = _authenticated_user(db, auth_header.split(" ", 1)[1].strip())
+            if user is not None:
+                hacker_name = user.fullname
+                hacker_email = user.email
+                try:
+                    agent = db.query(Agent).filter(Agent.email == user.email).first()
+                    if agent:
+                        hacker_mobile = agent.mobile
+                except Exception:
+                    pass
 
         # Location & ISP (non-blocking, avoids external HTTP DoS vulnerability)
         location = "Unknown"
@@ -190,11 +245,12 @@ def _inspect_request(ip, input_str, url_str, auth_header, user_agent):
         # Check auto-ban threshold (3 threats within 1 hour)
         is_auto_blocked = False
         ban_reason = ""
-        if settings.WAF_AUTO_BAN_ENABLED:
+        if settings.WAF_AUTO_BAN_ENABLED and hacker_email is None:
             one_hour_ago = datetime.utcnow() - timedelta(hours=1)
             recent_threats_count = db.query(SecurityThreatLog).filter(
                 SecurityThreatLog.ip_address == ip,
-                SecurityThreatLog.created_at >= one_hour_ago
+                SecurityThreatLog.created_at >= one_hour_ago,
+                SecurityThreatLog.hacker_email.is_(None),
             ).count()
 
             if recent_threats_count >= 2:  # this would be the 3rd offense
@@ -221,6 +277,8 @@ def _inspect_request(ip, input_str, url_str, auth_header, user_agent):
             user_agent=user_agent
         ))
         db.commit()
+        if is_auto_blocked:
+            _invalidate_blocked_ips()
 
         if _should_send_alert(ip):
             try:
@@ -259,7 +317,7 @@ class ThreatMonitorMiddleware(BaseHTTPMiddleware):
             # replace request._receive: Starlette reads it again to wait for
             # http.disconnect and raises RuntimeError on a repeated http.request.
             body_bytes = await request.body()
-            input_str = body_bytes.decode("utf-8", errors="ignore")
+            input_str = body_bytes[:MAX_SCAN_BYTES].decode("utf-8", errors="ignore")
 
         verdict = await run_in_threadpool(
             _inspect_request,

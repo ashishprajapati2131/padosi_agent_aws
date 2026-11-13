@@ -34,6 +34,14 @@ def _schedule_leaderboard_refresh(campaign):
                 "Championship leaderboard refresh failed for campaign %s", campaign.pk
             )
 
+    from django.core.cache import cache
+
+    # Audit CH17: at most one re-rank per 30s per campaign. A skipped one marks the board
+    # dirty; the next payment or leaderboard read after the window refreshes it.
+    if not cache.add(f"lb_refresh_{campaign.pk}", 1, 30):
+        cache.set(f"lb_dirty_{campaign.pk}", 1, None)
+        return
+    cache.delete(f"lb_dirty_{campaign.pk}")
     transaction.on_commit(_run)
 
 
@@ -193,6 +201,7 @@ def revert_championship_qualification(agent, reason="refund"):
     old_count = referrer.qualifying_referrals_count
 
     with transaction.atomic():
+        referrer = ChampionshipParticipant.objects.select_for_update().get(pk=referrer.pk)
         referral_rec.is_qualifying = False
         referral_rec.registration_state = (
             "refunded" if reason == "refund" else "cancelled"

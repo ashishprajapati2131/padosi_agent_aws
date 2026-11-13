@@ -347,7 +347,7 @@ def render_agent_og_jpeg(agent):
                     with sync_playwright() as p:
                         browser = p.chromium.launch(headless=True)
                         page = browser.new_page(viewport={"width": 1200, "height": 630})
-                        page.set_content(html)
+                        page.set_content(html, timeout=10000)  # audit AG10: never hang a worker
                         try:
                             page.wait_for_load_state("networkidle", timeout=3000)
                         except Exception:

@@ -1,4 +1,5 @@
 import logging
+import re
 from apps.referral_championship.models import (
     ChampionshipCampaign,
     ChampionshipParticipant,
@@ -44,6 +45,11 @@ def bind_referral_session(request, ref_id):
     return None
 
 
+def _last10(mobile):
+    # +91 / 0 prefixes and separators ignored: compare the last 10 digits.
+    return re.sub(r'\D', '', str(mobile or ''))[-10:]
+
+
 def validate_referral_integrity(referrer_participant, candidate_agent, ip_address=None):
     """
     Fraud prevention check:
@@ -58,7 +64,7 @@ def validate_referral_integrity(referrer_participant, candidate_agent, ip_addres
     if referrer_agent.id == candidate_agent.id:
         return False, "Self-referral detected"
 
-    if candidate_agent.mobile and referrer_agent.mobile and candidate_agent.mobile.strip() == referrer_agent.mobile.strip():
+    if _last10(candidate_agent.mobile) and _last10(candidate_agent.mobile) == _last10(referrer_agent.mobile):
         ChampionshipFraudFlag.objects.create(
             participant=referrer_participant,
             reason="Duplicate mobile number detected with referrer",

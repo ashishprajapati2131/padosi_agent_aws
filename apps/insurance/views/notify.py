@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import HttpResponseForbidden
 from apps.agents.models import Agent
 # Optional imports for notification models
 try:
@@ -49,6 +50,8 @@ def notify_send(request):
     user = request.user
     if not hasattr(user, 'insurance_profile'):
         return redirect('/')
+    if not user.insurance_profile.is_insurance_manager():
+        return HttpResponseForbidden('Unauthorized')
 
     if request.method == 'POST':
         agent_id = request.POST.get('agent_id')

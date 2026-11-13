@@ -112,7 +112,7 @@ def get_banner_config(request):
             try:
                 cached = json.loads(val)
             except Exception:
-                cached = None
+                cached = {}  # not None: None in cache looks like a miss and re-hits the DB
         elif isinstance(val, dict):
             cached = val
         else:
@@ -151,7 +151,7 @@ def get_exit_popup_config(request):
             try:
                 cached = json.loads(val)
             except Exception:
-                cached = None
+                cached = {}  # not None: None in cache looks like a miss and re-hits the DB
         elif isinstance(val, dict):
             cached = val
         else:

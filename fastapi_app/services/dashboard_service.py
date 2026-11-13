@@ -1,9 +1,10 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, Dict, Any
 from urllib.parse import quote
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from fastapi_app.models.agent import Agent
@@ -46,7 +47,7 @@ class DashboardService:
         self.lock_service = LockUnlockService(db)
 
     def get_dashboard(self, agent: Agent) -> DashboardResponse:
-        now = datetime.now(timezone.utc)
+        now = datetime.now()  # DB datetimes are naive IST
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         profile: Optional[AgentProfile] = self.db.query(AgentProfile).filter(
@@ -56,7 +57,8 @@ class DashboardService:
         active_subscription: Optional[AgentSubscription] = self.db.query(AgentSubscription).filter(
             AgentSubscription.agent_id == agent.id,
             AgentSubscription.status == "active",
-            AgentSubscription.expires_at > datetime.now()  # DB datetimes are naive IST
+            # NULL expires_at never expires, as Django's still_valid_q
+            or_(AgentSubscription.expires_at.is_(None), AgentSubscription.expires_at > now),
         ).first()
 
         insurance_segments = self.db.query(AgentInsuranceSegment).filter(

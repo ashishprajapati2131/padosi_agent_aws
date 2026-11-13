@@ -17,6 +17,7 @@ from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent
 from fastapi_app.schemas.profile import (
     AgentProfileResponse,
+    CareerTimelineWriteRequest,
     BasicProfileUpdateRequest,
     ProfessionalProfileUpdateRequest,
     PortfolioProfileUpdateRequest,
@@ -39,6 +40,7 @@ from starlette.concurrency import run_in_threadpool
 from fastapi_app.services.local_storage_service import LocalStorageService
 from fastapi_app.services.lock_unlock_service import LockUnlockService
 from fastapi_app.utils.companies import INSURANCE_COMPANIES
+from fastapi_app.middleware.rate_limiter import shared_cache, incr_window_counter
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,23 @@ def _upload_image_with_fallback(file_bytes: bytes, folder: str, filename: str, f
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Both Cloudinary and local fallback storage failed."
             )
+
+# Same limits validate_image_file / validate_document_file enforce.
+_IMAGE_MAX_BYTES = 20 * 1024 * 1024
+_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024
+_NEW_CITIES_PER_DAY = 5
+
+
+async def _read_upload_capped(file: UploadFile, max_size: int) -> bytes:
+    """Read at most max_size + 1 bytes, so an oversize upload is rejected by the validator without buffering it whole."""
+    data = bytearray()
+    while len(data) <= max_size:
+        chunk = await file.read(min(1024 * 1024, max_size + 1 - len(data)))
+        if not chunk:
+            break
+        data.extend(chunk)
+    return bytes(data)
+
 
 router = APIRouter(prefix="/v1/agents", tags=["Profile"])
 
@@ -146,63 +165,68 @@ async def upload_profile_image(
     request: Request,
     file: UploadFile = File(...),
     current_agent: Agent = Depends(get_current_agent),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Upload or update a single profile image for the authenticated agent.
     Uploads to Cloudinary, with local fallback if Cloudinary fails.
     """
-    # 1. Read file and compute hash/size
-    sha256 = hashlib.sha256()
-    file_content = bytearray()
-    while True:
-        chunk = await file.read(8192)
-        if not chunk:
-            break
-        sha256.update(chunk)
-        file_content.extend(chunk)
-    file_bytes = bytes(file_content)
-    
-    # 2. Validate and sanitize
-    file_bytes = validate_image_file(file_bytes, file.filename or "image.jpg", file.content_type or "image/jpeg")
-    
-    # 3. Get profile
-    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
-    if not profile:
-        profile = AgentProfile(agent_id=current_agent.id)
-        db.add(profile)
-        db.flush()
-        
-    old_path = profile.profile_photo_path
-    
-    # 4. Upload with Fallback (run off the asyncio event loop)
-    import time, os
-    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
-    relative_path = f"app/public/profile/agent_{current_agent.id}_{int(time.time())}{ext}"
-    secure_url = await run_in_threadpool(
-        _upload_image_with_fallback,
-        file_bytes,
-        f"agent_profiles/{current_agent.id}",
-        "profile",
-        relative_path
-    )
-        
-    # 5. Delete old image
-    if old_path:
-        if "res.cloudinary.com" in old_path:
-            try:
-                CloudinaryService.delete_image(old_path)
-            except Exception as e:
-                logger.error(f"Failed to delete old image from Cloudinary: {str(e)}")
-        elif "/static/uploads/" in old_path or "/media/uploads/" in old_path:
-            try:
-                LocalStorageService.delete_file(old_path)
-            except Exception as e:
-                logger.error(f"Failed to delete old local file: {str(e)}")
-            
-    # 6. Update DB via service layer
-    profile_service = ProfileService(AgentRepository(db))
-    return profile_service.update_profile_photo(current_agent.id, secure_url)
+    # 1. Read file (capped: an oversize upload is rejected by the validator without buffering it whole)
+    file_bytes = await _read_upload_capped(file, _IMAGE_MAX_BYTES)
+    filename, content_type = file.filename, file.content_type
+
+    def _save():
+        # Pillow, DB and Cloudinary/local storage calls are blocking: run off the event loop.
+        # 2. Validate and sanitize
+        sanitized = validate_image_file(
+            file_bytes, filename or "image.jpg", content_type or "image/jpeg"
+        )
+
+        # 3. Get profile
+        profile = (
+            db.query(AgentProfile)
+            .filter(AgentProfile.agent_id == current_agent.id)
+            .first()
+        )
+        if not profile:
+            profile = AgentProfile(agent_id=current_agent.id)
+            db.add(profile)
+            db.flush()
+
+        old_path = profile.profile_photo_path
+
+        # 4. Upload with Fallback
+        import time, os
+
+        ext = os.path.splitext(filename)[1].lower() if filename else ".jpg"
+        relative_path = (
+            f"app/public/profile/agent_{current_agent.id}_{int(time.time())}{ext}"
+        )
+        secure_url = _upload_image_with_fallback(
+            sanitized, f"agent_profiles/{current_agent.id}", "profile", relative_path
+        )
+
+        # 5. Delete old image
+        if old_path:
+            if "res.cloudinary.com" in old_path:
+                try:
+                    CloudinaryService.delete_image(old_path)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to delete old image from Cloudinary: {str(e)}"
+                    )
+            elif "/static/uploads/" in old_path or "/media/uploads/" in old_path:
+                try:
+                    LocalStorageService.delete_file(old_path)
+                except Exception as e:
+                    logger.error(f"Failed to delete old local file: {str(e)}")
+
+        # 6. Update DB via service layer
+        profile_service = ProfileService(AgentRepository(db))
+        return profile_service.update_profile_photo(current_agent.id, secure_url)
+
+    return await run_in_threadpool(_save)
+
 
 @router.post("/profile/achievement")
 async def upload_achievement_image(
@@ -210,14 +234,16 @@ async def upload_achievement_image(
     file: Optional[FlexibleUploadFile] = File(None),
     files: Optional[List[FlexibleUploadFile]] = File(None),
     current_agent: Agent = Depends(get_current_agent),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Upload one or more achievement images for the authenticated agent.
     Guarded by upload_achievements feature lock.
     """
     lock_service = LockUnlockService(db)
-    lock_service.require_feature_unlocked(current_agent, "upload_achievements")
+    await run_in_threadpool(
+        lock_service.require_feature_unlocked, current_agent, "upload_achievements"
+    )
     # 1. Combine inputs and filter out empty placeholders
     raw_uploaded_files = []
     if file:
@@ -236,150 +262,149 @@ async def upload_achievement_image(
 
     if not uploaded_files:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No files uploaded."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files uploaded."
         )
 
     if len(uploaded_files) > 10:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot upload more than 10 files in a single request."
+            detail="Cannot upload more than 10 files in a single request.",
         )
 
-    # 2. Process all uploaded files (read, validate/sanitize, compute hash)
-    processed_files = []
-    batch_hashes = set()
-    
+    # 2. Read all uploaded files (raw bytes, capped); validation runs in the threadpool below
+    raw_files = []
     for f in uploaded_files:
         if isinstance(f, str):
             import base64
             import re
+
             filename = "achievement.jpg"
             content_type = "image/jpeg"
-            
+
             if f.startswith("data:image"):
-                match = re.match(r'data:(?P<mime>image/[a-zA-Z0-9]+);base64,(?P<data>.*)', f)
+                match = re.match(
+                    r"data:(?P<mime>image/[a-zA-Z0-9]+);base64,(?P<data>.*)", f
+                )
                 if match:
-                    content_type = match.group('mime')
-                    b64_data = match.group('data')
-                    ext = content_type.split('/')[-1]
+                    content_type = match.group("mime")
+                    b64_data = match.group("data")
+                    ext = content_type.split("/")[-1]
                     filename = f"achievement.{ext}"
                     try:
                         raw_bytes = base64.b64decode(b64_data)
                     except Exception:
-                        raise HTTPException(status_code=400, detail="Invalid base64 image data.")
+                        raise HTTPException(
+                            status_code=400, detail="Invalid base64 image data."
+                        )
                 else:
-                    raise HTTPException(status_code=400, detail="Invalid base64 data URI format.")
+                    raise HTTPException(
+                        status_code=400, detail="Invalid base64 data URI format."
+                    )
             else:
                 try:
                     # Attempt base64 decoding if no prefix
                     raw_bytes = base64.b64decode(f)
                 except Exception:
                     try:
-                        raw_bytes = f.encode('latin-1')
+                        raw_bytes = f.encode("latin-1")
                     except Exception:
-                        raw_bytes = f.encode('utf-8')
+                        raw_bytes = f.encode("utf-8")
         else:
             filename = f.filename or "achievement.jpg"
             content_type = f.content_type or "image/jpeg"
-            sha256 = hashlib.sha256()
-            file_content = bytearray()
-            while True:
-                chunk = await f.read(8192)
-                if not chunk:
-                    break
-                sha256.update(chunk)
-                file_content.extend(chunk)
-            raw_bytes = bytes(file_content)
-        
-        # Validate, get sanitized bytes, and compute secure hash
-        sanitized_bytes = validate_image_file(raw_bytes, filename, content_type)
-        sanitized_hash = hashlib.sha256(sanitized_bytes).hexdigest()
-        
-        # Prevent duplicates within the same batch upload
-        if sanitized_hash in batch_hashes:
-            continue
-        batch_hashes.add(sanitized_hash)
-        
-        processed_files.append({
-            "filename": filename,
-            "bytes": sanitized_bytes,
-            "hash": sanitized_hash
-        })
+            raw_bytes = await _read_upload_capped(f, _IMAGE_MAX_BYTES)
+        raw_files.append((raw_bytes, filename, content_type))
 
-    # 3. Check photo limits based on subscription plan
-    active_sub = next((s for s in current_agent.subscriptions if s.status == 'active'), None)
-    plan_text = str(active_sub.selected_plan if active_sub else '').lower()
-    max_photos = 10 if 'professional' in plan_text else 5
-    
-    current_count = db.query(AgentAchievementPhoto).filter(
-        AgentAchievementPhoto.agent_id == current_agent.id
-    ).count()
+    def _process_and_save():
+        # Pillow decode/re-encode, DB queries and uploads are blocking: run off the event loop.
+        processed_files = []
+        batch_hashes = set()
+        for raw_bytes, filename, content_type in raw_files:
+            # Validate, get sanitized bytes, and compute secure hash
+            sanitized_bytes = validate_image_file(raw_bytes, filename, content_type)
+            sanitized_hash = hashlib.sha256(sanitized_bytes).hexdigest()
 
-    # Identify which files are new (not already in the database for this agent)
-    new_processed_files = []
-    existing_photos_map = {}
-    
-    for pf in processed_files:
-        existing = db.query(AgentAchievementPhoto).filter(
-            AgentAchievementPhoto.agent_id == current_agent.id,
-            AgentAchievementPhoto.file_hash == pf["hash"]
-        ).first()
-        
-        if existing:
-            existing_photos_map[pf["hash"]] = existing
-        else:
-            new_processed_files.append(pf)
+            # Prevent duplicates within the same batch upload
+            if sanitized_hash in batch_hashes:
+                continue
+            batch_hashes.add(sanitized_hash)
 
-    # Enforce plan limits
-    if current_count + len(new_processed_files) > max_photos:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Achievement photo limit exceeded. Your current plan allows up to {max_photos} photos."
+            processed_files.append(
+                {"filename": filename, "bytes": sanitized_bytes, "hash": sanitized_hash}
+            )
+
+        # 3. Check photo limits based on subscription plan
+        active_sub = next(
+            (s for s in current_agent.subscriptions if s.status == "active"), None
+        )
+        plan_text = str(active_sub.selected_plan if active_sub else "").lower()
+        max_photos = 10 if "professional" in plan_text else 5
+
+        current_count = (
+            db.query(AgentAchievementPhoto)
+            .filter(AgentAchievementPhoto.agent_id == current_agent.id)
+            .count()
         )
 
-    # 4. Upload and Save new files
-    uploaded_results = []
-    
-    for pf in processed_files:
-        if pf["hash"] in existing_photos_map:
-            # Re-use existing photo record
-            existing = existing_photos_map[pf["hash"]]
-            uploaded_results.append({
-                "id": existing.id,
-                "photo_url": existing.photo_path
-            })
-            continue
+        # Identify which files are new (not already in the database for this agent)
+        new_processed_files = []
+        existing_photos_map = {}
 
-        # Upload with Fallback (run off the asyncio event loop)
-        import time, os, uuid
-        ext = os.path.splitext(pf["filename"])[1].lower() if pf["filename"] else ".jpg"
-        relative_path = f"app/public/achievement/achievement_{current_agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
-        secure_url = await run_in_threadpool(
-            _upload_image_with_fallback,
-            pf["bytes"],
-            f"agent_achievements/{current_agent.id}",
-            pf["hash"],
-            relative_path
+        for pf in processed_files:
+            existing = (
+                db.query(AgentAchievementPhoto)
+                .filter(
+                    AgentAchievementPhoto.agent_id == current_agent.id,
+                    AgentAchievementPhoto.file_hash == pf["hash"],
+                )
+                .first()
+            )
+
+            if existing:
+                existing_photos_map[pf["hash"]] = existing
+            else:
+                new_processed_files.append(pf)
+
+        # Enforce plan limits
+        if current_count + len(new_processed_files) > max_photos:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Achievement photo limit exceeded. Your current plan allows up to {max_photos} photos.",
+            )
+
+        # 4. Upload and Save new files
+        for pf in processed_files:
+            if pf["hash"] in existing_photos_map:
+                continue
+
+            # Upload with Fallback
+            import time, os, uuid
+
+            ext = (
+                os.path.splitext(pf["filename"])[1].lower()
+                if pf["filename"]
+                else ".jpg"
+            )
+            relative_path = f"app/public/achievement/achievement_{current_agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
+            pf["photo_url"] = _upload_image_with_fallback(
+                pf["bytes"],
+                f"agent_achievements/{current_agent.id}",
+                pf["hash"],
+                relative_path,
+            )
+
+        # Save to DB via service layer
+        profile_service = ProfileService(AgentRepository(db))
+        return profile_service.save_achievement_photos(
+            agent_id=current_agent.id,
+            processed_files=processed_files,
+            existing_photos_map=existing_photos_map,
         )
 
-        # Store the uploaded photo URL
-        pf["photo_url"] = secure_url
-
-    # Save to DB via service layer
-    profile_service = ProfileService(AgentRepository(db))
-    uploaded_results = profile_service.save_achievement_photos(
-        agent_id=current_agent.id,
-        processed_files=processed_files,
-        existing_photos_map=existing_photos_map
-    )
+    uploaded_results = await run_in_threadpool(_process_and_save)
 
     # Construct response
-    return {
-        "success": True,
-        "photos": uploaded_results
-    }
-
+    return {"success": True, "photos": uploaded_results}
 @router.get("/profile/companies")
 def get_companies(current_agent: Agent = Depends(get_current_agent), db: Session = Depends(get_db)):
     """
@@ -454,6 +479,58 @@ def get_companies(current_agent: Agent = Depends(get_current_agent), db: Session
         
     return grouped_companies
 
+async def _upload_license_doc(file: UploadFile, current_agent: Agent, db: Session, *, label: str,
+                              column: str, default_name: str, subdir: str, prefix: str) -> dict:
+    """Shared IRDAI/AMFI upload: capped read on the loop, blocking validation/DB/disk in the threadpool."""
+    lock_service = LockUnlockService(db)
+    await run_in_threadpool(lock_service.require_feature_unlocked, current_agent, "edit_profile_certifications")
+
+    # 1. Read file (capped); validation runs in the threadpool
+    file_bytes = await _read_upload_capped(file, _DOCUMENT_MAX_BYTES)
+    filename, content_type = file.filename, file.content_type
+
+    def _save():
+        data = validate_document_file(file_bytes, filename or default_name, content_type or "application/pdf")
+
+        # 2. Get profile
+        profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
+        if not profile:
+            profile = AgentProfile(agent_id=current_agent.id)
+            db.add(profile)
+            db.flush()
+
+        old_path = getattr(profile, column)
+
+        # 3. Save to Django media path
+        import time, os
+        ext = os.path.splitext(filename)[1].lower() if filename else ".jpg"
+        relative_path = f"app/public/{subdir}/{prefix}_{current_agent.id}_{int(time.time())}{ext}"
+
+        try:
+            saved_path = LocalStorageService.save_django_path_file(data, relative_path)
+        except Exception as e:
+            logger.error(f"Local storage failure for {label}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to save {label} license document.")
+
+        # 4. Update DB
+        setattr(profile, column, saved_path)
+        db.commit()
+
+        # 5. Cleanup old local file (if it was local)
+        if old_path and not old_path.startswith("http"):
+            try:
+                full_old_path = os.path.join(settings.LOCAL_STORAGE_PATH, old_path)
+                if os.path.exists(full_old_path):
+                    os.remove(full_old_path)
+            except Exception:
+                pass
+
+        response_path = f"/media/{saved_path}" if not saved_path.startswith("http") else saved_path
+        return {"status": "success", "message": f"{label} license uploaded successfully.", "path": response_path}
+
+    return await run_in_threadpool(_save)
+
+
 @router.post("/profile/licenses/irdai")
 async def upload_irdai_license(
     request: Request,
@@ -465,48 +542,10 @@ async def upload_irdai_license(
     Upload IRDAI license document.
     Guarded by edit_profile_certifications lock.
     """
-    lock_service = LockUnlockService(db)
-    lock_service.require_feature_unlocked(current_agent, "edit_profile_certifications")
-    
-    # 1. Read file and validate
-    file_bytes = await file.read()
-    file_bytes = validate_document_file(file_bytes, file.filename or "irdai.pdf", file.content_type or "application/pdf")
-    
-    # 2. Get profile
-    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
-    if not profile:
-        profile = AgentProfile(agent_id=current_agent.id)
-        db.add(profile)
-        db.flush()
-        
-    old_path = profile.irdai_license_doc
-    
-    # 3. Save to Django media path
-    import time, os
-    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
-    relative_path = f"app/public/insurance/irdai_{current_agent.id}_{int(time.time())}{ext}"
-    
-    try:
-        saved_path = await run_in_threadpool(LocalStorageService.save_django_path_file, file_bytes, relative_path)
-    except Exception as e:
-        logger.error(f"Local storage failure for IRDAI: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to save IRDAI license document.")
-        
-    # 4. Update DB
-    profile.irdai_license_doc = saved_path
-    db.commit()
-    
-    # 5. Cleanup old local file (if it was local)
-    if old_path and not old_path.startswith("http"):
-        try:
-            full_old_path = os.path.join(settings.LOCAL_STORAGE_PATH, old_path)
-            if os.path.exists(full_old_path):
-                os.remove(full_old_path)
-        except Exception:
-            pass
-            
-    response_path = f"/media/{saved_path}" if not saved_path.startswith("http") else saved_path
-    return {"status": "success", "message": "IRDAI license uploaded successfully.", "path": response_path}
+    return await _upload_license_doc(
+        file, current_agent, db, label="IRDAI", column="irdai_license_doc",
+        default_name="irdai.pdf", subdir="insurance", prefix="irdai",
+    )
 
 
 @router.post("/profile/licenses/amfi")
@@ -520,48 +559,10 @@ async def upload_amfi_license(
     Upload AMFI license document.
     Guarded by edit_profile_certifications lock.
     """
-    lock_service = LockUnlockService(db)
-    lock_service.require_feature_unlocked(current_agent, "edit_profile_certifications")
-
-    # 1. Read file and validate
-    file_bytes = await file.read()
-    file_bytes = validate_document_file(file_bytes, file.filename or "amfi.pdf", file.content_type or "application/pdf")
-    
-    # 2. Get profile
-    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
-    if not profile:
-        profile = AgentProfile(agent_id=current_agent.id)
-        db.add(profile)
-        db.flush()
-        
-    old_path = profile.amfi_license_doc
-    
-    # 3. Save to Django media path
-    import time, os
-    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
-    relative_path = f"app/public/investment/amfi_{current_agent.id}_{int(time.time())}{ext}"
-    
-    try:
-        saved_path = await run_in_threadpool(LocalStorageService.save_django_path_file, file_bytes, relative_path)
-    except Exception as e:
-        logger.error(f"Local storage failure for AMFI: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to save AMFI license document.")
-        
-    # 4. Update DB
-    profile.amfi_license_doc = saved_path
-    db.commit()
-    
-    # 5. Cleanup old local file
-    if old_path and not old_path.startswith("http"):
-        try:
-            full_old_path = os.path.join(settings.LOCAL_STORAGE_PATH, old_path)
-            if os.path.exists(full_old_path):
-                os.remove(full_old_path)
-        except Exception:
-            pass
-            
-    response_path = f"/media/{saved_path}" if not saved_path.startswith("http") else saved_path
-    return {"status": "success", "message": "AMFI license uploaded successfully.", "path": response_path}
+    return await _upload_license_doc(
+        file, current_agent, db, label="AMFI", column="amfi_license_doc",
+        default_name="amfi.pdf", subdir="investment", prefix="amfi",
+    )
 
 
 @router.get("/profile/generate-bio")
@@ -636,7 +637,9 @@ def get_serviceable_cities(
 
     from apps.agents.models import City as DjangoCity
 
-    cities = DjangoCity.objects.filter(is_active=True).order_by('name')
+    from django.db.models import Q
+    # Active cities, plus the agent's own (possibly pending-review) cities so its selections still show.
+    cities = DjangoCity.objects.filter(Q(is_active=True) | Q(agents__id=current_agent.id)).distinct().order_by('name')
     result = [{"id": c.id, "name": c.name} for c in cities]
     return {"status": "success", "cities": result}
 
@@ -666,10 +669,20 @@ def add_serviceable_city(
     if not payload.name or not payload.name.strip():
         raise HTTPException(status_code=400, detail="City name is required.")
 
-    name = payload.name.strip()
-    
-    # Check if city already exists (case-insensitive)
-    existing_city = DjangoCity.objects.filter(name__iexact=name).first()
+    name = " ".join(payload.name.split())
+    if not (2 <= len(name) <= 60) or not all(ch.isalpha() or ch in " .-'" for ch in name) \
+            or not any(ch.isalpha() for ch in name):
+        raise HTTPException(
+            status_code=400,
+            detail="Enter a valid city name (2-60 letters; spaces, dots, hyphens and apostrophes allowed).",
+        )
+
+    from django.db.models import Q
+    from django.utils.text import slugify
+    new_slug = slugify(name) or slugify(name, allow_unicode=True)
+
+    # Check if city already exists (case-insensitive name, or same slug)
+    existing_city = DjangoCity.objects.filter(Q(name__iexact=name) | Q(slug=new_slug)).order_by('-is_active', 'id').first()
     if existing_city:
         return {
             "status": "success",
@@ -677,9 +690,22 @@ def add_serviceable_city(
             "city": {"id": existing_city.id, "name": existing_city.name}
         }
 
-    # Create new city
-    from django.utils.text import slugify
-    new_slug = slugify(name)
+    # Per-agent cap on new global cities, shared across workers like the other FastAPI limits
+    cache = shared_cache()
+    if cache is not None:
+        try:
+            added_today = incr_window_counter(cache, f"city_add_agent_{current_agent.id}", 24 * 60 * 60)
+        except Exception as e:
+            logger.warning("City add limiter unavailable: %s", e)
+            added_today = 0
+        if added_today > _NEW_CITIES_PER_DAY:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"You can add up to {_NEW_CITIES_PER_DAY} new cities per day. Please try again tomorrow.",
+            )
+
+    # Active as before: there is no admin approval screen for cities; the name check and
+    # 5-per-day cap above stop junk (audit API10).
     new_city = DjangoCity.objects.create(name=name, slug=new_slug, state="", is_active=True)
     return {
         "status": "success",
@@ -766,7 +792,7 @@ def get_career_timelines_endpoint(
 
 @router.post("/profile/career-timeline")
 def add_career_timeline_endpoint(
-    payload: dict,
+    payload: CareerTimelineWriteRequest,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -776,14 +802,14 @@ def add_career_timeline_endpoint(
     lock_service = LockUnlockService(db)
     lock_service.require_feature_unlocked(current_agent, "edit_profile_career_timeline")
     profile_service = ProfileService(AgentRepository(db))
-    created = profile_service.add_career_timeline(current_agent, payload)
+    created = profile_service.add_career_timeline(current_agent, payload.model_dump(exclude_none=True))
     return {"success": True, "data": created, "message": "Career timeline event added."}
 
 
 @router.put("/profile/career-timeline/{timeline_id}")
 def update_career_timeline_endpoint(
     timeline_id: int,
-    payload: dict,
+    payload: CareerTimelineWriteRequest,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -793,7 +819,7 @@ def update_career_timeline_endpoint(
     lock_service = LockUnlockService(db)
     lock_service.require_feature_unlocked(current_agent, "edit_profile_career_timeline")
     profile_service = ProfileService(AgentRepository(db))
-    updated = profile_service.update_career_timeline(current_agent, timeline_id, payload)
+    updated = profile_service.update_career_timeline(current_agent, timeline_id, payload.model_dump(exclude_none=True))
     return {"success": True, "data": updated, "message": "Career timeline event updated."}
 
 

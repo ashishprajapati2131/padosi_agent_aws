@@ -47,12 +47,12 @@ class CaptureLeadRequest(BaseModel):
 class LeadPreferencesRequest(BaseModel):
     leads_new_business: bool = True
     leads_portfolio_analysis: bool = True
-    portfolio_charging: str = "free"
-    portfolio_fee: float = 0.0
+    portfolio_charging: str = Field("free", max_length=50)
+    portfolio_fee: Optional[float] = Field(0.0, ge=0, le=10_000_000)
     leads_claims_support: bool = True
-    claims_charging: str = "free"
-    claims_fee_amount: float = 0.0
-    claims_percent: Optional[float] = 0.0
+    claims_charging: str = Field("free", max_length=50)
+    claims_fee_amount: Optional[float] = Field(0.0, ge=0, le=10_000_000)
+    claims_percent: Optional[float] = Field(0.0, ge=0, le=100)
 
 class LeadPreferencesResponse(BaseModel):
     success: bool

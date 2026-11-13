@@ -11,4 +11,4 @@ class UserToken(Base):
     token_version = Column(Integer, default=1, nullable=False)
     is_revoked = Column(Boolean, default=False, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)  # naive IST, as Django (USE_TZ=False)

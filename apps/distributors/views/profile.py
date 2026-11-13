@@ -5,6 +5,7 @@ from apps.distributors.views.dashboard import is_distributor
 from django.contrib.auth.models import User
 from apps.admin_panel.models import User as LaravelUser
 import bcrypt
+from password_hashing import check_password_hash
 
 @login_required(login_url='distributors:login')
 @user_passes_test(is_distributor, login_url='distributors:login')
@@ -17,11 +18,11 @@ def profile_edit(request):
 def profile_update(request):
     user = request.user
     if request.method == 'POST':
-        fullname = request.POST.get('fullname')
-        email = request.POST.get('email')
-        current_password = request.POST.get('current_password')
-        new_password = request.POST.get('password')
-        password_confirmation = request.POST.get('password_confirmation')
+        fullname = request.POST.get('fullname') or ''
+        email = request.POST.get('email') or user.email  # missing email must not blank the login
+        current_password = request.POST.get('current_password') or ''
+        new_password = request.POST.get('password') or ''
+        password_confirmation = request.POST.get('password_confirmation') or ''
 
         # Get corresponding Laravel user
         laravel_user = LaravelUser.objects.filter(email=user.email).first()
@@ -44,11 +45,11 @@ def profile_update(request):
                 return redirect('distributors:profile')
             
             # Check against Django password
-            if not user.check_password(current_password):
-                # Fallback: check against Laravel password in case it was synced manually
-                if laravel_user and not bcrypt.checkpw(current_password.encode('utf-8'), laravel_user.password.replace('$2y$', '$2a$').encode('utf-8')):
-                    messages.error(request, "The provided password does not match your current password.")
-                    return redirect('distributors:profile')
+            # Fallback: check against Laravel password in case it was synced manually
+            if not (user.check_password(current_password) or
+                    (laravel_user and check_password_hash(current_password, laravel_user.password))):
+                messages.error(request, "The provided password does not match your current password.")
+                return redirect('distributors:profile')
 
             if new_password != password_confirmation:
                 messages.error(request, "Passwords do not match.")

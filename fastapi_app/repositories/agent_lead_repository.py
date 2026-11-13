@@ -78,7 +78,7 @@ class AgentLeadRepository:
         return lead
 
     def capture_lead(self, agent_id: int, data: Dict[str, Any]) -> AgentLead:
-        now = datetime.utcnow()
+        now = datetime.now()  # naive IST like Django (USE_TZ=False); UTC was 5.5h off (audit API13)
         lead = AgentLead(
             agent_id=agent_id,
             customer_name=data.get("customer_name"),
@@ -114,11 +114,11 @@ class AgentLeadRepository:
         pref.leads_new_business = bool(data.get("leads_new_business", True))
         pref.leads_portfolio_analysis = bool(data.get("leads_portfolio_analysis", True))
         pref.portfolio_charging = data.get("portfolio_charging", "free")
-        pref.portfolio_fee = float(data.get("portfolio_fee", 0.0))
+        pref.portfolio_fee = float(data.get("portfolio_fee") or 0.0)
         pref.leads_claims_support = bool(data.get("leads_claims_support", True))
         pref.claims_charging = data.get("claims_charging", "free")
-        pref.claims_fee_amount = float(data.get("claims_fee_amount", 0.0))
-        pref.claims_percent = float(data.get("claims_percent", 0.0))
+        pref.claims_fee_amount = float(data.get("claims_fee_amount") or 0.0)
+        pref.claims_percent = float(data.get("claims_percent") or 0.0)
 
         self.db.commit()
         self.db.refresh(pref)

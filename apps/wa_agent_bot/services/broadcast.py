@@ -22,7 +22,7 @@ from django.utils.html import escape
 
 from apps.agents.services.og_urls import CANONICAL_PADOSI_ORIGIN
 from apps.wa_agent_bot.models import WaBotMessageLog
-from apps.wa_agent_bot.services.message_sender import CAPTION_MAX, send_image_message, send_text_message
+from apps.wa_agent_bot.services.message_sender import CAPTION_MAX, mask_phone, send_image_message, send_text_message
 
 logger = logging.getLogger(__name__)
 
@@ -256,8 +256,9 @@ def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
 def already_sent(phone, text, since=None):
     """Did this number get exactly this text? since= limits it to one broadcast's lifetime, so a new
     broadcast reaches everyone again but a restart mid-broadcast never sends twice."""
+    digits = "".join(c for c in str(phone) if c.isdigit())[-10:]
     qs = WaBotMessageLog.objects.filter(
-        phone_number__endswith=phone,
+        phone_number__in=[digits, "91" + digits],  # exact stored forms, index-friendly (was endswith; WA13)
         category=CATEGORY,
         status=WaBotMessageLog.STATUS_SENT,
         content=text[:5000],
@@ -458,7 +459,7 @@ def _deliver(b, r, text):
         if result.get("success"):
             return result
         # e.g. an OpenWA without send-image: the text still goes out, with its link
-        logger.warning("[WA-Broadcast] card photo failed for %s (%s); sending text", r.phone, result.get("error"))
+        logger.warning("[WA-Broadcast] card photo failed for %s (%s); sending text", mask_phone(r.phone), result.get("error"))
     return send_text_message(r.phone, text, category=CATEGORY)
 
 

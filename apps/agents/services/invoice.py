@@ -180,9 +180,14 @@ class InvoiceService:
                     logger.info(f"[InvoiceService] Invoice already exists for payment: {subscription.razorpay_payment_id}")
                     return existing
 
-            total_amount = float(subscription.registration_amount or 0)
-            base_amount = round(total_amount / 1.18, 2)
-            gst_amount = round(total_amount - base_amount, 2)
+            # Decimal split: float /1.18 could be a paisa off (audit PAY13).
+            from decimal import ROUND_HALF_UP, Decimal
+
+            total_dec = Decimal(str(subscription.registration_amount or 0))
+            base_dec = (total_dec / Decimal('1.18')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            total_amount = float(total_dec)
+            base_amount = float(base_dec)
+            gst_amount = float(total_dec - base_dec)
 
             # 2. Calculate discount percent
             discount_percent = self.calculate_discount_percent(agent, subscription, total_amount)

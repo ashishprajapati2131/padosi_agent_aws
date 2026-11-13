@@ -672,6 +672,7 @@ class BotSecurityTests(unittest.TestCase):
             self.assertTrue(views._verify_webhook_signature(ok))
             self.assertFalse(views._verify_webhook_signature(bad))
 
+    @override_settings(DEBUG=True)
     @patch(
         "apps.admin_panel.auth._get_admin_from_session", return_value=None
     )

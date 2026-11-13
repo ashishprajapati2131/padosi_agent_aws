@@ -90,7 +90,7 @@ class WaRazorpayWebhookTests(SimpleTestCase):
         activate.assert_not_called()
 
 
-class WaInboundDedupTests(SimpleTestCase):
+class WaInboundDedupTests(TestCase):  # webhook now locks the session row in a transaction
     def test_redelivered_message_is_processed_once(self):
         cache.delete("wa_bot_msg_false_919800000001@c.us_ABC")
         payload = {
@@ -111,10 +111,12 @@ class WaInboundDedupTests(SimpleTestCase):
                 "get_or_create",
                 return_value=(session, False),
             ),
+            patch.object(views.WaBotSession.objects, "select_for_update") as sfu,
             patch.object(views.WaBotMessageLog.objects, "create"),
             patch.object(views, "send_text_message", return_value={"success": True}),
             patch.object(views, "process_message", return_value="ok") as process,
         ):
+            sfu.return_value.get.return_value = session
             for _ in range(2):
                 request = RequestFactory().post(
                     "/wa-bot/webhook/",

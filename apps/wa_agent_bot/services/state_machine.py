@@ -36,6 +36,7 @@ from .payment_service import (
     activate_agent_subscription_after_payment,
 )
 
+from apps.wa_agent_bot.services.message_sender import mask_phone
 from apps.wa_agent_bot.services.site_url import bot_site_url
 
 logger = logging.getLogger(__name__)
@@ -229,6 +230,14 @@ def _build_already_registered_message(email, login_url):
     )
 
 
+def _contact_unavailable_message(site_url):
+    """One reply for any taken email/mobile, so the bot never confirms who is registered."""
+    return (
+        "⚠️ This email or mobile can't be used here. "
+        f"If it is your account, log in at {site_url}/agent-login/; otherwise enter a different one."
+    )
+
+
 BACK_STATE_MAP = {
     WaBotSession.STATE_ASK_EMAIL: WaBotSession.STATE_ASK_FULLNAME,
     WaBotSession.STATE_ASK_MOBILE: WaBotSession.STATE_ASK_EMAIL,
@@ -275,7 +284,9 @@ def process_message(session, user_text):
         reg_data = session.registration_data or {}
         if isinstance(reg_data, dict) and reg_data.get("pending_credentials_delivery"):
             reg_data.pop("pending_credentials_delivery", None)
+            reg_data.pop("temp_password", None)  # the retry sends a reset link, never the password (WA3)
             session.registration_data = reg_data
+            session.generated_password = ""
             session.save()
             from .post_login_handler import handle_credentials
 
@@ -346,7 +357,7 @@ def process_message(session, user_text):
     else:
         # Unknown state — reset to welcome
         logger.warning(
-            f"[WA-Bot] Unknown state '{current_state}' for {session.phone_number}, resetting"
+            f"[WA-Bot] Unknown state '{current_state}' for {mask_phone(session.phone_number)}, resetting"
         )
         session.state = WaBotSession.STATE_WELCOME
         session.registration_data = {}
@@ -440,16 +451,9 @@ def _handle_ask_email(session, text):
     # Case 1: Both email and mobile provided at the same time
     if email and mobile:
         if Agent.objects.filter(email=email).exists():
-            return (
-                f"⚠️ An account with email *{email}* already exists.\n\n"
-                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
-                "Otherwise, please enter a *different email address*:"
-            )
+            return _contact_unavailable_message(site_url)
         if Agent.objects.filter(mobile=mobile).exists():
-            return (
-                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
-                "Please enter a *different mobile number*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["email"] = email
         reg_data["mobile"] = mobile
         session.registration_data = reg_data
@@ -464,10 +468,7 @@ def _handle_ask_email(session, text):
     # Case 2: Only mobile number provided at email step
     if not email and mobile:
         if Agent.objects.filter(mobile=mobile).exists():
-            return (
-                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
-                "Please enter a *different mobile number* or enter your *email address*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["mobile"] = mobile
         session.registration_data = reg_data
         session.save()
@@ -480,11 +481,7 @@ def _handle_ask_email(session, text):
     # Case 3: Only email provided
     if email:
         if Agent.objects.filter(email=email).exists():
-            return (
-                f"⚠️ An account with email *{email}* already exists.\n\n"
-                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
-                "Otherwise, please enter a *different email address*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["email"] = email
         session.registration_data = reg_data
 
@@ -524,10 +521,7 @@ def _handle_ask_mobile(session, text):
     # Quick acceptance of WhatsApp number
     if text_lower in {"yes", "y", "1", "ha", "haa", "same", "ok", "sure"} and clean_wa:
         if Agent.objects.filter(mobile=clean_wa).exists():
-            return (
-                f"⚠️ An account with mobile *{clean_wa}* already exists.\n\n"
-                "Please enter a *different 10-digit mobile number*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["mobile"] = clean_wa
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_STATE
@@ -541,20 +535,13 @@ def _handle_ask_mobile(session, text):
     # If email provided, check uniqueness and update email
     if email:
         if Agent.objects.filter(email=email).exists():
-            return (
-                f"⚠️ An account with email *{email}* already exists.\n\n"
-                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
-                "Otherwise, please enter a *different email address*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["email"] = email
 
     # If mobile is provided
     if mobile:
         if Agent.objects.filter(mobile=mobile).exists():
-            return (
-                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
-                "Please enter a *different mobile number*:"
-            )
+            return _contact_unavailable_message(site_url)
         reg_data["mobile"] = mobile
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_STATE
@@ -757,11 +744,7 @@ def _handle_ask_plan(session, text, text_lower):
         session.registration_data = reg_data
         session.state = WaBotSession.STATE_ASK_EMAIL
         session.save()
-        return (
-            "⚠️ This email is already linked to an account.\n\n"
-            f"If it is yours, please login at:\n🔗 {bot_site_url()}/agent-login/\n\n"
-            "Otherwise, please enter a *different email address*:"
-        )
+        return _contact_unavailable_message(bot_site_url())
 
     # Move to awaiting payment
     session.state = WaBotSession.STATE_AWAITING_PAYMENT

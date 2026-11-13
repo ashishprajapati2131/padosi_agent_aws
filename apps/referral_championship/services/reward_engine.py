@@ -7,6 +7,19 @@ from apps.referral_championship.models import (
 
 logger = logging.getLogger(__name__)
 
+
+def slab_achieved_counts(campaign, slabs):
+    """{slab.id: participants at or above its threshold}, one query for all slabs (audit CH16)."""
+    from django.db.models import Count, Q
+    from apps.referral_championship.models import ChampionshipParticipant
+    slabs = list(slabs)
+    if not slabs:
+        return {}
+    agg = ChampionshipParticipant.objects.filter(campaign=campaign).aggregate(**{
+        f's{s.id}': Count('id', filter=Q(qualifying_referrals_count__gte=s.threshold)) for s in slabs
+    })
+    return {s.id: agg[f's{s.id}'] for s in slabs}
+
 # Every count-based reward is requested from the dashboard and handled by
 # the team (owner request 2026-10-02). The Top 3 prize (threshold 900+) is
 # decided by the final leaderboard, not by a claim.

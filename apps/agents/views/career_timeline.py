@@ -59,8 +59,10 @@ def career_timeline_suggestions(request):
     agent_id = request.GET.get('agent_id')
     if is_admin and agent_id:
         agent = Agent.objects.filter(id=agent_id).first()
-    else:
+    elif request.user.is_authenticated:
         agent = Agent.objects.filter(user=request.user).first()
+    else:
+        agent = None  # admin session without agent_id (audit AG16)
 
     if not agent:
         return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)

@@ -113,6 +113,8 @@ class EventReferralParticipant(models.Model):
     grant_plan_slug = models.CharField(max_length=50, blank=True, default='')
     grant_expires_at = models.DateTimeField(null=True, blank=True)
     grant_previous_plan = models.CharField(max_length=50, blank=True, default='')
+    # Set by grant_paldi_trial after its email is sent; NULL means a re-run still owes it.
+    win_emailed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

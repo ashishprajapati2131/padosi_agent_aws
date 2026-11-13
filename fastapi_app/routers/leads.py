@@ -39,14 +39,18 @@ def list_leads(
     is_locked = lead_mgmt_access.get("is_locked", False)
     unlock_hint = lead_mgmt_access.get("unlock_hint")
 
-    leads, total = repo.get_leads_paginated(
-        agent_id=current_agent.id,
-        page=page,
-        page_size=page_size,
-        status=status_filter,
-        interaction_type=interaction_type,
-        search=search
-    )
+    if is_locked:
+        # Locked plan: same response shape, but no customer PII (GET /{id} is 403 too).
+        leads, total = [], 0
+    else:
+        leads, total = repo.get_leads_paginated(
+            agent_id=current_agent.id,
+            page=page,
+            page_size=page_size,
+            status=status_filter,
+            interaction_type=interaction_type,
+            search=search
+        )
     return LeadsListResponse(
         success=True,
         total=total,

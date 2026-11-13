@@ -186,7 +186,10 @@ def product_detail_view(request, slug):
 
 def calculate_price_api(request, product_id):
     """AJAX API: Calculates unit price, taxes, and total for a requested quantity."""
-    product = get_object_or_404(WholesaleProduct, id=product_id)
+    product = get_object_or_404(
+        WholesaleProduct, id=product_id,
+        approval_status='PUBLISHED', wholesaler__verification_status='APPROVED',
+    )
     try:
         qty = int(request.GET.get('quantity', product.moq))
     except (ValueError, TypeError):

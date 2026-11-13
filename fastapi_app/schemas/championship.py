@@ -114,12 +114,12 @@ class RewardClaimResponse(BaseModel):
 
 
 class SocialFollowRequest(BaseModel):
-    session_id: str
-    platform: str
+    session_id: str = Field(..., max_length=64)
+    platform: str = Field(..., max_length=32)
 
 
 class ScratchRevealRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(..., max_length=64)
 
 
 class PublicLandingResponse(BaseModel):

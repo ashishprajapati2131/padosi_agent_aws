@@ -3,17 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.conf import settings
-from apps.agents.models import Agent, AgentProfile, AgentSubscription
-from apps.agents.services.feature_unlock import PLAN_LABELS
+from apps.agents.models import Agent
 from django.contrib.auth.models import User
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
 from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
 from apps.insurance.models import InsuranceBulkOrder
 from apps.insurance.views.payments import InsurancePaymentRejected, captured_insurance_payment
+from apps.insurance.services.onboarding import create_onboarded_agent
 import random, string, logging, datetime
 
 logger = logging.getLogger(__name__)
@@ -76,9 +77,8 @@ def agents_index(request):
         if status_filter and status_filter != 'all':
             agents_query = agents_query.filter(status=status_filter)
 
-    agents = agents_query.order_by('-created_at')
+    agents = Paginator(agents_query.order_by('-created_at'), 25).get_page(request.GET.get('page'))
 
-    # Django paginator could be added here
     context = {'agents': agents}
     return render(request, 'insurance/agents/index.html', context)
 
@@ -115,48 +115,24 @@ def agents_store(request):
                 mobile = request.POST.get('mobile')
                 plan_type = request.POST.get('plan_type')
 
-                # Basic creation logic
-                new_user = User.objects.create_user(
-                    username=email,
-                    email=email,
-                    password=email,
-                    first_name=fullname,
-                    is_active=False
-                )
-
                 company_id = get_or_sync_insurance_company_id(user)
                 agent_status = 'pending_manager_approval' if is_insurance_onboarding(user) else 'pending_accounts_payment'
 
-                agent = Agent.objects.create(
-                    user=new_user,
-                    insurance_id=company_id,
+                create_onboarded_agent(
+                    company_id=company_id,
                     onboarded_by=user,
                     fullname=fullname,
                     email=email,
                     mobile=mobile,
-                    status=agent_status,
                     plan_type=plan_type,
-                    registration_step=2,
-                )
-
-                AgentProfile.objects.create(
-                    agent=agent,
-                    address='Pincode: ' + request.POST.get('agent_pincode', ''),
+                    agent_pincode=request.POST.get('agent_pincode', ''),
                     state=request.POST.get('state', ''),
-                )
-
-                amount = 8258 if plan_type == 'professional' else 2359
-                plan_name = PLAN_LABELS['professional'] if plan_type == 'professional' else PLAN_LABELS['starter']
-
-                AgentSubscription.objects.create(
-                    agent=agent,
-                    selected_plan=plan_name,
-                    registration_amount=amount,
+                    amount=8258 if plan_type == 'professional' else 2359,
+                    agent_status=agent_status,
                     payment_status='pending',
-                    status='inactive',
                     starts_at=timezone.now(),
                     expires_at=timezone.now() + timezone.timedelta(days=365),
-                    razorpay_order_id='INSURANCE_MANUAL_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+                    razorpay_order_id='INSURANCE_MANUAL_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
                 )
 
                 msg = f"Agent {fullname} has been registered and submitted."
@@ -197,12 +173,18 @@ def request_status_change(request, agent_id):
     user = request.user
     if not hasattr(user, 'insurance_profile'):
         return redirect('/')
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user)):
+        messages.error(request, 'Unauthorized.')
+        return redirect('insurance:agents_index')
     company_id = user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
     if request.method == 'POST':
         action = request.POST.get('action')
         reason = request.POST.get('reason')
+        if action not in ('activate', 'deactivate'):
+            messages.error(request, 'Invalid action.')
+            return redirect('insurance:agents_show', agent_id=agent.id)
         
         if AgentApprovalRequest.objects.filter(agent=agent, status='pending').exists():
             messages.error(request, 'A pending request already exists.')
@@ -343,55 +325,30 @@ def checkout_cart(request):
                 if User.objects.filter(email=email).exists():
                     raise ValueError(f"Email {email} is already registered.")
 
-                new_user = User.objects.create_user(
-                    username=email,
-                    email=email,
-                    password=email,
-                    first_name=fullname,
-                    is_active=False
-                )
-                
-                agent_status = 'pending_admin_approval' if payment_type == 'offline' else 'pending_manager_approval'
-
-                agent = Agent.objects.create(
-                    user=new_user,
-                    insurance_id=company_id,
+                create_onboarded_agent(
+                    company_id=company_id,
                     onboarded_by=user,
                     fullname=fullname,
                     email=email,
                     mobile=mobile,
-                    status=agent_status,
                     plan_type=plan_type,
-                    registration_step=2,
-                    payment_method=payment_method if payment_type == 'offline' else '',
-                    payment_reference=payment_reference if payment_type == 'offline' else '',
-                    payment_recorded_at=recorded_at,
-                    payment_recorded_by=user if payment_type == 'offline' else None,
-                )
-
-                AgentProfile.objects.create(
-                    agent=agent,
-                    address='Pincode: ' + item.get('agent_pincode', ''),
+                    agent_pincode=item.get('agent_pincode', ''),
                     state=item.get('state', ''),
-                )
-
-                amount = item.get('amount')
-                plan_name = PLAN_LABELS['professional'] if plan_type == 'professional' else PLAN_LABELS['starter']
-                
-                sub_payment_status = 'completed' if payment_type == 'offline' else 'pending'
-
-                AgentSubscription.objects.create(
-                    agent=agent,
-                    selected_plan=plan_name,
-                    registration_amount=amount,
-                    payment_status=sub_payment_status,
-                    status='inactive',
+                    amount=item.get('amount'),
+                    agent_status='pending_admin_approval' if payment_type == 'offline' else 'pending_manager_approval',
+                    payment_status='completed' if payment_type == 'offline' else 'pending',
                     starts_at=recorded_at if payment_type == 'offline' else None,
                     expires_at=(recorded_at + timezone.timedelta(days=365)) if recorded_at else None,
                     # Never store the UTR in razorpay_order_id: a Razorpay-looking value here
                     # unlocks the dashboard as if paid online (audit INS1).
                     razorpay_order_id='OFFLINE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
-                    razorpay_payment_id=None,
+                    agent_fields=dict(
+                        payment_method=payment_method if payment_type == 'offline' else '',
+                        payment_reference=payment_reference if payment_type == 'offline' else '',
+                        payment_recorded_at=recorded_at,
+                        payment_recorded_by=user if payment_type == 'offline' else None,
+                    ),
+                    subscription_fields=dict(razorpay_payment_id=None),
                 )
 
             request.session.pop('insurance_bulk_cart', None)
@@ -519,46 +476,22 @@ def fulfil_insurance_bulk_order(order_id, payment_id, payment=None, signature=No
                 if User.objects.filter(email=email).exists():
                     raise ValueError(f"Email {email} is already registered.")
 
-                new_user = User.objects.create_user(
-                    username=email,
-                    email=email,
-                    password=email,
-                    first_name=fullname,
-                    is_active=False
-                )
-
-                agent = Agent.objects.create(
-                    user=new_user,
-                    insurance_id=company_id,
+                create_onboarded_agent(
+                    company_id=company_id,
                     onboarded_by=user,
                     fullname=fullname,
                     email=email,
                     mobile=mobile,
-                    status='pending_admin_approval',
                     plan_type=plan_type,
-                    registration_step=2,
-                )
-
-                AgentProfile.objects.create(
-                    agent=agent,
-                    address='Pincode: ' + item.get('agent_pincode', ''),
+                    agent_pincode=item.get('agent_pincode', ''),
                     state=item.get('state', ''),
-                )
-
-                amount = item.get('amount')
-                plan_name = PLAN_LABELS['professional'] if plan_type == 'professional' else PLAN_LABELS['starter']
-
-                AgentSubscription.objects.create(
-                    agent=agent,
-                    selected_plan=plan_name,
-                    registration_amount=amount,
+                    amount=item.get('amount'),
+                    agent_status='pending_admin_approval',
                     payment_status='completed',
-                    status='inactive',
                     starts_at=timezone.now(),
                     expires_at=timezone.now() + timezone.timedelta(days=365),
                     razorpay_order_id=order_id,
-                    razorpay_payment_id=payment_id,
-                    razorpay_signature=signature,
+                    subscription_fields=dict(razorpay_payment_id=payment_id, razorpay_signature=signature),
                 )
 
             bulk_order.status = 'paid'
@@ -615,8 +548,9 @@ def checkout_online_success(request):
             })
         except razorpay.errors.SignatureVerificationError:
             return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
+        except Exception:
+            logger.exception('Insurance payment signature check failed for order %s', order_id)
+            return JsonResponse({'success': False, 'message': 'Failed to verify payment.'}, status=400)
     else:
         if not getattr(settings, 'DEBUG', False):
             return JsonResponse({'success': False, 'message': 'Mock payments are disabled in production.'}, status=403)
@@ -642,9 +576,9 @@ def checkout_online_success(request):
         fulfil_insurance_bulk_order(order_id, payment_ref, payment=mock_payment, signature=signature)
     except InsurancePaymentRejected as exc:
         return JsonResponse({'success': False, 'message': str(exc)}, status=400)
-    except Exception as e:
-        logger.error(f'Online checkout failed: {e}')
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    except Exception:
+        logger.exception('Online checkout failed')
+        return JsonResponse({'success': False, 'message': 'Could not complete checkout. Please contact support.'}, status=500)
 
     request.session.pop('insurance_bulk_cart', None)
     request.session.pop('insurance_bulk_order_id', None)

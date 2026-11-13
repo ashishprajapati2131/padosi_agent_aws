@@ -14,6 +14,9 @@ from apps.wholesale.models.category import ProductCategory
 class BulkImportService:
     """Processes bulk CSV product uploads."""
 
+    MAX_FILE_BYTES = 5 * 1024 * 1024
+    MAX_ROWS = 2000
+
     CSV_HEADERS = [
         'title',
         'sku',
@@ -70,6 +73,8 @@ class BulkImportService:
         failed_count = 0
 
         try:
+            if job.file.size > BulkImportService.MAX_FILE_BYTES:
+                raise ValueError("CSV file is too large. The maximum size is 5 MB.")
             file_content = job.file.read().decode('utf-8', errors='ignore')
             reader = csv.DictReader(io.StringIO(file_content))
             
@@ -81,8 +86,15 @@ class BulkImportService:
             if missing_cols:
                 raise ValueError(f"Missing required columns: {', '.join(missing_cols)}")
 
+            rows = list(reader)
+            if len(rows) > BulkImportService.MAX_ROWS:
+                raise ValueError(f"CSV has {len(rows)} rows; the maximum is {BulkImportService.MAX_ROWS} per file.")
+
+            existing_skus = set(WholesaleProduct.objects.filter(wholesaler=wholesaler).values_list('sku', flat=True))
+            categories = {c.name.lower(): c for c in ProductCategory.objects.all()}
+
             row_num = 1
-            for row in reader:
+            for row in rows:
                 row_num += 1
                 row_errors = []
 
@@ -105,7 +117,7 @@ class BulkImportService:
                     row_errors.append("Title cannot be empty.")
                 if not sku:
                     row_errors.append("SKU is required.")
-                elif WholesaleProduct.objects.filter(wholesaler=wholesaler, sku=sku).exists():
+                elif sku in existing_skus:
                     row_errors.append(f"SKU '{sku}' already exists in your inventory.")
 
                 try:
@@ -127,14 +139,19 @@ class BulkImportService:
                 except Exception:
                     stock = 0
 
-                # Resolve or assign category
-                category = None
                 if cat_name:
-                    category = ProductCategory.objects.filter(name__iexact=cat_name).first()
-                if not category:
-                    category = ProductCategory.objects.first()
-                if not category:
-                    category = ProductCategory.objects.create(name='Agent Office Supplies', slug='agent-office-supplies')
+                    category = categories.get(cat_name.lower())
+                    if not category:
+                        # A typo used to land silently in the first category (audit INS12).
+                        row_errors.append(f"Unknown category: '{cat_name}'.")
+                else:
+                    # Blank category keeps the old behaviour: default category, created once if missing.
+                    category = next(iter(categories.values()), None)
+                    if not category:
+                        category = ProductCategory.objects.create(
+                            name='Agent Office Supplies', slug='agent-office-supplies'
+                        )
+                        categories[category.name.lower()] = category
 
                 if row_errors:
                     failed_count += 1
@@ -165,6 +182,7 @@ class BulkImportService:
                             approval_status='DRAFT'
                         )
                         success_count += 1
+                        existing_skus.add(sku)
                 except Exception as ex:
                     failed_count += 1
                     BulkImportError.objects.create(

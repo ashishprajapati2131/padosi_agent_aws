@@ -4,6 +4,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
+    const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
     let currentStep = 1;
     const totalSteps = 8;
 
@@ -113,9 +114,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = document.createElement('tr');
         row.className = 'tier-row';
         row.innerHTML = `
-            <td><input type="number" class="form-control tier-min-qty" min="1" value="${minQty}" placeholder="e.g. 10"></td>
-            <td><input type="number" class="form-control tier-max-qty" min="1" value="${maxQty}" placeholder="Leave blank for +"></td>
-            <td><div class="input-group"><span class="input-group-text">₹</span><input type="number" step="0.01" class="form-control tier-price" value="${price}" placeholder="0.00"></div></td>
+            <td><input type="number" class="form-control tier-min-qty" min="1" value="${escapeHtml(minQty)}" placeholder="e.g. 10"></td>
+            <td><input type="number" class="form-control tier-max-qty" min="1" value="${escapeHtml(maxQty)}" placeholder="Leave blank for +"></td>
+            <td><div class="input-group"><span class="input-group-text">₹</span><input type="number" step="0.01" class="form-control tier-price" value="${escapeHtml(price)}" placeholder="0.00"></div></td>
             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-remove-tier"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tierTableBody.appendChild(row);
@@ -145,10 +146,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = document.createElement('tr');
         row.className = 'variant-row';
         row.innerHTML = `
-            <td><input type="text" class="form-control var-title" value="${title}" placeholder="e.g. Size: XL | Navy Blue"></td>
-            <td><input type="text" class="form-control var-sku" value="${sku}" placeholder="Optional SKU"></td>
-            <td><input type="number" step="0.01" class="form-control var-price" value="${price}" placeholder="Override ₹"></td>
-            <td><input type="number" class="form-control var-stock" value="${stock}" min="0" placeholder="0"></td>
+            <td><input type="text" class="form-control var-title" value="${escapeHtml(title)}" placeholder="e.g. Size: XL | Navy Blue"></td>
+            <td><input type="text" class="form-control var-sku" value="${escapeHtml(sku)}" placeholder="Optional SKU"></td>
+            <td><input type="number" step="0.01" class="form-control var-price" value="${escapeHtml(price)}" placeholder="Override ₹"></td>
+            <td><input type="number" class="form-control var-stock" value="${escapeHtml(stock)}" min="0" placeholder="0"></td>
             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-remove-variant"><i class="fa-solid fa-trash"></i></button></td>
         `;
         variantTableBody.appendChild(row);

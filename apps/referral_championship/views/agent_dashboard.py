@@ -119,7 +119,7 @@ def _referral_funnel_for_dashboard(request, agent, participant):
         scheme = 'https'
     referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
 
-    recent_referrals = list(referrals_qs.order_by('-created_at')[:20])
+    recent_referrals = list(referrals_qs.select_related('referred_agent').order_by('-created_at')[:20])
     recent_referrals_api = []
     for ref in recent_referrals:
         agent_name = ref.referred_agent.fullname if ref.referred_agent and ref.referred_agent.fullname else 'Agent Registration'
@@ -240,13 +240,11 @@ def build_championship_dashboard_json_payload(request, agent):
 
     # Slab stats
     all_slabs = ChampionshipRewardSlab.objects.filter(campaign=campaign, is_active=True).order_by('threshold')
-    from apps.referral_championship.services.reward_engine import get_reward_image
+    from apps.referral_championship.services.reward_engine import get_reward_image, slab_achieved_counts
+    achieved_by_slab = slab_achieved_counts(campaign, all_slabs)
     slab_stats_api = []
     for s in all_slabs:
-        achieved_count = ChampionshipParticipant.objects.filter(
-            campaign=campaign,
-            qualifying_referrals_count__gte=s.threshold
-        ).count()
+        achieved_count = achieved_by_slab[s.id]
         slab_img_path = get_reward_image(s.reward_type, s.threshold)
         slab_stats_api.append({
             'id': s.id,
@@ -603,12 +601,11 @@ def agent_championship_dashboard(request):
 
         # ── Slab Pulse Board Stats (How many participants have achieved each slab) ──
         all_slabs = ChampionshipRewardSlab.objects.filter(campaign=campaign, is_active=True).order_by('threshold')
+        from apps.referral_championship.services.reward_engine import slab_achieved_counts
+        achieved_by_slab = slab_achieved_counts(campaign, all_slabs)
         slab_stats = []
         for s in all_slabs:
-            achieved_count = ChampionshipParticipant.objects.filter(
-                campaign=campaign,
-                qualifying_referrals_count__gte=s.threshold
-            ).count()
+            achieved_count = achieved_by_slab[s.id]
             slab_stats.append({
                 'slab': s,
                 'id': s.id,

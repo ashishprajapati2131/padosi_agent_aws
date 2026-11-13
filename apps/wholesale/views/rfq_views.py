@@ -1,6 +1,8 @@
 """
 Buyer RFQ Submission and Messaging Views.
 """
+from decimal import Decimal, InvalidOperation
+
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
@@ -17,7 +19,10 @@ DEFAULT_RFQ_NEXT = '/agent/dashboard/?tab=marketplace'
 @wholesale_feature_gate
 def submit_rfq_view(request, product_id):
     """Handles Buyer Request for Quote / Order Inquiry form submission."""
-    product = get_object_or_404(WholesaleProduct, id=product_id)
+    product = get_object_or_404(
+        WholesaleProduct, id=product_id,
+        approval_status='PUBLISHED', wholesaler__verification_status='APPROVED',
+    )
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1'
     next_url = safe_next_url(
         request, request.POST.get('next') or request.META.get('HTTP_REFERER'), DEFAULT_RFQ_NEXT
@@ -90,10 +95,17 @@ def rfq_reply_view(request, inquiry_id):
 
         if action_type == 'quote' and quote_amount:
             try:
+                amount = Decimal(quote_amount.strip())
+            except InvalidOperation:
+                amount = None
+            if amount is None or not amount.is_finite() or amount <= 0:
+                messages.error(request, "Enter a valid quotation amount greater than zero.")
+                return redirect('wholesale:wholesaler_inquiries')
+            try:
                 RFQService.update_quotation(
                     inquiry=inquiry,
                     wholesaler_profile=profile,
-                    quote_amount=float(quote_amount),
+                    quote_amount=amount,
                     notes=message_text
                 )
                 messages.success(request, f"Quotation of ₹{quote_amount} sent for RFQ #{inquiry.id}.")

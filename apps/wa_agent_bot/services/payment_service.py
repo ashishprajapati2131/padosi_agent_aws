@@ -312,6 +312,30 @@ def create_plan_payment_link(session, plan_key):
     session.agent = agent
     session.save()
 
+    client = razorpay_client()
+
+    # Supersede this agent's earlier unpaid bot links (audit WA14). Rows and razorpay_order_id stay,
+    # so a late payment on an old link is still matched and activated by the webhook (invariant 9).
+    stale = [
+        s
+        for s in AgentSubscription.objects.filter(
+            agent=agent, payment_status="pending", status="inactive"
+        )
+        if (s.razorpay_order_id or "").startswith(("plink_", "fallback_"))
+    ]
+    if stale:
+        AgentSubscription.objects.filter(pk__in=[s.pk for s in stale]).update(
+            payment_status="failed"
+        )
+        for s in stale:
+            if client and s.razorpay_order_id.startswith("plink_"):
+                try:
+                    client.payment_link.cancel(s.razorpay_order_id)
+                except Exception as e:  # best effort: a paid/expired link can't be cancelled
+                    logger.warning(
+                        f"[WA-Bot] Could not cancel old payment link {s.razorpay_order_id}: {e}"
+                    )
+
     # Create pending AgentSubscription
     subscription = AgentSubscription.objects.create(
         agent=agent,
@@ -330,7 +354,6 @@ def create_plan_payment_link(session, plan_key):
     payment_link_id = None
 
     # Try creating official Razorpay Payment Link
-    client = razorpay_client()
     if client:
         try:
             callback_url = f"{site_url}/wa-bot/payment-callback/"
@@ -607,6 +630,11 @@ def activate_agent_subscription_after_payment(
                     )
                     session.registration_data["pending_credentials_delivery"] = True
                     session.save(update_fields=["registration_data"])
+                else:
+                    # Delivered once: don't keep the plaintext temp password (audit WA3).
+                    session.generated_password = ""
+                    session.registration_data.pop("temp_password", None)
+                    session.save(update_fields=["generated_password", "registration_data"])
 
                 # Also send to agent's registered mobile if different from session phone
                 agent_mobile = "".join(c for c in (agent.mobile or "") if c.isdigit())

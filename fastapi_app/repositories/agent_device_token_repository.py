@@ -21,7 +21,7 @@ class AgentDeviceTokenRepository:
             AgentDeviceToken.token == token
         ).first()
 
-        now = datetime.utcnow()
+        now = datetime.now()  # naive IST, as Django (USE_TZ=False)
         if token_record:
             token_record.agent_id = agent_id
             token_record.platform = platform or token_record.platform

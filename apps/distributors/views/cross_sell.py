@@ -62,7 +62,10 @@ def cross_sell_index(request):
 @user_passes_test(is_distributor, login_url='distributors:login')
 def cross_sell_order(request, product_id):
     """Handles distributor order / quotation submission to the wholesaler."""
-    product = get_object_or_404(WholesaleProduct, id=product_id)
+    product = get_object_or_404(
+        WholesaleProduct, id=product_id,
+        approval_status='PUBLISHED', wholesaler__verification_status='APPROVED',
+    )
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1'
 
     if request.method == 'POST':

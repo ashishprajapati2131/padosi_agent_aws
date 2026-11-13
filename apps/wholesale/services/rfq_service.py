@@ -1,6 +1,7 @@
 """
 Buyer RFQ (Request for Quotation) and Lead Management Service.
 """
+from decimal import Decimal, InvalidOperation
 from typing import Dict, Any
 from django.db import transaction
 from django.core.exceptions import ValidationError, PermissionDenied
@@ -19,11 +20,14 @@ class RFQService:
         qty = int(data.get('requested_quantity', 0))
         if qty < product.moq:
             raise ValidationError(f"Requested quantity ({qty}) cannot be less than Minimum Order Quantity ({product.moq}).")
+        variant_id = data.get('variant_id') or None
+        if variant_id and not product.variants.filter(id=variant_id).exists():
+            raise ValidationError("Selected variant does not belong to this product.")
 
         inquiry = BuyerInquiry.objects.create(
             product=product,
             wholesaler=product.wholesaler,
-            variant_id=data.get('variant_id') or None,
+            variant_id=variant_id,
             buyer_user=buyer_user if getattr(buyer_user, 'is_authenticated', False) else None,
             buyer_name=data.get('buyer_name', '').strip(),
             buyer_email=data.get('buyer_email', '').strip(),
@@ -70,10 +74,16 @@ class RFQService:
         return msg
 
     @staticmethod
-    def update_quotation(inquiry: BuyerInquiry, wholesaler_profile: WholesalerProfile, quote_amount: float, notes: str = None) -> BuyerInquiry:
+    def update_quotation(inquiry: BuyerInquiry, wholesaler_profile: WholesalerProfile, quote_amount: Decimal, notes: str = None) -> BuyerInquiry:
         """Seller sends a formal unit or total quotation to the buyer."""
         if inquiry.wholesaler.id != wholesaler_profile.id:
             raise PermissionDenied("You can only respond to inquiries sent to your business.")
+        try:
+            quote_amount = Decimal(str(quote_amount))
+        except InvalidOperation:
+            raise ValidationError("Invalid quotation amount.")
+        if not quote_amount.is_finite() or quote_amount <= 0:
+            raise ValidationError("Quotation amount must be greater than zero.")
 
         inquiry.seller_quotation_amount = quote_amount
         inquiry.seller_notes = notes

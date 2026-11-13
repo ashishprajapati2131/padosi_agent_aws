@@ -15,6 +15,8 @@ again; every job is safe to re-run.
 | 1 hour | invoice retry | Razorpay-paid subscriptions from the last 2 days with no invoice (older than 15 min) get the normal invoice PDF, welcome email and sheet sync. At most 3 automatic attempts per subscription, so a broken invoice never resends the welcome email every hour. |
 | 1 day | database backup | `backup_database --tag daily --retention 14`: a `mysqldump` into `backups/db_backup_daily_*.sql.gz`, keeping the newest 14 (pruning is per tag, so pre-deploy backups are kept separately). Failures are logged as `[bgjobs] daily database backup failed`. Backups stay on this host only; copying them offsite (encrypted) is not set up yet. |
 | 30 min | Paldi expirations | Marks challengers WON or BLOCKED once their deadline passes (also happens when they open their dashboard). |
+| 1 day | WhatsApp log prune (`wa-log-prune`) | Deletes `WaBotMessageLog` rows older than 90 days, so the broadcast duplicate check stays fast. |
+| 1 day | API token prune (`user-token-prune`) | Deletes FastAPI `user_tokens` rows that expired, or were revoked, more than 30 days ago (1,000 rows per batch). |
 
 Jobs need traffic: with no visitors for a while they run on the next visit.
 Turn off with `BACKGROUND_JOBS_ENABLED=False` in `.env`; they are off when

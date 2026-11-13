@@ -3,6 +3,7 @@ import sys
 import logging
 from typing import List
 import re
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -175,15 +176,15 @@ class AgentSearchService:
                 WHEN COALESCE(
                     (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
-                ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 DAY) THEN 50
+                ) >= %s THEN 50
                 WHEN COALESCE(
                     (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
-                ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 14 DAY) THEN 25
+                ) >= %s THEN 25
                 WHEN COALESCE(
                     (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
-                ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 10
+                ) >= %s THEN 10
                 ELSE 0
             END) +
             ((
@@ -197,7 +198,10 @@ class AgentSearchService:
             ({filter_match_sql} * 30)
         """
 
-        query = query.annotate(padosi_smart_rank=RawSQL(smart_rank_expr, filter_match_params))
+        # last_login columns are naive IST: compare with local now, not UTC_TIMESTAMP().
+        _now = datetime.now()
+        login_cutoffs = tuple(_now - timedelta(days=d) for d in (3, 14, 30))
+        query = query.annotate(padosi_smart_rank=RawSQL(smart_rank_expr, login_cutoffs + filter_match_params))
 
         if user_lat is not None and user_lng is not None:
             dist_sql = "(CASE WHEN agents.latitude IS NOT NULL AND agents.longitude IS NOT NULL THEN (6371 * acos(cos(radians(%s)) * cos(radians(agents.latitude)) * cos(radians(agents.longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(agents.latitude)))) ELSE 999999 END)"

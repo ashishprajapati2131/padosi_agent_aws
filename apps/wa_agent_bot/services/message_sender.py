@@ -24,6 +24,18 @@ def _redact(text):
 logger = logging.getLogger(__name__)
 
 
+def mask_phone(phone):
+    """'******3210': log lines keep only the last 4 digits (audit WA16)."""
+    digits = "".join(c for c in str(phone or "") if c.isdigit())
+    return "******" + digits[-4:] if digits else ""
+
+
+def mask_email(email):
+    """'ab***@domain' for log lines (audit WA16)."""
+    local, _, domain = str(email or "").partition("@")
+    return f"{local[:2]}***@{domain}" if domain else "***"
+
+
 from apps.wa_agent_bot.services.openwa_admin_service import get_openwa_config
 
 
@@ -85,7 +97,7 @@ def _log_outbound(phone_number, text, category, session, result):
             state_at_time=getattr(session, "state", "") or "",
         )
     except Exception as e:
-        logger.error(f"[WA-Bot] Could not write message log for {phone_number}: {e}")
+        logger.error(f"[WA-Bot] Could not write message log for {mask_phone(phone_number)}: {e}")
 
 
 def send_text_message(phone_number, text, category="bot", session=None):
@@ -148,7 +160,7 @@ def _send(phone_number, text):
             )
 
         if response.status_code in (200, 201):
-            logger.info(f"[WA-Bot] Message sent to {phone_number} (len={len(text)})")
+            logger.info(f"[WA-Bot] Message sent to {mask_phone(phone_number)} (len={len(text)})")
             return {"success": True, "data": response.json() if response.text else {}}
         else:
             error_msg = f"OpenWA API error: HTTP {response.status_code}"
@@ -158,17 +170,17 @@ def _send(phone_number, text):
             except Exception:
                 error_msg += f" — {response.text[:200]}"
             logger.error(
-                f"[WA-Bot] Failed to send message to {phone_number}: {error_msg}"
+                f"[WA-Bot] Failed to send message to {mask_phone(phone_number)}: {error_msg}"
             )
             return {"success": False, "error": error_msg}
 
     except RequestException as e:
         error_msg = f"Network error sending to {phone_number}: {str(e)}"
-        logger.error(f"[WA-Bot] {error_msg}")
+        logger.error(f"[WA-Bot] Network error sending to {mask_phone(phone_number)}: {e}")
         return {"success": False, "error": error_msg}
     except Exception as e:
         error_msg = f"Unexpected error sending to {phone_number}: {str(e)}"
-        logger.error(f"[WA-Bot] {error_msg}")
+        logger.error(f"[WA-Bot] Unexpected error sending to {mask_phone(phone_number)}: {e}")
         return {"success": False, "error": error_msg}
 
 
@@ -206,11 +218,11 @@ def _send_image(phone_number, image_url, caption):
             url, json=payload, headers=_build_headers(config["api_key"]), timeout=60
         )
     except RequestException as e:
-        logger.error(f"[WA-Bot] Network error sending image to {phone_number}: {e}")
+        logger.error(f"[WA-Bot] Network error sending image to {mask_phone(phone_number)}: {e}")
         return {"success": False, "error": f"Network error sending image: {e}"}
     if response.status_code in (200, 201):
-        logger.info(f"[WA-Bot] Image sent to {phone_number}")
+        logger.info(f"[WA-Bot] Image sent to {mask_phone(phone_number)}")
         return {"success": True, "data": response.json() if response.text else {}}
     error = f"OpenWA API error (send-image): HTTP {response.status_code} — {response.text[:200]}"
-    logger.error(f"[WA-Bot] Failed to send image to {phone_number}: {error}")
+    logger.error(f"[WA-Bot] Failed to send image to {mask_phone(phone_number)}: {error}")
     return {"success": False, "error": error, "status_code": response.status_code}

@@ -19,6 +19,7 @@ Full details: `ADMIN_PANEL_AUDIT_2026-11-07.md`. Do these on the production serv
 ## 3. Right after deploy
 - [x] **Done on production 2026-11-07 21:28:** backup `db_backup_pre_indexes_20261107_212847.sql.gz`, then `ensure_admin_indexes --apply` created all 8 indexes; a re-run reports `0 missing`.
 - [ ] Optional: `python manage.py remove_stale_contenttypes`, to clear the old `admin_panel.*` content types of the moved models.
+- [ ] Optional, read-only: `python manage.py audit_duplicates` prints duplicate reviews (agent + mobile), championship referrals (campaign + referred agent) and invoices (Razorpay payment id) with up to 20 sample keys each.
 
 ## 4. Browser check (10 minutes)
 Log in as a **Super Admin**, then as a **staff** admin with a few permissions.

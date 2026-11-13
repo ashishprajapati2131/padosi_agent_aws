@@ -1,12 +1,14 @@
 import hashlib
+import hmac
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from fastapi_app.config import settings
 from fastapi_app.database import get_db
 from fastapi_app.models.account_deletion_request import AccountDeletionRequest
 from fastapi_app.models.agent import Agent
@@ -27,13 +29,19 @@ router = APIRouter(
 )
 
 
-def _utcnow() -> datetime:
-    """Return timezone-naive UTC datetime compatible with Python 3.12+."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _now() -> datetime:
+    """Naive local (IST) time, the clock Django uses with USE_TZ=False."""
+    return datetime.now()
 
 
-def _hash_otp(otp: str, salt: str = "padosi_del_salt_2026") -> str:
-    return hashlib.sha256(f"{salt}_{otp}".encode("utf-8")).hexdigest()
+_utcnow = _now  # old name, still imported by tests
+
+
+def _hash_otp(otp: str) -> str:
+    # Keyed: with a public static salt the 900k possible codes were trivially reversible.
+    return hmac.new(
+        settings.SECRET_KEY.encode("utf-8"), f"del_otp_{otp}".encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
 
 def _get_client_ip(request: Request) -> str:
@@ -119,9 +127,8 @@ def _send_deletion_otp_email(
     except Exception as ex:
         logger.warning(f"FastAPI EmailService brevo failed: {ex}")
 
-    # 3. Always log in local/dev so OTP is testable
-    logger.info(f"[DELETION OTP] to={to_email} otp={otp} ref={reference_id}")
-    return True
+    logger.error("Deletion OTP email could not be sent (ref=%s)", reference_id)
+    return False
 
 
 @router.post("/request-otp", response_model=DeletionResponseSchema)
@@ -162,7 +169,7 @@ def request_deletion_otp(
 
     # Generate 6-digit OTP and Reference ID
     otp_code = str(secrets.randbelow(900000) + 100000)
-    now = _utcnow()
+    now = _now()
     expires_at = now + timedelta(minutes=10)
     ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(8).upper()}"  # 64 random bits: /status is reachable with the ref alone (audit API1)
 
@@ -202,7 +209,11 @@ def request_deletion_otp(
     db.commit()
 
     # Dispatch Email
-    _send_deletion_otp_email(email_clean, name_clean, otp_code, ref_id)
+    if not _send_deletion_otp_email(email_clean, name_clean, otp_code, ref_id):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="We could not send the verification code right now. Please try again later.",
+        )
 
     return DeletionResponseSchema(
         success=True,
@@ -265,7 +276,7 @@ def verify_deletion_otp(
         expires_at = datetime.fromisoformat(summary.get("otp_expires_at"))
     except (TypeError, ValueError):
         expires_at = None
-    if expires_at is None or _utcnow() > expires_at:
+    if expires_at is None or _now() > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code has expired. Please request a new code.",
@@ -274,7 +285,7 @@ def verify_deletion_otp(
     expected_hash = summary.get("otp_hash")
     input_hash = _hash_otp(otp_input)
 
-    if input_hash != expected_hash:
+    if not hmac.compare_digest(input_hash, str(expected_hash or "")):
         summary["otp_attempts"] = attempts + 1
         del_req.data_retention_summary = summary
         db.commit()
@@ -285,11 +296,11 @@ def verify_deletion_otp(
         )
 
     # Success: Mark as verified and pending administrative action
-    now = _utcnow()
+    now = _now()
     del_req.is_verified = True
     del_req.status = "PENDING"
     del_req.admin_notes = (
-        f"OTP verified successfully via email at {now.strftime('%Y-%m-%d %H:%M:%S UTC')}. "
+        f"OTP verified successfully via email at {now.strftime('%Y-%m-%d %H:%M:%S')}. "
         f"Awaiting administrative termination approval."
     )
     summary["verified_at"] = now.isoformat()

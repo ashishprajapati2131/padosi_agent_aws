@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.db.models import Q
 
+from apps.wa_agent_bot.services.message_sender import mask_email
 from apps.wa_agent_bot.services.site_url import bot_site_url
 
 logger = logging.getLogger(__name__)
@@ -171,7 +172,7 @@ def create_agent_from_wa_data(registration_data):
         site_url = bot_site_url()
         login_url = f"{site_url}/agent-login/"
 
-        logger.info(f"[WA-Bot] Created agent #{agent.id} for {email} via WhatsApp registration")
+        logger.info(f"[WA-Bot] Created agent #{agent.id} for {mask_email(email)} via WhatsApp registration")
 
         return {
             'success': True,

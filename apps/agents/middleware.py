@@ -43,6 +43,25 @@ _JSON_API_PREFIXES = (
 )
 
 
+def _request_agent(request, user):
+    """The logged-in user's agent, looked up once per request (audit PAY16).
+
+    The restriction check and the payment gate both needed it, so gated pages resolved it
+    twice. Not cached across requests: a restriction or payment must apply on the next click.
+    """
+    if hasattr(request, '_gate_agent'):
+        return request._gate_agent
+    try:
+        agent = resolve_agent_for_user(user)
+        if not agent and getattr(user, 'email', None):
+            from apps.agents.services.account_auth import find_agent
+            agent = find_agent(user.email)
+    except Exception:
+        agent = None
+    request._gate_agent = agent
+    return agent
+
+
 class AgentPaymentGateMiddleware:
     """
     Block unpaid agents from agent portal pages even if they are logged in.
@@ -71,13 +90,7 @@ class AgentPaymentGateMiddleware:
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
             return self.get_response(request)
 
-        try:
-            agent = resolve_agent_for_user(user)
-            if not agent and getattr(user, 'email', None):
-                from apps.agents.services.account_auth import find_agent
-                agent = find_agent(user.email)
-        except Exception:
-            agent = None
+        agent = _request_agent(request, user)
 
         if not agent or not agent_can_access_dashboard(agent):
             # AJAX/JSON feature endpoints get a JSON answer the page JS can
@@ -115,13 +128,7 @@ class AgentPaymentGateMiddleware:
         if not user or not getattr(user, 'is_authenticated', False):
             return None
 
-        try:
-            agent = resolve_agent_for_user(user)
-            if not agent and getattr(user, 'email', None):
-                from apps.agents.services.account_auth import find_agent
-                agent = find_agent(user.email)
-        except Exception:
-            agent = None
+        agent = _request_agent(request, user)
 
         if not agent or agent_account_is_active(agent):
             return None

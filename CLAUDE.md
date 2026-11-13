@@ -93,6 +93,21 @@
 
         ---
 
+### Big view modules: façade + submodules (split 2026-11-14)
+
+`registration.py`, `dashboard.py` and `pages.py` were split by pure moves. Each original module is a **façade**: it still exposes every old name (re-exported), so URLs and `from ... import x` keep working. Rules:
+- **Tests patch names on the façade** (e.g. `apps.agents.views.registration.razorpay_client`, `queue_invoice_and_welcome`, `create_checkout_order`, `razorpay_webhook_secret`; `pages.GeocodingService`, `pages._get_or_create_pincode`; `dashboard.FavoriteAgent`). Code that calls a patched name at run time must live in the façade, or the patch won't reach it. That is why the payment/webhook/activation/recovery core stays in `registration.py`.
+- Submodules never import the façade (no import cycles). Shared helpers live in the `*_common.py` module.
+- New code goes in the matching submodule; re-export it from the façade only if something imports it from there.
+
+| Façade | Submodules |
+|---|---|
+| `apps/agents/views/registration.py` (payment, webhook, activation, recovery, step 1, chooseplan) | `registration_common` (constants, session/IP helpers, `create_or_link_django_user`), `registration_pricing` (plans, GST, paise, checkout totals), `registration_fulfilment` (post-payment hooks, event/insurance/refund webhook handlers), `registration_forms` (signup pages and steps, `create_agent_from_draft`), `registration_offers` (social follow, scratch, promo verify), `registration_public` (`client_quick_register`, `fb_ad_signup`) |
+| `apps/agents/views/dashboard.py` (`agent_dashboard`, lead status, referral) | `dashboard_common` (`PlanFeatureProxy`, plan resolution), `dashboard_public` (public profile, reviews, OG image), `dashboard_profile` (edit/update profile), `dashboard_leads` (lead capture), `dashboard_account` (push token, referral info, upgrade, trial log), `dashboard_settings` (private files, visibility, Google review) |
+| `apps/home/views/pages.py` (find-agents, location, static and CMS pages) | `leads` (contact, quick lead, rate limit, honeypot), `homepage`, `agent_search` (query building, AI picks serialisation), `pincode` (pincode fetch/check), `city_directory` (city pages and constants) |
+
+---
+
         ## 4. Architecture: How Requests Flow
 
         ### Web (Django)

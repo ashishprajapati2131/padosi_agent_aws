@@ -7,21 +7,22 @@ processes them through the state machine, and sends replies.
 
 import hashlib
 import hmac
-import html
 import json
 import logging
 import os
 import time
 
 from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 
 from .models import WaBotSession, WaBotMessageLog
 from .services.state_machine import process_message
-from .services.message_sender import send_text_message
+from .services.message_sender import mask_phone, send_text_message
 
 from apps.wa_agent_bot.services.site_url import bot_site_url
 
@@ -112,6 +113,10 @@ def _extract_message_data(payload):
         phone = contact.get("id") or contact.get("phone")
 
     if not phone:
+        return None, None, None
+
+    # Group (@g.us), @lid and broadcast chat ids are not a sender phone number.
+    if "@" in str(phone) and not str(phone).endswith(("@c.us", "@s.whatsapp.net")):
         return None, None, None
 
     # Clean phone number (remove @c.us suffix and non-digits)
@@ -229,7 +234,7 @@ def webhook_receiver(request):
 
     if not text:
         # Non-text message (image, audio, etc.) — politely ignore
-        logger.debug(f"[WA-Bot] Non-text message from {phone} (type={msg_type})")
+        logger.debug(f"[WA-Bot] Non-text message from {mask_phone(phone)} (type={msg_type})")
         return JsonResponse(
             {"status": "ignored", "reason": "non-text message"}, status=200
         )
@@ -238,13 +243,13 @@ def webhook_receiver(request):
     msg_id = _extract_message_id(payload)
     if msg_id and not cache.add(f"wa_bot_msg_{msg_id}", 1, timeout=MESSAGE_DEDUP_TTL):
         logger.info(
-            f"[WA-Bot] Duplicate delivery of message {msg_id} from {phone} — ignored"
+            f"[WA-Bot] Duplicate delivery of message {msg_id} from {mask_phone(phone)} — ignored"
         )
         return JsonResponse({"status": "ignored", "reason": "duplicate"}, status=200)
 
     # ── Rate limiting ───────────────────────────────────────────────
     if not _check_rate_limit(phone):
-        logger.warning(f"[WA-Bot] Rate limit exceeded for {phone}")
+        logger.warning(f"[WA-Bot] Rate limit exceeded for {mask_phone(phone)}")
         send_text_message(
             phone,
             "⚠️ You're sending messages too quickly. Please wait a moment and try again.",
@@ -263,42 +268,48 @@ def webhook_receiver(request):
     )
 
     if created:
-        logger.info(f"[WA-Bot] New session created for {phone}")
+        logger.info(f"[WA-Bot] New session created for {mask_phone(phone)}")
 
-    # ── Update activity tracking ────────────────────────────────────
-    session.update_last_activity()
+    # Hold the row lock while processing: a Razorpay activation committing meanwhile would otherwise
+    # be overwritten by this stale copy (audit WA7). The reply is sent after commit, outside the lock.
+    with transaction.atomic():
+        session = WaBotSession.objects.select_for_update().get(pk=session.pk)
 
-    # ── Log incoming message ────────────────────────────────────────
-    WaBotMessageLog.objects.create(
-        session=session,
-        phone_number=phone[:20],
-        direction=WaBotMessageLog.DIRECTION_IN,
-        status=WaBotMessageLog.STATUS_RECEIVED,
-        content=text[:2000],  # cap at 2000 chars
-        state_at_time=session.state,
-    )
+        # ── Update activity tracking ────────────────────────────────────
+        session.update_last_activity()
 
-    # ── Process through state machine ───────────────────────────────
-    try:
-        reply = process_message(session, text)
-    except Exception as e:
-        logger.error(
-            f"[WA-Bot] Error processing message from {phone}: {e}", exc_info=True
-        )
-        reply = (
-            "😔 Sorry, something went wrong on our end.\n"
-            "Please try again in a moment or type *restart* to start over."
+        # ── Log incoming message ────────────────────────────────────────
+        WaBotMessageLog.objects.create(
+            session=session,
+            phone_number=phone[:20],
+            direction=WaBotMessageLog.DIRECTION_IN,
+            status=WaBotMessageLog.STATUS_RECEIVED,
+            content=text[:2000],  # cap at 2000 chars
+            state_at_time=session.state,
         )
 
-    # ── Save session (state machine already saved, but ensure) ──────
-    session.save()
+        # ── Process through state machine ───────────────────────────────
+        try:
+            with transaction.atomic():  # savepoint: a DB error here can't break the outer transaction
+                reply = process_message(session, text)
+        except Exception as e:
+            logger.error(
+                f"[WA-Bot] Error processing message from {mask_phone(phone)}: {e}", exc_info=True
+            )
+            reply = (
+                "😔 Sorry, something went wrong on our end.\n"
+                "Please try again in a moment or type *restart* to start over."
+            )
+
+        # ── Save session (state machine already saved, but ensure) ──────
+        session.save()
 
     # ── Send reply via OpenWA (send_text_message logs it) ───────────
     send_result = send_text_message(phone, reply, session=session)
 
     if not send_result["success"]:
         logger.error(
-            f"[WA-Bot] Failed to send reply to {phone}: {send_result.get('error', 'unknown')}"
+            f"[WA-Bot] Failed to send reply to {mask_phone(phone)}: {send_result.get('error', 'unknown')}"
         )
 
     return JsonResponse(
@@ -415,7 +426,6 @@ def razorpay_webhook(request):
         if _cache_mod.get(_idem_key):
             logger.info("[WA-Bot-Razorpay] Duplicate webhook event ignored: %s", rzp_event_id)
             return JsonResponse({"status": "ignored", "message": "Already processed"})
-        _cache_mod.set(_idem_key, 1, timeout=86400)
 
     event = data.get("event", "")
     logger.info(f"[WA-Bot-Razorpay] Webhook event received: {event}")
@@ -478,6 +488,9 @@ def razorpay_webhook(request):
             sub.id, payment_id=payment_id, signature=signature
         )
         logger.info(f"[WA-Bot-Razorpay] Activation result for sub #{sub.id}: {msg}")
+        if success and rzp_event_id:
+            # Mark only after success so a failed activation stays retryable.
+            _cache_mod.set(_idem_key, 1, timeout=86400)
         return JsonResponse({"status": "success", "message": msg})
     else:
         logger.warning(
@@ -545,9 +558,7 @@ def payment_callback(request):
 
     # Anyone can open this URL with a link id, so only reveal account details once payment is confirmed.
     agent = sub.agent if sub and sub.payment_status == "completed" else None
-    fullname = html.escape(agent.fullname if agent and agent.fullname else "Agent")
     raw_email = agent.email if agent and agent.email else ""
-    email = html.escape(raw_email)
     mobile_clean = (
         "".join(c for c in (agent.mobile or "") if c.isdigit()) if agent else ""
     )
@@ -556,444 +567,16 @@ def payment_callback(request):
         if len(mobile_clean) == 10
         else (f"+{mobile_clean}" if mobile_clean else "Registered Number")
     )
-    plan_name = html.escape(
-        sub.selected_plan if sub and sub.selected_plan else "Membership Plan"
+    # No request passed: the old page ran no context processors (they query the DB).
+    html_content = render_to_string(
+        "wa_agent_bot/payment_callback.html",
+        {
+            "fullname": agent.fullname if agent and agent.fullname else "Agent",
+            "email": raw_email,
+            "email_json": json.dumps(raw_email),
+            "masked_mobile": masked_mobile,
+            "plan_name": sub.selected_plan if sub and sub.selected_plan else "Membership Plan",
+            "login_url": login_url,
+        },
     )
-    copy_email_btn = (
-        f'<button type="button" class="copy-btn" onclick="copyText({html.escape(json.dumps(raw_email))}, this)">Copy</button>'
-        if email
-        else ""
-    )
-
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Received — PadosiAgent</title>
-    <link rel="icon" type="image/png" href="/static/img/logo-icon.webp">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        body {{
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            background-image: radial-gradient(1200px circle at 50% -10%, #edf2f7 0%, #ffffff 70%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px 16px;
-            color: #0f172a;
-        }}
-        .card-container {{
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 28px;
-            padding: 44px 36px 36px;
-            max-width: 490px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 25px 60px -15px rgba(39, 60, 142, 0.1), 0 4px 16px rgba(0, 0, 0, 0.02);
-            transition: all 0.3s ease;
-        }}
-        .logo-box {{
-            margin-bottom: 24px;
-        }}
-        .logo-box img {{
-            height: 48px;
-            width: auto;
-            max-width: 200px;
-            object-fit: contain;
-            display: inline-block;
-        }}
-        .icon-circle {{
-            width: 72px;
-            height: 72px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 32px;
-            margin-bottom: 18px;
-            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.38);
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }}
-        @keyframes popIn {{
-            0% {{ transform: scale(0.6); opacity: 0; }}
-            100% {{ transform: scale(1); opacity: 1; }}
-        }}
-        h1 {{
-            font-size: 25px;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }}
-        .badge-pill {{
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
-            color: #047857;
-            padding: 6px 14px;
-            border-radius: 50px;
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }}
-        .badge-pill i {{
-            font-size: 14px;
-            color: #10b981;
-        }}
-        p.desc {{
-            font-size: 14.5px;
-            color: #475569;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }}
-        p.desc strong.brand {{
-            color: #273c8e;
-            font-weight: 700;
-        }}
-
-        /* Delivery Channels Box */
-        .delivery-box {{
-            background: #f8fafc;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            text-align: left;
-        }}
-        .delivery-item {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 8px 0;
-        }}
-        .delivery-item:not(:last-child) {{
-            border-bottom: 1px dashed #e2e8f0;
-        }}
-        .del-icon {{
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 17px;
-            flex-shrink: 0;
-        }}
-        .del-icon.wa {{
-            background: #ecfdf5;
-            color: #10b981;
-            border: 1px solid #a7f3d0;
-        }}
-        .del-icon.em {{
-            background: #eff6ff;
-            color: #273c8e;
-            border: 1px solid #bfdbfe;
-        }}
-        .del-info {{
-            flex: 1;
-            min-width: 0;
-        }}
-        .del-info strong {{
-            display: block;
-            font-size: 13px;
-            color: #0f172a;
-            font-weight: 700;
-        }}
-        .del-info span {{
-            display: block;
-            font-size: 11.5px;
-            color: #64748b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }}
-        .del-status {{
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #059669;
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
-            padding: 3px 8px;
-            border-radius: 12px;
-            flex-shrink: 0;
-        }}
-
-        /* Credentials Box */
-        .cred-box {{
-            background: #f8fafc;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 18px 20px;
-            text-align: left;
-            margin-bottom: 24px;
-        }}
-        .cred-box-header {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            color: #273c8e;
-            margin-bottom: 14px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e2e8f0;
-        }}
-        .cred-item {{
-            margin-bottom: 10px;
-        }}
-        .cred-item:last-child {{
-            margin-bottom: 0;
-        }}
-        .cred-label {{
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            margin-bottom: 2px;
-        }}
-        .cred-val {{
-            font-size: 14.5px;
-            font-weight: 700;
-            color: #0f172a;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            word-break: break-all;
-        }}
-        .secure-badge {{
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #047857;
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
-            padding: 3px 8px;
-            border-radius: 20px;
-        }}
-        .cred-hint {{
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 5px;
-            font-weight: 500;
-        }}
-        .copy-btn {{
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            color: #475569;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-left: 8px;
-            flex-shrink: 0;
-        }}
-        .copy-btn:hover {{
-            background: #f1f5f9;
-            border-color: #273c8e;
-            color: #273c8e;
-        }}
-        .status-badge-inline {{
-            display: inline-block;
-            background: #fef3c7;
-            border: 1px solid #fde68a;
-            color: #92400e;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 20px;
-        }}
-
-        /* Action Buttons */
-        .btn-primary {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 14px;
-            font-weight: 700;
-            font-size: 15px;
-            transition: all 0.25s ease;
-            box-shadow: 0 10px 22px -5px rgba(39, 60, 142, 0.35);
-        }}
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 14px 26px -5px rgba(39, 60, 142, 0.45);
-        }}
-        .btn-whatsapp {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 12px 20px;
-            background: #ffffff;
-            border: 1.5px solid #25D366;
-            color: #128C7E;
-            text-decoration: none;
-            border-radius: 14px;
-            font-weight: 700;
-            font-size: 14px;
-            margin-top: 10px;
-            transition: all 0.25s ease;
-        }}
-        .btn-whatsapp:hover {{
-            background: #f0fdf4;
-            transform: translateY(-1px);
-        }}
-        .btn-whatsapp i {{
-            color: #25D366;
-            font-size: 18px;
-        }}
-        .footer-note {{
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 22px;
-            font-weight: 500;
-        }}
-    </style>
-</head>
-<body>
-    <div class="card-container">
-        <!-- PadosiAgent Brand Logo -->
-        <div class="logo-box">
-            <a href="/">
-                <img src="/static/img/logo.webp" alt="PadosiAgent Logo" onerror="this.onerror=null; this.src='/static/img/logo.png';">
-            </a>
-        </div>
-
-        <!-- Success Check Icon -->
-        <div class="icon-circle">
-            <i class="fa-solid fa-check"></i>
-        </div>
-
-        <h1>Payment Received!</h1>
-
-        <div class="badge-pill">
-            <i class="fa-solid fa-shield-check"></i> Credentials Sent to WhatsApp & Email
-        </div>
-
-        <p class="desc">
-            Thank you, <strong>{fullname}</strong>! Your payment was verified and your registration is submitted for <strong class="brand">Admin Approval</strong>.
-            For your security, your login credentials have been dispatched directly to your <strong>WhatsApp</strong> and <strong>Email</strong>.
-        </p>
-
-        <!-- Dispatch Confirmation Box -->
-        <div class="delivery-box">
-            <div class="delivery-item">
-                <div class="del-icon wa"><i class="fa-brands fa-whatsapp"></i></div>
-                <div class="del-info">
-                    <strong>WhatsApp Credentials</strong>
-                    <span>Sent to {masked_mobile}</span>
-                </div>
-                <span class="del-status"><i class="fa-solid fa-circle-check"></i> Sent</span>
-            </div>
-            <div class="delivery-item">
-                <div class="del-icon em"><i class="fa-solid fa-envelope"></i></div>
-                <div class="del-info">
-                    <strong>Welcome Email & Invoice</strong>
-                    <span>Sent to {email if email else "registered email"}</span>
-                </div>
-                <span class="del-status"><i class="fa-solid fa-circle-check"></i> Sent</span>
-            </div>
-        </div>
-
-        <!-- Portal Login Credentials Card -->
-        <div class="cred-box">
-            <div class="cred-box-header">
-                <span><i class="fa-solid fa-id-card me-1"></i> Account Details</span>
-                <span style="font-size: 11px; text-transform: none; color: #10b981;"><i class="fa-solid fa-lock"></i> Protected</span>
-            </div>
-
-            <div class="cred-item">
-                <div class="cred-label">Login User ID (Email)</div>
-                <div class="cred-val">
-                    <span>{email if email else "Your registered email"}</span>
-                    {copy_email_btn}
-                </div>
-            </div>
-
-            <div class="cred-item">
-                <div class="cred-label">Password</div>
-                <div class="cred-val">
-                    <span style="letter-spacing: 2.5px; font-family: monospace; font-size: 15px; color: #334155; font-weight: 800;">••••••••••</span>
-                    <span class="secure-badge"><i class="fa-solid fa-check"></i> Sent</span>
-                </div>
-                <div class="cred-hint">💡 Default password is your 10-digit registered mobile number</div>
-            </div>
-
-            <div class="cred-item">
-                <div class="cred-label">Selected Membership Plan</div>
-                <div class="cred-val" style="color: #273c8e;">
-                    <span>{plan_name}</span>
-                </div>
-            </div>
-
-            <div class="cred-item">
-                <div class="cred-label">Account Status</div>
-                <div class="cred-val">
-                    <span class="status-badge-inline">⏳ Pending Admin Approval</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <a href="{login_url}" class="btn-primary">
-            Proceed to Agent Login <i class="fa-solid fa-arrow-right"></i>
-        </a>
-
-        <a href="/wa-bot/simulator/" class="btn-whatsapp">
-            <i class="fa-brands fa-whatsapp"></i> Return to WhatsApp Chat
-        </a>
-
-        <div class="footer-note">
-            PadosiAgent &bull; India's #1 Insurance Agent Network
-        </div>
-    </div>
-
-    <script>
-        function copyText(txt, btn) {{
-            if (!txt) return;
-            navigator.clipboard.writeText(txt).then(function() {{
-                const orig = btn.innerText;
-                btn.innerText = 'Copied! ✓';
-                btn.style.color = '#10b981';
-                btn.style.borderColor = '#10b981';
-                setTimeout(function() {{
-                    btn.innerText = orig;
-                    btn.style.color = '';
-                    btn.style.borderColor = '';
-                }}, 2000);
-            }});
-        }}
-    </script>
-</body>
-</html>"""
     return HttpResponse(html_content, content_type="text/html")

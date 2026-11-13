@@ -6,7 +6,7 @@ from django.db import transaction
 
 from apps.agents.services.account_auth import is_real_razorpay_id
 from apps.event_referral.models import EventReferral, EventReferralParticipant
-from apps.event_referral.services.participant_service import evaluate_participant
+from apps.event_referral.services.participant_service import BLOCKED_REFERRER_REASON, evaluate_participant
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +127,11 @@ def qualify_event_referral(referred_agent, subscription):
             .filter(pk=participant.pk)
             .first()
         )
-        if not participant or participant.status == EventReferralParticipant.STATUS_BLOCKED:
+        if not participant:
             return
+        # Audit CH11: a blocked referrer's referral is still recorded as paid (not counting),
+        # so admin_restore_participant can count it.
+        referrer_blocked = participant.status == EventReferralParticipant.STATUS_BLOCKED
         # A winner's later referrals are still recorded as paid (they also
         # count in the championship); the win itself is not granted again.
 
@@ -162,7 +165,10 @@ def qualify_event_referral(referred_agent, subscription):
         ref_row.paid_at = paid_at
         ref_row.state = EventReferral.STATE_PAID
 
-        if paid_at <= participant.deadline_at:
+        if referrer_blocked:
+            ref_row.counts = False
+            ref_row.reject_reason = BLOCKED_REFERRER_REASON
+        elif paid_at <= participant.deadline_at:
             ref_row.counts = True
         else:
             ref_row.counts = False

@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const iconPreview = document.getElementById('iconPreview');
     if (iconInput && iconPreview) {
         iconInput.addEventListener('input', function() {
-            iconPreview.innerHTML = `<i class="${this.value || 'fa-solid fa-box'}"></i>`;
+            const icon = document.createElement('i');
+            icon.className = this.value || 'fa-solid fa-box';
+            iconPreview.replaceChildren(icon);
         });
     }
 

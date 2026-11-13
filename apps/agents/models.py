@@ -1020,6 +1020,20 @@ class AgentProfile(models.Model):
                 slug = f"{base_slug}-{count}"
                 count += 1
             self.slug = slug
+            # Two signups with the same name could both pick "name-1" (audit AG18): retry once
+            # with a random suffix instead of failing the whole signup.
+            from django.db import IntegrityError, transaction
+
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError:
+                if self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                    import secrets
+
+                    self.slug = f"{base_slug}-{secrets.token_hex(3)}"
+                    return super().save(*args, **kwargs)
+                raise
         super().save(*args, **kwargs)
 
     @property
@@ -1404,6 +1418,8 @@ class AgentLead(models.Model):
     class Meta:
         db_table = "agent_leads"
         managed = True
+        # Lead rate limit counts recent leads per IP on every contact click (audit AG9).
+        indexes = [models.Index(fields=["ip_address", "created_at"], name="agent_leads_ip_created_idx")]
 
     @property
     def message(self):

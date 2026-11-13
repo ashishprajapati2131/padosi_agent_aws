@@ -1,12 +1,16 @@
 import json
+import logging
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db.models import Count, Q
 from dateutil.relativedelta import relativedelta
 from apps.agents.models import Agent, AgentLead
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.home.models.site_setting import SiteSetting
+
+logger = logging.getLogger(__name__)
 
 def is_distributor(user):
     # Depending on how your User model is set up, this checks if the user is a distributor
@@ -55,18 +59,24 @@ def dashboard(request):
     agent_qs = Agent.objects.filter(distributor_id=distributor_id)
     agent_emails = list(agent_qs.values_list('email', flat=True))
     
-    total_agents = agent_qs.count()
+    # One aggregate instead of a COUNT per stat.
+    agent_stats = agent_qs.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(status='active')),
+        new_this_month=Count('id', filter=Q(created_at__year=now.year, created_at__month=now.month)),
+        professional=Count('id', filter=Q(plan_type='professional')),
+        via_sub=Count('id', filter=Q(sub_distributor_id__isnull=False)),
+        direct=Count('id', filter=Q(sub_distributor_id__isnull=True)),
+    )
+    total_agents = agent_stats['total']
     draft_agents = AgentDraft.objects.filter(distributor_id=distributor_id, registration_step__gte=1).exclude(email__in=agent_emails).count()
     total_agents += draft_agents
 
-    active_agents = agent_qs.filter(status='active').count()
+    active_agents = agent_stats['active']
     
     total_leads = AgentLead.objects.filter(agent__distributor_id=distributor_id).count()
     
-    new_agents_this_month = agent_qs.filter(
-        created_at__year=now.year,
-        created_at__month=now.month
-    ).count()
+    new_agents_this_month = agent_stats['new_this_month']
     new_drafts_this_month = AgentDraft.objects.filter(
         distributor_id=distributor_id,
         created_at__year=now.year,
@@ -74,10 +84,7 @@ def dashboard(request):
     ).exclude(email__in=agent_emails).count()
     new_agents_this_month += new_drafts_this_month
 
-    professional_agents = Agent.objects.filter(
-        distributor_id=distributor_id,
-        plan_type='professional'
-    ).count()
+    professional_agents = agent_stats['professional']
 
     # 6-month signup trend from one query (was one COUNT per month).
     months = [now - relativedelta(months=i) for i in range(5, -1, -1)]
@@ -136,8 +143,8 @@ def dashboard(request):
 
     total_sub_distributors = SubDistributor.objects.filter(distributor_id=distributor_id).count()
     active_sub_distributors = SubDistributor.objects.filter(distributor_id=distributor_id, status='active').count()
-    sub_distributor_agents_count = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=False).count()
-    direct_agents_count = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=True).count()
+    sub_distributor_agents_count = agent_stats['via_sub']
+    direct_agents_count = agent_stats['direct']
 
     sub_invite_url = request.build_absolute_uri(reverse('distributors:sub_distributor_join', args=[referral_code.code]))
 
@@ -205,22 +212,14 @@ def save_invite_message(request):
 
             l_user = LaravelUser.objects.filter(email=request.user.email).first()
             if l_user is None:
-                LaravelUser.objects.create(
-                    fullname=request.user.first_name or request.user.username,
-                    email=request.user.email,
-                    password=request.user.password or '',
-                    role='distributor',
-                    status='active',
-                    custom_invite_message=msg,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-            else:
-                l_user.custom_invite_message = msg
-                l_user.updated_at = timezone.now()
-                l_user.save()
+                # Never mint a distributor `users` row here (superusers pass is_distributor too).
+                return JsonResponse({'success': False, 'message': 'Distributor account not found.'}, status=404)
+            l_user.custom_invite_message = msg
+            l_user.updated_at = timezone.now()
+            l_user.save()
 
             return JsonResponse({'success': True, 'message': 'Your custom invitation message has been saved successfully.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        except Exception:
+            logger.exception('Saving distributor invite message failed')
+            return JsonResponse({'success': False, 'message': 'Could not save your message. Please try again.'}, status=400)
     return JsonResponse({'success': False}, status=405)

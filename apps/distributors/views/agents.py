@@ -16,7 +16,8 @@ def _distributor_laravel_id(request):
     """Mirror PHP auth()->id(): the distributor's row id in the shared Laravel 'users' table."""
     from apps.admin_panel.models import User as LaravelUser
     l_user = LaravelUser.objects.filter(email=request.user.email).first()
-    return l_user.id if l_user else request.user.id
+    # No users row: None, so callers deny instead of using an unrelated auth_user id.
+    return l_user.id if l_user else None
 
 
 @login_required(login_url='distributors:login')
@@ -25,6 +26,9 @@ def agents_index(request):
     from django.db.models import Count, Q
     from django.core.paginator import Paginator
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        messages.error(request, "Your distributor account is not set up. Please contact support.")
+        return redirect('distributors:dashboard')
 
     search = request.GET.get('search', '').strip()
     status = request.GET.get('status', 'all')
@@ -67,23 +71,17 @@ def agents_index(request):
             drafts_query &= Q(sub_distributor_id=int(sub_dist_filter))
         
     if status and status != 'all' and status not in ['draft', 'claim', 'incomplete', 'pending_payment']:
-        drafts = []
+        drafts_qs = AgentDraft.objects.none()
     elif plan and plan != 'all':
-        drafts = []
+        drafts_qs = AgentDraft.objects.none()
     else:
-        drafts = list(AgentDraft.objects.filter(drafts_query).order_by('-created_at'))
-
-    agent_emails = set(agents_list_qs.values_list('email', flat=True))
-
-    # One query for every sub-distributor a draft points at (was one per draft).
-    draft_sub_ids = {d.sub_distributor_id for d in drafts if getattr(d, 'sub_distributor_id', None)}
-    sub_dist_by_id = (
-        {sd.id: sd for sd in SubDistributor.objects.filter(id__in=draft_sub_ids)}
-        if draft_sub_ids else {}
-    )
+        # Drafts whose email already belongs to a listed agent are hidden.
+        drafts_qs = AgentDraft.objects.filter(drafts_query).exclude(
+            email__in=Agent.objects.filter(query).values('email')
+        )
 
     class MockDraftAgent:
-        def __init__(self, draft):
+        def __init__(self, draft, sub_dist_by_id):
             self.id = draft.id
             self.fullname = draft.fullname
             self.email = draft.email
@@ -97,14 +95,31 @@ def agents_index(request):
             self.sub_distributor_id = getattr(draft, 'sub_distributor_id', None)
             self.sub_distributor = sub_dist_by_id.get(self.sub_distributor_id) if self.sub_distributor_id else None
 
-    combined_list = list(agents_list_qs)
-    for d in drafts:
-        if d.email not in agent_emails:
-            combined_list.append(MockDraftAgent(d))
-            
-    combined_list.sort(key=lambda x: x.created_at, reverse=True)
+    class MergedAgentRows:
+        """Agents + drafts newest first, loading only the rows of the requested page (was: every row)."""
+        def count(self):
+            return agents_list_qs.count() + drafts_qs.count()
 
-    paginator = Paginator(combined_list, 10)
+        def __len__(self):
+            return self.count()
+
+        def __getitem__(self, page_slice):
+            top = page_slice.stop
+            # Agents before drafts on equal created_at, as the old stable Python sort did.
+            keys = [(c, 0, i) for c, i in agents_list_qs.values_list('created_at', 'id')[:top]]
+            keys += [(c, 1, i) for c, i in drafts_qs.order_by('-created_at').values_list('created_at', 'id')[:top]]
+            keys.sort(key=lambda k: k[0], reverse=True)
+            keys = keys[page_slice.start:top]
+            agent_by_id = agents_list_qs.in_bulk([i for _, src, i in keys if src == 0])
+            draft_by_id = AgentDraft.objects.in_bulk([i for _, src, i in keys if src == 1])
+            sub_ids = {d.sub_distributor_id for d in draft_by_id.values() if getattr(d, 'sub_distributor_id', None)}
+            sub_dist_by_id = {sd.id: sd for sd in SubDistributor.objects.filter(id__in=sub_ids)} if sub_ids else {}
+            return [
+                agent_by_id[i] if src == 0 else MockDraftAgent(draft_by_id[i], sub_dist_by_id)
+                for _, src, i in keys
+            ]
+
+    paginator = Paginator(MergedAgentRows(), 10)
     page_number = request.GET.get('page')
     agents = paginator.get_page(page_number)
 
@@ -162,6 +177,8 @@ def agents_create(request):
 @user_passes_test(is_distributor, login_url='distributors:login')
 def agents_show(request, pk):
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        return redirect('distributors:agents_index')
 
     try:
         # PHP parity: eager load user/profile/leads/profileViews
@@ -184,6 +201,9 @@ def agents_resume_payment(request, pk):
     Allow the distributor to resume payment for an agent whose payment failed.
     """
     distributor_id = _distributor_laravel_id(request)
+    if distributor_id is None:
+        messages.error(request, "Agent not found or payment already completed.")
+        return redirect('distributors:agents_index')
 
     try:
         agent = Agent.objects.get(

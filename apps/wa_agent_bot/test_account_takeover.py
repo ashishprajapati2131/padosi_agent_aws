@@ -53,5 +53,5 @@ class BotTakeoverTests(TestCase):
 
         reply = process_message(session, "1")
         self.assertEqual(session.state, WaBotSession.STATE_ASK_EMAIL)
-        self.assertIn("already linked", reply)
+        self.assertIn("can't be used here", reply)
         self.assertNotIn("email", session.registration_data)

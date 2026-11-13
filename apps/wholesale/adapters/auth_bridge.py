@@ -1,7 +1,7 @@
 """
 Auth Bridge Adapter for Wholesale System in PadosiAgent.
 Seamlessly bridges authentication with:
-- PadosiAgent Admin sessions (cookie-based session_token or session['admin_id'])
+- PadosiAgent Admin sessions (cookie-based session_token)
 - PadosiAgent Agent portal (request.user or Agent model)
 - Direct Django Users and Wholesaler accounts
 - Global Wholesale Marketplace Feature Flag
@@ -33,8 +33,6 @@ def get_wholesaler_profile(request):
     Checks:
       1. request._cached_wholesaler_profile
       2. request.user.wholesaler_profile
-      3. session['wholesaler_id']
-      4. Agent linked wholesaler account
     """
     if hasattr(request, '_cached_wholesaler_profile'):
         return request._cached_wholesaler_profile
@@ -45,11 +43,7 @@ def get_wholesaler_profile(request):
     # 1. Direct Django user
     if hasattr(request, 'user') and request.user.is_authenticated:
         profile = WholesalerProfile.objects.filter(user=request.user).first()
-    
-    # 2. Session wholesaler ID
-    if not profile and hasattr(request, 'session') and request.session.get('wholesaler_id'):
-        profile = WholesalerProfile.objects.filter(id=request.session.get('wholesaler_id')).first()
-        
+
     request._cached_wholesaler_profile = profile
     return profile
 
@@ -76,8 +70,6 @@ def admin_session_has_permission(request, *permissions):
         admin_id = _get_admin_from_session(request)
     except Exception:
         pass
-    if not admin_id and hasattr(request, 'session'):
-        admin_id = request.session.get('admin_id')
     if not admin_id:
         return False
     try:

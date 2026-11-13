@@ -30,7 +30,7 @@ class ContactRateLimitTests(TestCase):
         self.assertFalse(blocked.json()["success"])
         self.assertEqual(ContactSubmission.objects.count(), 5)
 
-    def test_invalid_submissions_do_not_use_up_the_limit(self):
-        for _ in range(6):
+    def test_invalid_submissions_count_toward_the_limit(self):
+        for _ in range(5):
             self.client.post(reverse("home:contact_submit"), {"name": "x"})
-        self.assertEqual(self._post().status_code, 200)
+        self.assertEqual(self._post().status_code, 429)

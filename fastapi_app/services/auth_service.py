@@ -7,7 +7,6 @@ from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.utils.auth import (
     verify_password,
     generate_and_register_token,
-    get_password_hash,
 )
 from fastapi_app.config import settings
 from fastapi_app.middleware.rate_limiter import (
@@ -223,26 +222,6 @@ class AuthService:
                 )
                 if request.password == temp_password or legacy_email_password:
                     password_valid = True
-                    if not user:
-                        try:
-                            from fastapi_app.models.user import UserModel
-
-                            user = UserModel(
-                                fullname=agent.fullname or agent.email,
-                                email=agent.email,
-                                password=get_password_hash(request.password),
-                                role="agent",
-                                status="active",
-                                email_verified_at=datetime.now(),
-                            )
-                            self.db.add(user)
-                            # agents.user_id is the Django auth_user id; storing this
-                            # users.id there linked the agent to whichever auth_user
-                            # happened to share that number.
-                            self.db.commit()
-                        except Exception:
-                            self.db.rollback()
-                            user = self.user_repo.get_by_email(request.email)
 
         if not user or not password_valid:
             record_login_attempt(ip)

@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import date
+import datetime as _dt
 
 class SubscriptionSchema(BaseModel):
     selected_plan: Optional[str] = ""
@@ -60,6 +61,15 @@ class LeadPreferenceSchema(BaseModel):
     claims_charging: str = "free"
     claims_fee_amount: float = 0.0
     claims_percent: Optional[float] = 0.0
+
+
+class LeadPreferenceInputSchema(LeadPreferenceSchema):
+    """Request-side lead preferences with bounds (responses keep LeadPreferenceSchema so old rows still load)."""
+    portfolio_charging: str = Field("free", max_length=50)
+    portfolio_fee: Optional[float] = Field(0.0, ge=0, le=10_000_000)
+    claims_charging: str = Field("free", max_length=50)
+    claims_fee_amount: Optional[float] = Field(0.0, ge=0, le=10_000_000)
+    claims_percent: Optional[float] = Field(0.0, ge=0, le=100)
 
 class AgentSchema(BaseModel):
     id: int
@@ -139,7 +149,7 @@ class AgentUpdateSchema(BaseModel):
     portfolios: List[PortfolioSchema] = []
     careerTimelines: List[CareerTimelineSchema] = []
     achievementPhotos: List[AchievementPhotoSchema] = []
-    leadPreferences: Optional[LeadPreferenceSchema] = None
+    leadPreferences: Optional[LeadPreferenceInputSchema] = None
     serviceableCities: List[str] = []
 
 class ProfileUpdateSchema(BaseModel):
@@ -195,7 +205,7 @@ class ProfessionalAgentUpdateSchema(BaseModel):
     client_base: Optional[str] = ""
     familyLicenses: List[FamilyLicenseSchema] = []
     performanceStats: Optional[PerformanceStatSchema] = None
-    leadPreferences: Optional[LeadPreferenceSchema] = None
+    leadPreferences: Optional[LeadPreferenceInputSchema] = None
     serviceableCities: List[str] = []
 
 
@@ -258,6 +268,29 @@ class CareerTimelineCreateRequest(BaseModel):
     type: str = "Career Event"
 
 
+class CareerTimelineWriteRequest(BaseModel):
+    """Body of POST / PUT /profile/career-timeline (the fields the service reads)."""
+    model_config = ConfigDict(coerce_numbers_to_str=True)  # older app builds may send month as a number
+    year: Optional[Union[int, str]] = None
+    month: Optional[str] = Field(None, max_length=50)
+    type: Optional[str] = Field(None, max_length=255)
+    title: Optional[str] = Field(None, max_length=2000)
+    event_text: Optional[str] = Field(None, max_length=2000)
+    suggestion_key: Optional[str] = Field(None, max_length=50)
+    key: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("year")
+    @classmethod
+    def _year_in_range(cls, v):
+        if v is None:
+            return v
+        try:
+            year = int(str(v).strip())
+        except ValueError:
+            raise ValueError("Year must be a 4-digit year.")
+        if not 1950 <= year <= _dt.date.today().year + 1:
+            raise ValueError(f"Year must be between 1950 and {_dt.date.today().year + 1}.")
+        return str(year)
 
 
 class VisibilityState(BaseModel):

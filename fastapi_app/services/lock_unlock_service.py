@@ -264,6 +264,36 @@ def canonical_plan_feature_slugs(plan_slug: str) -> List[str]:
         return ['dashboard_stats', 'edit_profile', 'edit_profile_basic']
     return []
 
+def agent_subscription_expired(db: Session, agent: Agent) -> bool:
+    """Invariant 12, same rule as Django's agent_can_access_dashboard: only while
+    expiry_enforced(), an agent who paid but whose every completed subscription has
+    ended (NULL expires_at never ends) is expired, unless an event-referral challenge
+    still grants the dashboard."""
+    from apps.agents.services.subscription_expiry import expiry_enforced
+    if not expiry_enforced():
+        return False
+    from datetime import datetime
+    from sqlalchemy import or_
+    from fastapi_app.models.agent_subscription import AgentSubscription
+    paid = db.query(AgentSubscription.id).filter(
+        AgentSubscription.agent_id == agent.id,
+        AgentSubscription.payment_status == 'completed',
+    )
+    if paid.first() is None:
+        return False
+    still_valid = or_(AgentSubscription.expires_at.is_(None), AgentSubscription.expires_at > datetime.now())
+    if paid.filter(still_valid).first() is not None:
+        return False
+    try:
+        from apps.agents.models import Agent as DjangoAgent
+        from apps.event_referral.services.participant_service import event_referral_grants_dashboard
+        if event_referral_grants_dashboard(DjangoAgent(pk=agent.id)):
+            return False
+    except Exception:
+        logger.warning("Event referral dashboard check failed for agent #%s", agent.id)
+    return True
+
+
 class LockUnlockService:
     def __init__(self, db: Session):
         self.db = db
@@ -540,17 +570,22 @@ class LockUnlockService:
                 "upgrade_required": not is_unlocked and plan_slug in ('free_trial', 'starter'),
             }
 
+        # Gate checks in this request reuse it; the agent object lives for one request only.
+        setattr(agent, '_feature_access_map', access_map)
         return access_map
 
+    def _request_access_map(self, agent: Agent) -> Dict[str, Dict[str, Any]]:
+        return vars(agent).get('_feature_access_map') or self.get_feature_access_map(agent)
+
     def is_feature_unlocked(self, agent: Agent, feature_slug: str) -> bool:
-        access_map = self.get_feature_access_map(agent)
+        access_map = self._request_access_map(agent)
         feat_data = access_map.get(feature_slug)
         if not feat_data:
             return True  # Fail-safe open for unknown features
         return not feat_data["is_locked"]
 
     def require_feature_unlocked(self, agent: Agent, feature_slug: str):
-        access_map = self.get_feature_access_map(agent)
+        access_map = self._request_access_map(agent)
         feat_data = access_map.get(feature_slug)
         if feat_data and feat_data["is_locked"]:
             raise HTTPException(

@@ -30,6 +30,7 @@
             <!-- LEAD CAPTURE FORM MODE -->
             <form id="padosiExitPopupForm" onsubmit="submitExitPopupLead(event)">
                 {% csrf_token %}
+                <input type="text" name="website_url" value="" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;" aria-hidden="true" tabindex="-1" autocomplete="off">
                 <div class="mb-2">
                     <label class="padosi-exit-label">Full Name</label>
                     <div class="input-group input-group-sm">

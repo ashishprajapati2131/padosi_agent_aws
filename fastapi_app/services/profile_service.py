@@ -398,10 +398,12 @@ class ProfileService:
         if new_bio and new_bio.strip() != (existing_bio or '').strip():
             lock_service.require_feature_unlocked(agent, "edit_profile_professional_bio")
 
-        new_socials = payload.profile.social_links.model_dump() if hasattr(payload.profile.social_links, 'model_dump') else (payload.profile.social_links.dict() if hasattr(payload.profile.social_links, 'dict') else {})
-        has_new_socials = any(bool(v and str(v).strip()) for v in new_socials.values()) if isinstance(new_socials, dict) else False
-        existing_socials = getattr(agent.profile, 'social_links', {}) if agent.profile else {}
-        if has_new_socials and new_socials != existing_socials:
+        clean_website, new_socials = self._clean_digital_presence(
+            payload.profile.website, payload.profile.social_links, agent.profile
+        )
+        has_new_socials = any(bool(v and str(v).strip()) for v in new_socials.values())
+        existing_socials = self._saved_socials(agent.profile.social_links if agent.profile else None)
+        if has_new_socials and self._norm_links(new_socials) != self._norm_links(existing_socials):
             lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
 
         existing_claims = getattr(agent.profile, 'support_claims', False) if agent.profile else False
@@ -556,9 +558,9 @@ class ProfileService:
                 ))
                 
             # Step 5: Additional Info (Save direct dict for JSON column)
-            agent.profile.website_url = payload.profile.website
+            agent.profile.website_url = clean_website
             agent.profile.career_highlights = payload.profile.career_highlights
-            agent.profile.social_links = payload.profile.social_links.dict()
+            agent.profile.social_links = new_socials
             agent.profile.service_pincodes = [sp.pincode for sp in payload.profile.service_pincodes]
             
             existing_photos = db.query(AgentAchievementPhoto).filter(AgentAchievementPhoto.agent_id == agent_id).all()
@@ -769,6 +771,66 @@ class ProfileService:
         if hasattr(social_links, 'dict'):
             return social_links.dict()
         return social_links if isinstance(social_links, dict) else {}
+
+    _SOCIAL_KEYS = ("google_business", "linkedin", "instagram", "facebook", "youtube")
+
+    @classmethod
+    def _saved_socials(cls, saved) -> dict:
+        """Saved social links under Django's keys; older app saves used linkedin_url etc."""
+        if isinstance(saved, str):
+            try:
+                saved = json.loads(saved)
+            except ValueError:
+                saved = {}
+        if not isinstance(saved, dict):
+            saved = {}
+        return {k: saved.get(k) or saved.get(f"{k}_url") or "" for k in cls._SOCIAL_KEYS}
+
+    @staticmethod
+    def _norm_links(values: dict) -> dict:
+        """Normalized copy for change detection, so re-saving the same link is not a change."""
+        from apps.agents.utils.web_url import normalize_web_url
+        out = {}
+        for k, v in values.items():
+            v = str(v or "").strip()
+            try:
+                out[k] = normalize_web_url(v)
+            except ValueError:
+                out[k] = v
+        return out
+
+    @classmethod
+    def _clean_digital_presence(cls, website, social_links, profile) -> tuple:
+        """
+        Validate website / social links exactly like Django's edit profile
+        (apps/agents/utils/web_url.py) and return (website, social_links) with
+        Django's storage keys (linkedin, instagram, ...) so the public card shows them.
+        An unchanged legacy value is kept as saved unless it is a script/data URL.
+        """
+        from apps.agents.utils import web_url as wu
+
+        socials = cls._socials_as_dict(social_links)
+        saved = cls._saved_socials(profile.social_links if profile else None)
+        saved["website"] = (profile.website_url or "") if profile else ""
+        fields = (
+            ("website", website, None, "website"),
+            ("google_business", socials.get("google_business"), wu.GOOGLE_BUSINESS_HOSTS, "Google Business"),
+            ("linkedin", socials.get("linkedin_url") or socials.get("linkedin"), wu.LINKEDIN_HOSTS, "LinkedIn"),
+            ("instagram", socials.get("instagram_url") or socials.get("instagram"), wu.INSTAGRAM_HOSTS, "Instagram"),
+            ("facebook", socials.get("facebook_url") or socials.get("facebook"), wu.FACEBOOK_HOSTS, "Facebook"),
+            ("youtube", socials.get("youtube_url") or socials.get("youtube"), wu.YOUTUBE_HOSTS, "YouTube"),
+        )
+        cleaned, errors = {}, {}
+        for key, raw, hosts, label in fields:
+            raw = str(raw or "").strip()
+            wu._coerce_url_field(raw, key, hosts, label, errors, cleaned)
+            old = str(saved.get(key) or "").strip()
+            if key in errors and raw == old and not raw.lower().startswith(("javascript:", "data:", "vbscript:", "file:")):
+                errors.pop(key)
+                cleaned[key] = old
+        if errors:
+            raise HTTPException(status_code=422, detail=next(iter(errors.values()))[0])
+        return cleaned.pop("website"), cleaned
 
     def _validate_service_pincodes(self, service_pincodes):
         if not service_pincodes:
@@ -1089,19 +1151,21 @@ class ProfileService:
         if new_bio.strip() != existing_bio.strip():
             lock_service.require_feature_unlocked(agent, "edit_profile_professional_bio")
 
-        new_socials = self._socials_as_dict(payload.profile.social_links)
-        existing_socials = getattr(agent.profile, 'social_links', {}) if agent.profile else {}
-        if not isinstance(existing_socials, dict):
-            existing_socials = {}
+        new_website, new_socials = self._clean_digital_presence(
+            payload.profile.website, payload.profile.social_links, agent.profile
+        )
+        existing_socials = self._saved_socials(agent.profile.social_links if agent.profile else None)
         existing_website = (agent.profile.website_url or "") if agent.profile else ""
-        new_website = payload.profile.website or ""
-        if new_website.strip() != existing_website.strip() or new_socials != existing_socials:
+        if (
+            self._norm_links({"w": new_website}) != self._norm_links({"w": existing_website})
+            or self._norm_links(new_socials) != self._norm_links(existing_socials)
+        ):
             lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
 
         before = self._edit_snapshot(agent, db)
         try:
             profile = self._ensure_profile(db, agent)
-            profile.website_url = payload.profile.website
+            profile.website_url = new_website
             profile.career_highlights = payload.profile.career_highlights
             profile.social_links = new_socials
 

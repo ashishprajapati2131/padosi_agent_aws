@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from apps.agents.models import Agent, AgentSubscription
 from django.utils import timezone
@@ -32,6 +33,7 @@ def payments_index(request):
         .prefetch_related("subscriptions")
         .order_by("-created_at")
     )
+    agents = Paginator(agents, 25).get_page(request.GET.get("page"))
 
     return render(request, "insurance/payments/index.html", {"agents": agents})
 
@@ -129,13 +131,12 @@ def record_payment(request, agent_id):
         messages.success(request, success_msg)
         return redirect("insurance:payments_index")
 
-    except Exception as e:
+    except Exception:
+        logger.exception("Recording offline payment failed for agent %s", agent_id)
+        msg = "Failed to record payment. Please try again."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse(
-                {"success": False, "message": f"Failed to record payment: {str(e)}"},
-                status=500,
-            )
-        messages.error(request, f"Failed to record payment: {str(e)}")
+            return JsonResponse({"success": False, "message": msg}, status=500)
+        messages.error(request, msg)
         return redirect("insurance:payments_index")
 
 

@@ -1,3 +1,4 @@
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -92,8 +93,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         cache = shared_cache()
         if cache is not None:
             try:
-                count = incr_window_counter(
-                    cache, f"{bucket}_{ip}", self.window_seconds
+                # File/DB cache I/O is blocking: keep it off the event loop.
+                count = await run_in_threadpool(
+                    incr_window_counter, cache, f"{bucket}_{ip}", self.window_seconds
                 )
                 limited = count > limit
             except Exception as _e:

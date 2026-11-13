@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends
+import secrets
+import string
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from urllib.parse import quote
 
@@ -24,17 +28,28 @@ def get_referral_details(
     """
     ref_code = db.query(ReferralCode).filter(ReferralCode.agent_id == current_agent.id).first()
     if not ref_code:
-        import random, string
-        new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        ref_code = ReferralCode(
-            agent_id=current_agent.id,
-            code=new_code,
-            is_active=True,
-            total_referrals=0
-        )
-        db.add(ref_code)
-        db.commit()
-        db.refresh(ref_code)
+        agent_id = current_agent.id
+        alphabet = string.ascii_uppercase + string.digits
+        for _ in range(5):
+            ref_code = ReferralCode(
+                agent_id=agent_id,
+                code=''.join(secrets.choice(alphabet) for _ in range(8)),
+                is_active=True,
+                total_referrals=0
+            )
+            db.add(ref_code)
+            try:
+                db.commit()
+                db.refresh(ref_code)
+                break
+            except IntegrityError:
+                # Code taken, or a parallel request already created this agent's code.
+                db.rollback()
+                ref_code = db.query(ReferralCode).filter(ReferralCode.agent_id == agent_id).first()
+                if ref_code:
+                    break
+        if not ref_code:
+            raise HTTPException(status_code=503, detail="Could not create your referral code. Please try again.")
 
     # Sync conversions
     converted_count = db.query(ReferralUsage).filter(

@@ -501,11 +501,17 @@ def _log_latency_async(
     threading.Thread(target=_write, daemon=True).start()
 
 
-def call_llm_with_fallback(messages, tools=None, tool_choice=None, **extra_kwargs):
+def call_llm_with_fallback(
+    messages, tools=None, tool_choice=None, *, total_deadline=25.0, **extra_kwargs
+):
     last_error = None
     request_timeout = float(extra_kwargs.pop("timeout", 12.0) or 12.0)
+    deadline = time.monotonic() + total_deadline
     rotated_providers = get_rotated_providers()
     for i, provider in enumerate(rotated_providers):
+        if time.monotonic() > deadline:  # don't chain provider timeouts past the deadline (WA12)
+            logger.warning("LLM total deadline (%ss) exceeded; not trying further providers", total_deadline)
+            break
         is_last_provider = i == len(rotated_providers) - 1
         api_key = os.environ.get(provider["api_key_env"])
         if not api_key and provider["type"] == "groq":
@@ -1371,7 +1377,7 @@ def get_chat_completion(
         }
 
 
-def stream_plain_text_completion(session_id, user_message):
+def stream_plain_text_completion(session_id, user_message, total_deadline=25.0):
     import time
 
     t_start = time.time()
@@ -1429,8 +1435,12 @@ def stream_plain_text_completion(session_id, user_message):
 
     # --- Try each provider in order ---
     last_error = None
+    deadline = time.monotonic() + total_deadline
     rotated_providers = get_rotated_providers()
     for i, provider in enumerate(rotated_providers):
+        if time.monotonic() > deadline:  # don't chain provider timeouts past the deadline (WA12)
+            logger.warning("Streaming LLM total deadline (%ss) exceeded; not trying further providers", total_deadline)
+            break
         is_last_provider = i == len(rotated_providers) - 1
         api_key = os.environ.get(provider["api_key_env"])
         if not api_key and provider["type"] == "groq":

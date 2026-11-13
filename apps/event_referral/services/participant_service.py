@@ -270,6 +270,9 @@ def event_referral_effective_plan_type(agent, participant=None):
     return None
 
 
+BLOCKED_REFERRER_REASON = "Paid while referrer was blocked"
+
+
 def _recount_paid(participant):
     return EventReferral.objects.filter(
         participant=participant,
@@ -292,7 +295,7 @@ def _grant_win(participant):
     # used to push them back to pending approval on the basic plan).
     from plan_upgrade_handoff import plan_rank
 
-    if agent.status != "active":
+    if agent.status not in ("active", "suspended", "blacklisted", "rejected"):
         agent.status = "pending_approval"
     if plan_rank(plan) >= plan_rank(agent.plan_type or ""):
         agent.plan_type = plan
@@ -473,6 +476,15 @@ def admin_restore_participant(participant, *, extend_hours=0):
         participant.blocked_at = None
         participant.blocked_reason = ""
         participant.blocked_by_admin = False
+        # Audit CH11: payments captured while blocked count once restored (inside the deadline).
+        EventReferral.objects.filter(
+            participant=participant,
+            state=EventReferral.STATE_PAID,
+            counts=False,
+            reject_reason=BLOCKED_REFERRER_REASON,
+            paid_at__lte=participant.deadline_at,
+        ).update(counts=True, reject_reason="")
+        participant.paid_count = _recount_paid(participant)
         participant.save()
         if agent.status in ("suspended", "pending_payment", "event_challenge"):
             agent.status = (

@@ -6,6 +6,7 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
 from django.views.decorators.http import require_POST
+from django.db import transaction
 from django.db.models import Q
 
 from apps.admin_panel.auth import _get_admin_from_session
@@ -54,18 +55,17 @@ def admin_championship_dashboard(request):
     net_revenue = gross_revenue - refund_amount
 
     # Reward Liability
-    claims = ChampionshipRewardClaim.objects.filter(reward_slab__campaign=campaign)
+    claims = ChampionshipRewardClaim.objects.filter(reward_slab__campaign=campaign).select_related('reward_slab')
     potential_liability = Decimal('0.00')
     current_liability = Decimal('0.00')
     rewards_issued = Decimal('0.00')
 
-    for slab in campaign.reward_slabs.filter(is_active=True):
+    from apps.referral_championship.services.reward_engine import slab_achieved_counts
+    active_slabs = list(campaign.reward_slabs.filter(is_active=True))
+    achieved = slab_achieved_counts(campaign, active_slabs)
+    for slab in active_slabs:
         # Qualified participants who achieved this threshold
-        qualified_agents = ChampionshipParticipant.objects.filter(
-            campaign=campaign,
-            qualifying_referrals_count__gte=slab.threshold
-        ).count()
-        potential_liability += qualified_agents * slab.value
+        potential_liability += achieved[slab.id] * slab.value
 
     for c in claims:
         if c.status in ['approved', 'processing']:
@@ -395,6 +395,9 @@ def admin_reward_claims(request):
     })
 
 
+_CLAIM_FLOW = ['unlocked', 'processing', 'verification', 'approved', 'dispatched', 'delivered', 'redeemed']
+
+
 @require_POST
 def admin_update_reward_claim(request, claim_id):
     """Move a reward request along (review, approve, dispatch, deliver, cancel)."""
@@ -402,33 +405,40 @@ def admin_update_reward_claim(request, claim_id):
         return redirect('/admin/login/')
     from apps.referral_championship.services.reward_engine import CLAIM_STATUS_LABELS
 
-    claim = get_object_or_404(ChampionshipRewardClaim.objects.select_related('participant__agent', 'reward_slab'),
-                              id=claim_id)
-    new_status = (request.POST.get('status') or '').strip()
-    if new_status not in CLAIM_STATUS_LABELS:
-        messages.error(request, 'Please choose a valid status.')
-        return redirect('admin_championship_claims')
+    with transaction.atomic():
+        claim = get_object_or_404(ChampionshipRewardClaim.objects.select_for_update()
+                                  .select_related('participant__agent', 'reward_slab'), id=claim_id)
+        new_status = (request.POST.get('status') or '').strip()
+        if new_status not in CLAIM_STATUS_LABELS:
+            messages.error(request, 'Please choose a valid status.')
+            return redirect('admin_championship_claims')
 
-    old_status = claim.status
-    claim.status = new_status
-    claim.courier_name = (request.POST.get('courier_name') or '').strip()[:100] or claim.courier_name
-    claim.tracking_number = (request.POST.get('tracking_number') or '').strip()[:100] or claim.tracking_number
-    notes = (request.POST.get('admin_notes') or '').strip()
-    if notes:
-        claim.admin_notes = notes[:2000]
-    data = dict(claim.claim_data) if isinstance(claim.claim_data, dict) else {}
-    voucher = (request.POST.get('voucher_code') or '').strip()[:100]
-    if voucher:
-        data['voucher_code'] = voucher
-    data.setdefault('history', [])
-    data['history'].append({'from': old_status, 'to': new_status, 'at': timezone.now().isoformat()})
-    claim.claim_data = data
-    today = timezone.now().date()
-    if new_status == 'dispatched' and not claim.dispatch_date:
-        claim.dispatch_date = today
-    if new_status in ('delivered', 'redeemed') and not claim.delivered_date:
-        claim.delivered_date = today
-    claim.save()
+        old_status = claim.status
+        # Paid-out claims (delivered / redeemed) never move back to an earlier step (audit CH13).
+        if old_status in ('delivered', 'redeemed') and new_status in _CLAIM_FLOW and (
+                _CLAIM_FLOW.index(new_status) < _CLAIM_FLOW.index(old_status)):
+            messages.error(request, f'Claim #{claim.id} is already "{CLAIM_STATUS_LABELS[old_status]}" '
+                                    'and cannot be moved back.')
+            return redirect('admin_championship_claims')
+        claim.status = new_status
+        claim.courier_name = (request.POST.get('courier_name') or '').strip()[:100] or claim.courier_name
+        claim.tracking_number = (request.POST.get('tracking_number') or '').strip()[:100] or claim.tracking_number
+        notes = (request.POST.get('admin_notes') or '').strip()
+        if notes:
+            claim.admin_notes = notes[:2000]
+        data = dict(claim.claim_data) if isinstance(claim.claim_data, dict) else {}
+        voucher = (request.POST.get('voucher_code') or '').strip()[:100]
+        if voucher:
+            data['voucher_code'] = voucher
+        data.setdefault('history', [])
+        data['history'].append({'from': old_status, 'to': new_status, 'at': timezone.now().isoformat()})
+        claim.claim_data = data
+        today = timezone.now().date()
+        if new_status == 'dispatched' and not claim.dispatch_date:
+            claim.dispatch_date = today
+        if new_status in ('delivered', 'redeemed') and not claim.delivered_date:
+            claim.delivered_date = today
+        claim.save()
 
     try:
         from apps.admin_panel.models.admin_activity_log import AdminActivityLog
