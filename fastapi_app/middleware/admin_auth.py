@@ -27,6 +27,25 @@ def is_django_staff_session(session_key: str) -> bool:
     return False
 
 
+def _stored_session_tokens(token: str):
+    """Values user_sessions.session_token may hold for this cookie.
+
+    Admin login stores SHA-256 (sha256$...) of the cookie, not the cookie itself.
+    Older rows still store the raw token. A value that is already a stored hash is
+    not accepted as a cookie.
+    """
+    try:
+        from apps.admin_panel.auth import session_token_candidates
+        candidates = session_token_candidates(token)
+    except Exception:
+        candidates = [token] if token else []
+    if len(candidates) >= 2:
+        return candidates[0], candidates[1]
+    if len(candidates) == 1:
+        return candidates[0], candidates[0]
+    return token, token
+
+
 def is_valid_admin_session(token: str, session_key: str = None) -> bool:
     """Validate admin authentication from custom session_token or Django sessionid."""
     # 1. First check Django staff/superuser session if session_key provided
@@ -35,6 +54,8 @@ def is_valid_admin_session(token: str, session_key: str = None) -> bool:
 
     if not token:
         return False
+
+    hashed_token, legacy_token = _stored_session_tokens(token)
 
     # 2. Check cached admin info from Django admin context_processors
     try:
@@ -54,12 +75,12 @@ def is_valid_admin_session(token: str, session_key: str = None) -> bool:
                 SELECT s.id
                 FROM user_sessions s
                 LEFT JOIN user_session_data d ON s.id = d.session_id AND d.data_key = 'admin_id'
-                WHERE s.session_token = %s
+                WHERE s.session_token IN (%s, %s)
                   AND (s.expires_at > NOW() OR s.expires_at IS NULL)
                   AND (s.admin_id IS NOT NULL OR d.id IS NOT NULL)
                 LIMIT 1
                 """,
-                [token],
+                [hashed_token, legacy_token],
             )
             if cursor.fetchone() is not None:
                 return True
@@ -76,12 +97,12 @@ def is_valid_admin_session(token: str, session_key: str = None) -> bool:
                 SELECT s.id 
                 FROM user_sessions s
                 LEFT JOIN user_session_data d ON s.id = d.session_id AND d.data_key = 'admin_id'
-                WHERE s.session_token = :token 
+                WHERE s.session_token IN (:hashed_token, :legacy_token)
                   AND (s.expires_at > UTC_TIMESTAMP() OR s.expires_at IS NULL)
                   AND (s.admin_id IS NOT NULL OR d.id IS NOT NULL)
                 LIMIT 1
                 """),
-                {"token": token}
+                {"hashed_token": hashed_token, "legacy_token": legacy_token}
             ).fetchone()
             return result is not None
     except Exception as e:
