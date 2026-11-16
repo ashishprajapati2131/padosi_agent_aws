@@ -169,17 +169,17 @@ STUDIO_TEMPLATES = {
                 'templates': [
                     {
                         'id': 'soc_en_1',
-                        'title': '📢 Campaign Offer & Invite (Recommended)',
+                        'title': '🚀 Referral Invite (Recommended)',
                         'text': (
                             "Hi, I'm {{agent_name}}, an Insurance Agent.\n\n"
-                            "Join PadosiAgent and build your digital presence with better online visibility.\n\n"
-                            "Current campaign offer:\n"
-                            "• Starter's Plan: ₹{{digital_price}}/year\n"
-                            "• Professional's Plan: ₹{{professional_price}}/year\n\n"
-                            "Join through my referral:\n"
+                            "Join PadosiAgent and take your digital presence to the next level "
+                            "with better online visibility, professional branding, and greater reach.\n\n"
+                            "🚀 Build your digital identity and connect with more potential customers.\n\n"
+                            "🔗 Join through my referral:\n"
                             "{{referral_link}}\n\n"
-                            "You can also view my profile:\n"
-                            "{{profile_link}}"
+                            "👤 View my profile:\n"
+                            "{{profile_link}}\n\n"
+                            "Let's grow together with PadosiAgent!"
                         )
                     },
                     {
@@ -213,17 +213,17 @@ STUDIO_TEMPLATES = {
                 'templates': [
                     {
                         'id': 'soc_hi_1',
-                        'title': '📢 डिजिटल पहचान और ऑफर (अनुशंसित)',
+                        'title': '🚀 रेफरल आमंत्रण (अनुशंसित)',
                         'text': (
-                            "नमस्ते, मैं {{agent_name}}, एक इंश्योरेंस एडवाइजर हूँ।\n\n"
-                            "PadosiAgent से जुड़ें और बेहतर ऑनलाइन विजिबिलिटी के साथ अपनी डिजिटल पहचान बनाएं।\n\n"
-                            "ऑफर:\n"
-                            "• डिजिटल प्लान: ₹{{digital_price}}/वर्ष\n"
-                            "• प्रोफेशनल प्लान: ₹{{professional_price}}/वर्ष\n\n"
-                            "मेरे रेफरल लिंक से जुड़ें:\n"
+                            "नमस्ते, मैं {{agent_name}}, एक इंश्योरेंस एजेंट हूँ।\n\n"
+                            "PadosiAgent से जुड़ें और बेहतर ऑनलाइन विजिबिलिटी, प्रोफेशनल ब्रांडिंग "
+                            "और अधिक पहुंच के साथ अपनी डिजिटल पहचान को अगले स्तर पर ले जाएं।\n\n"
+                            "🚀 अपनी डिजिटल पहचान बनाएं और अधिक संभावित ग्राहकों से जुड़ें।\n\n"
+                            "🔗 मेरे रेफरल से जुड़ें:\n"
                             "{{referral_link}}\n\n"
-                            "मेरी प्रोफाइल देखें:\n"
-                            "{{profile_link}}"
+                            "👤 मेरी प्रोफाइल देखें:\n"
+                            "{{profile_link}}\n\n"
+                            "आइए, PadosiAgent के साथ मिलकर आगे बढ़ें!"
                         )
                     },
                     {
@@ -256,17 +256,17 @@ STUDIO_TEMPLATES = {
                 'templates': [
                     {
                         'id': 'soc_gu_1',
-                        'title': '📢 ડિજિટલ ઓળખ અને ઓફર (ભલામણ કરેલ)',
+                        'title': '🚀 રેફરલ આમંત્રણ (ભલામણ કરેલ)',
                         'text': (
-                            "નમસ્તે, હું {{agent_name}}, ઇન્સ્યોરન્સ એડવાઇઝર છું.\n\n"
-                            "PadosiAgent સાથે જોડાઈને તમારી ડિજિટલ હાજરી અને બિઝનેસ ગ્રોથ વધારો.\n\n"
-                            "કેમ્પેઇન ઓફર:\n"
-                            "• Starter's Plan: ₹{{digital_price}}/વર્ષ\n"
-                            "• Professional's Plan: ₹{{professional_price}}/વર્ષ\n\n"
-                            "મારા રેફરલ લિંકથી જોડાઓ:\n"
+                            "નમસ્તે, હું {{agent_name}}, એક ઇન્સ્યોરન્સ એજન્ટ છું.\n\n"
+                            "PadosiAgent સાથે જોડાઓ અને વધુ સારી ઓનલાઇન વિઝિબિલિટી, પ્રોફેશનલ બ્રાન્ડિંગ "
+                            "અને વધુ પહોંચ સાથે તમારી ડિજિટલ હાજરીને આગળના સ્તરે લઈ જાઓ.\n\n"
+                            "🚀 તમારી ડિજિટલ ઓળખ બનાવો અને વધુ સંભવિત ગ્રાહકો સાથે જોડાઓ.\n\n"
+                            "🔗 મારા રેફરલથી જોડાઓ:\n"
                             "{{referral_link}}\n\n"
-                            "મારી પ્રોફાઇલ જુઓ:\n"
-                            "{{profile_link}}"
+                            "👤 મારી પ્રોફાઇલ જુઓ:\n"
+                            "{{profile_link}}\n\n"
+                            "ચાલો, PadosiAgent સાથે મળીને આગળ વધીએ!"
                         )
                     },
                     {
@@ -299,17 +299,17 @@ STUDIO_TEMPLATES = {
                 'templates': [
                     {
                         'id': 'soc_mr_1',
-                        'title': '📢 डिजिटल ओळख व ऑफर',
+                        'title': '🚀 रेफरल आमंत्रण',
                         'text': (
-                            "नमस्कार, मी {{agent_name}}, विमा सल्लागार.\n\n"
-                            "PadosiAgent सोबत जोडून आपली डिजिटल ओळख तयार करा.\n\n"
-                            "ऑफर:\n"
-                            "• Digital: ₹{{digital_price}}/वर्ष\n"
-                            "• Professional: ₹{{professional_price}}/वर्ष\n\n"
-                            "माझ्या लिंकवरून जॉइन करा:\n"
+                            "नमस्कार, मी {{agent_name}}, एक विमा एजंट.\n\n"
+                            "PadosiAgent सोबत जोडा आणि अधिक चांगली ऑनलाइन व्हिजिबिलिटी, प्रोफेशनल ब्रँडिंग "
+                            "आणि अधिक पोहोच यासह तुमची डिजिटल ओळख पुढच्या पातळीवर न्या.\n\n"
+                            "🚀 तुमची डिजिटल ओळख तयार करा आणि अधिक संभाव्य ग्राहकांशी जोडा.\n\n"
+                            "🔗 माझ्या रेफरलमधून जॉइन करा:\n"
                             "{{referral_link}}\n\n"
-                            "माझे प्रोफाइल पहा:\n"
-                            "{{profile_link}}"
+                            "👤 माझे प्रोफाइल पहा:\n"
+                            "{{profile_link}}\n\n"
+                            "चला, PadosiAgent सोबत एकत्र वाढूया!"
                         )
                     }
                 ]
