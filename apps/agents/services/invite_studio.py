@@ -319,6 +319,67 @@ STUDIO_TEMPLATES = {
 }
 
 
+_SOCIAL_INVITE_IDS = ('soc_en_1', 'soc_hi_1', 'soc_gu_1', 'soc_mr_1')
+
+
+def _price_free_social_invites():
+    by_id = {}
+    by_lang = {}
+    for code, lang in STUDIO_TEMPLATES['social']['languages'].items():
+        for tmpl in lang.get('templates') or []:
+            if tmpl.get('id') in _SOCIAL_INVITE_IDS:
+                by_id[tmpl['id']] = tmpl
+                by_lang[code] = tmpl
+                break
+    return by_id, by_lang
+
+
+def _template_lists_plan_price(text):
+    if not text:
+        return False
+    lowered = str(text).lower()
+    return (
+        '₹' in text
+        or '{{digital_price}}' in text
+        or '{{professional_price}}' in text
+        or 'campaign offer' in lowered
+        or 'current campaign' in lowered
+    )
+
+
+def strip_saved_campaign_prices(templates):
+    """
+    A saved Invite Studio copy can still print plan prices.
+    Replace that referral invite with the built-in price-free message.
+    """
+    if not isinstance(templates, dict):
+        return templates
+    social = templates.get('social')
+    if not isinstance(social, dict):
+        return templates
+    by_id, by_lang = _price_free_social_invites()
+    for code, lang in (social.get('languages') or {}).items():
+        if not isinstance(lang, dict):
+            continue
+        source = by_lang.get(code) or by_lang.get('en')
+        if not source:
+            continue
+        items = [tmpl for tmpl in (lang.get('templates') or []) if isinstance(tmpl, dict)]
+        priced = [
+            tmpl for tmpl in items
+            if tmpl.get('id') in by_id or _template_lists_plan_price(tmpl.get('text'))
+        ]
+        # Only the recommended invite should change. Leave visiting-card messages alone.
+        target = next((tmpl for tmpl in priced if tmpl.get('id') in by_id), None)
+        if target is None:
+            target = next((tmpl for tmpl in priced if _template_lists_plan_price(tmpl.get('text'))), None)
+        if target is None or not _template_lists_plan_price(target.get('text')):
+            continue
+        target['title'] = source['title']
+        target['text'] = source['text']
+    return templates
+
+
 def get_invite_studio_config():
     """
     Fetches the dynamic Invite & Share Studio config from SiteSetting DB table.
@@ -346,6 +407,7 @@ def get_invite_studio_config():
     for k, v in default_config.items():
         if k not in config or config[k] is None or config[k] == '':
             config[k] = v
+    strip_saved_campaign_prices(config.get('templates'))
     return config
 
 
