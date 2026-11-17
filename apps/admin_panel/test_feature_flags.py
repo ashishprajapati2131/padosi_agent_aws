@@ -292,25 +292,21 @@ class FeatureFlagsTests(TestCase):
         self.assertTrue(ctx['enable_multilingual_regional_branding'])
 
     def test_multilingual_templates_render_cleanly(self):
-        """Verify that header and multilingual widget render with the regional branding."""
+        """Header shows the server-side language switcher and the regional badge in the active language."""
         from django.template.loader import render_to_string
+        from django.utils import translation
         req = self._setup_req(self.rf.get('/'))
 
-        # When feature flag is enabled
-        header_html = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': True}, request=req)
-        self.assertIn('padosi-lang-dropdown', header_html)
-        self.assertIn('પડોશી', header_html)
-        self.assertIn('padosi-regional-badge', header_html)
+        with translation.override('gu'):
+            header_html = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': True}, request=req)
+        self.assertIn('action="/i18n/setlang/"', header_html)
+        self.assertIn('ગુજરાતી', header_html)
+        self.assertNotIn('padosi-regional-badge', header_html)  # badge next to the logo was removed
+        self.assertNotIn('translate.google.com', header_html)
 
-        widget_html = render_to_string('partials/multilingual_widget.html', {'enable_multilingual_regional_branding': True}, request=req)
-        self.assertIn('padosiGoogleTranslateInit', widget_html)
-        self.assertIn('પડોશી', widget_html)
-        self.assertIn('शेजारी', widget_html)
-
-        # When feature flag is disabled
+        # The switcher follows the active languages, not the flag.
         header_disabled = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': False}, request=req)
-        self.assertNotIn('padosi-lang-dropdown', header_disabled)
-        self.assertNotIn('padosi-regional-badge', header_disabled)
+        self.assertIn('action="/i18n/setlang/"', header_disabled)
 
 
 

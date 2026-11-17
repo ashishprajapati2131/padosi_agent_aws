@@ -1209,6 +1209,48 @@
   ],
   "name": "admin_leads_update_status"
  },
+ "admin/localization/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization"
+ },
+ "admin/localization/languages/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization_languages"
+ },
+ "admin/localization/pages/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization_pages"
+ },
+ "admin/localization/settings/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization_settings"
+ },
+ "admin/localization/states/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization_states"
+ },
+ "admin/localization/texts/": {
+  "access": [
+   "localization",
+   "site_settings"
+  ],
+  "name": "admin_localization_texts"
+ },
  "admin/login/": {
   "access": "public",
   "name": "admin_login_page"

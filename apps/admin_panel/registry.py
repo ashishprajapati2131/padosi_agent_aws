@@ -79,6 +79,7 @@ MODULES = (
     ),
     AdminModule("error_logs", "Error Logs", "admin_error_logs_index"),
     AdminModule("feature_flags", "Feature Flags Control Center", "admin_feature_flags"),
+    AdminModule("localization", "Languages & Localization", "admin_localization"),
     AdminModule(
         "site_settings", "Site Settings, SEO & Security Rules", "admin_settings_general"
     ),
@@ -361,6 +362,13 @@ ROUTE_PERMISSIONS = {
     "admin_feature_flag_create": ("feature_flags", "site_settings"),
     "admin_feature_flag_update": ("feature_flags", "site_settings"),
     "admin_feature_flag_delete": ("feature_flags", "site_settings"),
+    # ── Languages & Localization ──────────────────────────────────
+    "admin_localization": ("localization", "site_settings"),
+    "admin_localization_settings": ("localization", "site_settings"),
+    "admin_localization_languages": ("localization", "site_settings"),
+    "admin_localization_states": ("localization", "site_settings"),
+    "admin_localization_texts": ("localization", "site_settings"),
+    "admin_localization_pages": ("localization", "site_settings"),
     # ── Agent Card Themes ─────────────────────────────────────────
     "admin_agent_card_themes": ("content", "site_settings"),
     "admin_agent_card_theme_save": ("content", "site_settings"),

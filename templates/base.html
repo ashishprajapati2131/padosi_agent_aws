@@ -1,6 +1,6 @@
-{% load static %}
+{% load static localization_tags %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language|default:'en' }}">
 <head>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-D8QP39S7H2"></script>
@@ -30,6 +30,8 @@
     <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
     <meta name="keywords" content="{% block meta_keywords %}insurance agent, trusted agent, PadosiAgent{% endblock %}">
     <link rel="canonical" href="{% block canonical_url %}{{ default_canonical_url }}{% endblock %}">
+    {% for code, url in hreflang_alternates %}<link rel="alternate" hreflang="{{ code }}" href="{{ url }}">
+    {% endfor %}{% if hreflang_x_default %}<link rel="alternate" hreflang="x-default" href="{{ hreflang_x_default }}">{% endif %}
     <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
     
     <!-- Open Graph Tags -->
@@ -604,6 +606,6 @@
         }, { passive: true });
     })();
     </script>
-    {% include 'partials/multilingual_widget.html' %}
+    {% include 'partials/google_translate.html' %}
 </body>
 </html>

@@ -1,0 +1,27 @@
+{% load i18n %}{% if site_languages %}
+{# Server-side language switcher: POSTs the choice, returns to the same page + query in that language. #}
+<form action="{% url 'set_language' %}" method="post" class="dropdown padosi-lang-dropdown notranslate {{ switcher_class }}" translate="no">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button class="btn btn-sm dropdown-toggle d-flex align-items-center shadow-none padosi-lang-toggle{% if compact %} compact{% endif %}" type="button"
+            id="padosiLangMenu{{ switcher_id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+            aria-label="{% translate 'Language' %}">
+        <i class="fa-solid fa-language mr-1 text-primary" aria-hidden="true"></i>
+        {% for code, name in site_languages %}{% if code == current_language %}<span lang="{{ code }}">{{ name }}</span>{% endif %}{% endfor %}
+    </button>
+    <div class="dropdown-menu dropdown-menu-right shadow border-0 mt-2 py-2" aria-labelledby="padosiLangMenu{{ switcher_id }}"
+         style="min-width: 200px; max-height: 380px; overflow-y: auto; border-radius: 12px; z-index: 1060;">
+        <div class="dropdown-header px-3 py-1 font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px; color: #64748b;">
+            {% translate "Choose language" %}
+        </div>
+        {% for code, name in site_languages %}
+        <button type="submit" name="language" value="{{ code }}" lang="{{ code }}"
+                class="dropdown-item py-2 d-flex justify-content-between align-items-center{% if code == current_language %} active font-weight-bold{% endif %}"
+                {% if code == current_language %}aria-current="true"{% endif %}>
+            <span>{{ name }}</span>
+            {% if code == current_language %}<i class="fa-solid fa-check text-success" aria-hidden="true"></i>{% endif %}
+        </button>
+        {% endfor %}
+    </div>
+</form>
+{% endif %}

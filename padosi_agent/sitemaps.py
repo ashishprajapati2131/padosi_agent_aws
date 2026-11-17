@@ -8,7 +8,29 @@ import re
 # Mirrors the profile route regex: one bad slug must not 500 the whole sitemap.
 _PROFILE_SLUG_RE = re.compile(r'[a-zA-Z0-9_-]+')
 
-class StaticViewSitemap(Sitemap):
+class LocalizedSitemap(Sitemap):
+    """One <url> per active language with hreflang alternates (/<lang>/ prefixes)."""
+    i18n = True
+    alternates = True
+    x_default = True
+
+    @property
+    def languages(self):
+        from apps.localization.services import get_config
+        return [code for code, _ in get_config()['languages']]
+
+    def get_languages_for_item(self, item):
+        from django.conf import settings
+        from apps.localization.services import is_localizable
+        # Portal/signup pages exist only unprefixed: one entry, not one per language.
+        return self.languages if is_localizable(self.location(item)) else [settings.LANGUAGE_CODE]
+
+    def _location(self, item, force_lang_code=None):
+        from apps.localization.services import localize_path
+        return localize_path(super()._location(item, force_lang_code), force_lang_code or item[1])
+
+
+class StaticViewSitemap(LocalizedSitemap):
     def items(self):
         return [
             'home:home',
@@ -41,7 +63,7 @@ class StaticViewSitemap(Sitemap):
     def location(self, item):
         return reverse(item)
 
-class PageSitemap(Sitemap):
+class PageSitemap(LocalizedSitemap):
     priority = 0.6
     changefreq = 'monthly'
 
@@ -54,7 +76,7 @@ class PageSitemap(Sitemap):
     def location(self, obj):
         return reverse('home:custom_page', kwargs={'slug': obj.slug})
 
-class CalculatorSitemap(Sitemap):
+class CalculatorSitemap(LocalizedSitemap):
     priority = 0.7
     changefreq = 'weekly'
 
@@ -68,7 +90,7 @@ class CalculatorSitemap(Sitemap):
         return reverse('home:calculator_detail', kwargs={'slug': obj.slug})
 
 
-class CalculatorCategorySitemap(Sitemap):
+class CalculatorCategorySitemap(LocalizedSitemap):
     priority = 0.65
     changefreq = 'weekly'
 

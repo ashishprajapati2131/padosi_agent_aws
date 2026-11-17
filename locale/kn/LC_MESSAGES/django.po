@@ -1,0 +1,95 @@
+# PadosiAgent site chrome. Draft translations: have a native speaker review before relying on them.
+msgid ""
+msgstr ""
+"Language: kn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Neighbor Agent"
+msgstr "ನೆರೆಹೊರೆಯ ಏಜೆಂಟ್"
+
+msgid "Home"
+msgstr "ಮುಖಪುಟ"
+
+msgid "FAQs"
+msgstr "ಪದೇ ಪದೇ ಕೇಳುವ ಪ್ರಶ್ನೆಗಳು"
+
+msgid "About Us"
+msgstr "ನಮ್ಮ ಬಗ್ಗೆ"
+
+msgid "Contact Us"
+msgstr "ಸಂಪರ್ಕಿಸಿ"
+
+msgid "Find <span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span>"
+msgstr "<span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span> ಹುಡುಕಿ"
+
+msgid "My Dashboard"
+msgstr "ನನ್ನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್"
+
+msgid "Edit Profile"
+msgstr "ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ"
+
+msgid "Sign Out"
+msgstr "ಸೈನ್ ಔಟ್"
+
+msgid "Agent Account"
+msgstr "ಏಜೆಂಟ್ ಖಾತೆ"
+
+msgid "Client Account"
+msgstr "ಗ್ರಾಹಕ ಖಾತೆ"
+
+msgid "Guest Account"
+msgstr "ಅತಿಥಿ ಖಾತೆ"
+
+msgid "My Account"
+msgstr "ನನ್ನ ಖಾತೆ"
+
+msgid "Language"
+msgstr "ಭಾಷೆ"
+
+msgid "Choose language"
+msgstr "ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ"
+
+msgid "Useful Links"
+msgstr "ಉಪಯುಕ್ತ ಲಿಂಕ್‌ಗಳು"
+
+msgid "Find Agents"
+msgstr "ಏಜೆಂಟ್‌ಗಳನ್ನು ಹುಡುಕಿ"
+
+msgid "Calculators"
+msgstr "ಕ್ಯಾಲ್ಕುಲೇಟರ್‌ಗಳು"
+
+msgid "Insurance Blog"
+msgstr "ವಿಮಾ ಬ್ಲಾಗ್"
+
+msgid "Agent Login"
+msgstr "ಏಜೆಂಟ್ ಲಾಗಿನ್"
+
+msgid "Agent Register"
+msgstr "ಏಜೆಂಟ್ ನೋಂದಣಿ"
+
+msgid "Blacklisted Agents"
+msgstr "ಕಪ್ಪುಪಟ್ಟಿಯ ಏಜೆಂಟ್‌ಗಳು"
+
+msgid "Contact Info"
+msgstr "ಸಂಪರ್ಕ ಮಾಹಿತಿ"
+
+msgid "Social Networks"
+msgstr "ಸಾಮಾಜಿಕ ಜಾಲತಾಣಗಳು"
+
+msgid "All rights reserved."
+msgstr "ಎಲ್ಲ ಹಕ್ಕುಗಳನ್ನು ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ."
+
+msgid "Privacy Policy"
+msgstr "ಗೌಪ್ಯತಾ ನೀತಿ"
+
+msgid "Terms & Conditions"
+msgstr "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು"
+
+msgid "PadosiAgent — Expert & Trusted Insurance Agent"
+msgstr "PadosiAgent — ಪರಿಣಿತ ಮತ್ತು ವಿಶ್ವಾಸಾರ್ಹ ವಿಮಾ ಏಜೆಂಟ್"
+
+msgid "Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent."
+msgstr "ನಿಮ್ಮ ನೆರೆಹೊರೆಯಲ್ಲಿ ವಿಶ್ವಾಸಾರ್ಹ ಮತ್ತು ಪರಿಶೀಲಿತ ವಿಮಾ ತಜ್ಞರನ್ನು ಹುಡುಕಿ. ನಿಮ್ಮ ಸ್ಥಳೀಯ PadosiAgent ಜೊತೆ ಸಂಪರ್ಕಿಸಿ."

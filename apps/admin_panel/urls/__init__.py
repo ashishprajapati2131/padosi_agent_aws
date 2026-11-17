@@ -61,6 +61,7 @@ from . import (
     account_deletion,
     feature_flags,
     agent_card_themes,
+    localization,
 )
 
 urlpatterns = [
@@ -116,4 +117,5 @@ urlpatterns = [
     *account_deletion.urlpatterns,
     *feature_flags.urlpatterns,
     *agent_card_themes.urlpatterns,
+    *localization.urlpatterns,
 ]

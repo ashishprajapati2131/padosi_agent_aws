@@ -132,6 +132,7 @@ INSTALLED_APPS = [
     "apps.referral_championship",
     "apps.event_referral",
     "apps.wholesale",
+    "apps.localization",
     "rest_framework",
     "django.contrib.humanize",
 ]
@@ -144,6 +145,8 @@ MIDDLEWARE = [
     "padosi_agent.middleware.WwwRedirectMiddleware",
     "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Strips /<lang>/ before routing and picks the language (replaces django LocaleMiddleware).
+    "apps.localization.middleware.LanguageMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "padosi_agent.middleware.AutoCsrfCookieMiddleware",
@@ -187,6 +190,7 @@ TEMPLATES = [
                 "apps.home.context_processors.calculator_nav",
                 "apps.home.context_processors.multilingual_context",
                 "apps.wholesale.context_processors.wholesale_context",
+                "apps.localization.context_processors.localization",
             ],
         },
     },
@@ -297,7 +301,35 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+
+# Every language the site can be served in (each needs locale/<code>/LC_MESSAGES/django.po).
+# Which of these are live, the state -> language map and detection switches are managed in
+# Django admin -> Localization.
+LANGUAGES = [
+    ("en", "English"),
+    ("hi", "Hindi"),
+    ("gu", "Gujarati"),
+    ("mr", "Marathi"),
+    ("ta", "Tamil"),
+    ("kn", "Kannada"),
+    ("ml", "Malayalam"),
+    ("bn", "Bengali"),
+    ("pa", "Punjabi"),
+    ("te", "Telugu"),
+    ("or", "Odia"),
+    ("as", "Assamese"),
+]
+LOCALE_PATHS = [BASE_DIR / "locale"]
+# padosi_lang only ever holds an explicit choice from the language switcher.
+LANGUAGE_COOKIE_NAME = "padosi_lang"
+LANGUAGE_COOKIE_AGE = 365 * 24 * 60 * 60
+LANGUAGE_COOKIE_SAMESITE = "Lax"
+LANGUAGE_COOKIE_HTTPONLY = True
+LANGUAGE_COOKIE_SECURE = not DEBUG
+# MaxMind GeoLite2/GeoIP2 City database for state detection. Missing file = detection off.
+# Relative paths resolve against BASE_DIR (an absolute env value wins in the join).
+GEOIP_CITY_DB = str(BASE_DIR / os.environ.get("GEOIP_CITY_DB", "geoip/GeoLite2-City.mmdb"))
 
 TIME_ZONE = "Asia/Kolkata"
 

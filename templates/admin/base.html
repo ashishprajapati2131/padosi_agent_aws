@@ -486,7 +486,7 @@
             {% endif %}
 
             <!-- System -->
-            {% if nav_open|any_open:"admin_feature_flags,admin_settings_general,admin_settings_seo,admin_settings_banner_popup,admin_settings_security,admin_settings_templates" %}
+            {% if nav_open|any_open:"admin_feature_flags,admin_localization,admin_settings_general,admin_settings_seo,admin_settings_banner_popup,admin_settings_security,admin_settings_templates" %}
             <div class="menu-label">System</div>
 
             {% if nav_open|any_open:"admin_feature_flags" %}
@@ -498,6 +498,11 @@
                 {% endif %}
             </a>
             {% endif %}
+
+            {% if 'admin_localization' in nav_open %}<a href="{% url 'admin_localization' %}"
+                class="menu-item {% if '/admin/localization/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-language" style="color:#6366f1;"></i> Languages &amp; Localization
+            </a>{% endif %}
 
             {% if 'admin_settings_general' in nav_open %}<a href="/admin/settings/general/"
                 class="menu-item {% if '/admin/settings/general/' in request.path %}active{% endif %}">

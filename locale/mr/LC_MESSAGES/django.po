@@ -1,0 +1,95 @@
+# PadosiAgent site chrome. Draft translations: have a native speaker review before relying on them.
+msgid ""
+msgstr ""
+"Language: mr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Neighbor Agent"
+msgstr "शेजारी एजंट"
+
+msgid "Home"
+msgstr "मुख्यपृष्ठ"
+
+msgid "FAQs"
+msgstr "वारंवार विचारले जाणारे प्रश्न"
+
+msgid "About Us"
+msgstr "आमच्याबद्दल"
+
+msgid "Contact Us"
+msgstr "संपर्क साधा"
+
+msgid "Find <span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span>"
+msgstr "<span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span> शोधा"
+
+msgid "My Dashboard"
+msgstr "माझा डॅशबोर्ड"
+
+msgid "Edit Profile"
+msgstr "प्रोफाइल संपादित करा"
+
+msgid "Sign Out"
+msgstr "साइन आउट"
+
+msgid "Agent Account"
+msgstr "एजंट खाते"
+
+msgid "Client Account"
+msgstr "ग्राहक खाते"
+
+msgid "Guest Account"
+msgstr "अतिथी खाते"
+
+msgid "My Account"
+msgstr "माझे खाते"
+
+msgid "Language"
+msgstr "भाषा"
+
+msgid "Choose language"
+msgstr "भाषा निवडा"
+
+msgid "Useful Links"
+msgstr "उपयुक्त दुवे"
+
+msgid "Find Agents"
+msgstr "एजंट शोधा"
+
+msgid "Calculators"
+msgstr "कॅल्क्युलेटर"
+
+msgid "Insurance Blog"
+msgstr "विमा ब्लॉग"
+
+msgid "Agent Login"
+msgstr "एजंट लॉगिन"
+
+msgid "Agent Register"
+msgstr "एजंट नोंदणी"
+
+msgid "Blacklisted Agents"
+msgstr "काळ्या यादीतील एजंट"
+
+msgid "Contact Info"
+msgstr "संपर्क माहिती"
+
+msgid "Social Networks"
+msgstr "सोशल नेटवर्क"
+
+msgid "All rights reserved."
+msgstr "सर्व हक्क राखीव."
+
+msgid "Privacy Policy"
+msgstr "गोपनीयता धोरण"
+
+msgid "Terms & Conditions"
+msgstr "नियम व अटी"
+
+msgid "PadosiAgent — Expert & Trusted Insurance Agent"
+msgstr "PadosiAgent — तज्ज्ञ आणि विश्वासार्ह विमा एजंट"
+
+msgid "Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent."
+msgstr "तुमच्या परिसरातील विश्वासार्ह आणि सत्यापित विमा तज्ज्ञ शोधा. तुमच्या स्थानिक PadosiAgent शी जोडा."

@@ -1,0 +1,95 @@
+# PadosiAgent site chrome. Draft translations: have a native speaker review before relying on them.
+msgid ""
+msgstr ""
+"Language: te\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Neighbor Agent"
+msgstr "పొరుగు ఏజెంట్"
+
+msgid "Home"
+msgstr "హోమ్"
+
+msgid "FAQs"
+msgstr "తరచుగా అడిగే ప్రశ్నలు"
+
+msgid "About Us"
+msgstr "మా గురించి"
+
+msgid "Contact Us"
+msgstr "మమ్మల్ని సంప్రదించండి"
+
+msgid "Find <span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span>"
+msgstr "<span class=\"brand-padosi\">Padosi</span><span class=\"brand-agent\">Agent</span> ను కనుగొనండి"
+
+msgid "My Dashboard"
+msgstr "నా డాష్‌బోర్డ్"
+
+msgid "Edit Profile"
+msgstr "ప్రొఫైల్‌ను సవరించండి"
+
+msgid "Sign Out"
+msgstr "సైన్ అవుట్"
+
+msgid "Agent Account"
+msgstr "ఏజెంట్ ఖాతా"
+
+msgid "Client Account"
+msgstr "క్లయింట్ ఖాతా"
+
+msgid "Guest Account"
+msgstr "అతిథి ఖాతా"
+
+msgid "My Account"
+msgstr "నా ఖాతా"
+
+msgid "Language"
+msgstr "భాష"
+
+msgid "Choose language"
+msgstr "భాషను ఎంచుకోండి"
+
+msgid "Useful Links"
+msgstr "ఉపయోగకరమైన లింకులు"
+
+msgid "Find Agents"
+msgstr "ఏజెంట్లను కనుగొనండి"
+
+msgid "Calculators"
+msgstr "కాలిక్యులేటర్లు"
+
+msgid "Insurance Blog"
+msgstr "బీమా బ్లాగ్"
+
+msgid "Agent Login"
+msgstr "ఏజెంట్ లాగిన్"
+
+msgid "Agent Register"
+msgstr "ఏజెంట్ నమోదు"
+
+msgid "Blacklisted Agents"
+msgstr "బ్లాక్‌లిస్ట్ చేసిన ఏజెంట్లు"
+
+msgid "Contact Info"
+msgstr "సంప్రదింపు సమాచారం"
+
+msgid "Social Networks"
+msgstr "సోషల్ నెట్‌వర్క్‌లు"
+
+msgid "All rights reserved."
+msgstr "సర్వ హక్కులూ ప్రత్యేకించబడ్డాయి."
+
+msgid "Privacy Policy"
+msgstr "గోప్యతా విధానం"
+
+msgid "Terms & Conditions"
+msgstr "నిబంధనలు మరియు షరతులు"
+
+msgid "PadosiAgent — Expert & Trusted Insurance Agent"
+msgstr "PadosiAgent — నిపుణులైన, విశ్వసనీయ బీమా ఏజెంట్"
+
+msgid "Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent."
+msgstr "మీ పరిసరాల్లో విశ్వసనీయమైన, ధృవీకరించబడిన బీమా నిపుణులను కనుగొనండి. మీ స్థానిక PadosiAgent తో అనుసంధానం అవ్వండి."

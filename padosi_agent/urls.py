@@ -37,6 +37,7 @@ from padosi_agent.views import (
     health_database_view,
     health_redis_view,
 )
+from apps.localization.views import set_language
 from apps.event_referral.views.public_leaderboard import (
     public_leaderboard as stall_public_leaderboard,
 )
@@ -110,6 +111,7 @@ urlpatterns = [
     path("", include("apps.distributors.urls")),
     path("insurance/", include("apps.insurance.urls")),
     path("wholesale/", include("apps.wholesale.urls")),
+    path("i18n/setlang/", set_language, name="set_language"),
     path("", include("apps.home.urls")),
 ]
 

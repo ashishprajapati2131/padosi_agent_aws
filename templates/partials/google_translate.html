@@ -1,0 +1,60 @@
+{% if enable_multilingual_regional_branding %}
+{# Full-page Google Translate layer (admin: Feature Flags -> Multi-Language). The server picks the  #}
+{# language (switcher / state / browser); Google only translates text that has no server translation. #}
+<script>
+(function () {
+    var lang = "{{ current_language|default:'en'|escapejs }}";
+    var host = window.location.hostname;
+    var parts = host.split('.');
+    var domains = ['', '; domain=' + host];
+    if (parts.length > 1) domains.push('; domain=.' + parts.slice(-2).join('.'));
+    function setGoogTrans(value, expires) {
+        domains.forEach(function (d) {
+            document.cookie = 'googtrans=' + value + '; path=/' + d + expires + '; SameSite=Lax';
+        });
+    }
+    if (lang === 'en') {
+        // Back to English: drop Google's cookie so it stops translating.
+        setGoogTrans('', '; expires=Thu, 01 Jan 1970 00:00:00 GMT');
+        return;
+    }
+    setGoogTrans('/en/' + lang, '');
+    window.padosiGoogleTranslateInit = function () {
+        try {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: lang,
+                autoDisplay: false
+            }, 'padosi_google_translate_mount');
+            // Some browsers ignore the cookie on first load; select the language explicitly.
+            setTimeout(function () {
+                var select = document.querySelector('.goog-te-combo');
+                if (select && select.value !== lang) {
+                    select.value = lang;
+                    select.dispatchEvent(new Event('change'));
+                }
+            }, 500);
+        } catch (e) {
+            console.debug('Google Translate init failed:', e);
+        }
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+        var script = document.createElement('script');
+        script.src = 'https://translate.google.com/translate_a/element.js?cb=padosiGoogleTranslateInit';
+        script.async = true;
+        document.body.appendChild(script);
+    });
+})();
+</script>
+{% if current_language and current_language != 'en' %}
+<div id="padosi_google_translate_mount" style="display:none" aria-hidden="true"></div>
+<style>
+    /* Hide Google's toolbar/banner and tooltips; our header switcher is the only control. */
+    .goog-te-banner-frame, iframe.skiptranslate, .skiptranslate > iframe, #goog-gt-tt,
+    .goog-te-balloon-frame, .goog-tooltip, .goog-te-gadget, .goog-te-spinner-pos,
+    .VIpgJd-ZVi9od-ORHb-OEVmcd, .VIpgJd-ZVi9od-aZ2wEe-wOHMyf { display: none !important; }
+    body { top: 0 !important; position: static !important; }
+    .goog-text-highlight { background: transparent !important; box-shadow: none !important; }
+</style>
+{% endif %}
+{% endif %}

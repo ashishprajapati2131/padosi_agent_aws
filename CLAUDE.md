@@ -391,6 +391,14 @@ MIDDLEWARE = [
 
 ---
 
+### Localization (`apps/localization`)
+- `LanguageMiddleware` sits right after `SessionMiddleware`. It strips `/<lang>/` (gu, hi, mr, ...) from `request.path`/`path_info` **before routing**, so all later middleware and URLconfs see unprefixed paths. Do not use `i18n_patterns` or Django's `LocaleMiddleware`.
+- Unprefixed URL = English. Language order: `padosi_lang` cookie (switcher) > `UserLanguagePreference` > GeoIP state (`StateLanguage`) > Accept-Language > admin default. Only unprefixed public GET pages redirect; bots, AJAX, POST and prefixed URLs never do.
+- Portal/payment/API paths are never localized: `NON_LOCALIZABLE_SEGMENTS` in `apps/localization/services.py`. Add new portal prefixes there.
+- `/as/<slug>/` and `/ml/<slug>/` are Assam/Meghalaya agent profiles when that agent exists (checked before the language prefix).
+- Strings: `{% load i18n %}{% translate %}` + `locale/<lang>/LC_MESSAGES/django.po`, compile with `python manage.py compile_translations` (no GNU gettext needed). DB content: approved `ContentTranslation` rows via `{{ obj|translated:"field" }}`.
+- Admin: **`/admin/localization/`** (custom panel, permission `localization` or `site_settings`): master on/off, IP/browser detection, default language, Google Translate flag, languages, state map, website text per language (`UITranslation` overrides the .po at runtime via `sync_ui_overrides`), CMS page translations. `/django-admin/localization/` mirrors the models.
+
 ## 13. Settings Conventions
 
 - `DEBUG=False` in production — set by `.env`
@@ -620,6 +628,9 @@ JWT_SECRET_KEY=
 # Cache (optional): set to use Redis instead of the file cache (needs `pip install redis`).
 # Recommended once the host offers Redis: every FileBasedCache write lists the whole cache/ dir.
 REDIS_URL=
+
+# Localization (MaxMind GeoLite2-City; missing file = auto-detection off)
+GEOIP_CITY_DB=geoip/GeoLite2-City.mmdb
 
 # Admin security
 ADMIN_WHITELIST_IPS=
