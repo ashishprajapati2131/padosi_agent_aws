@@ -392,10 +392,7 @@
         </div>
     </div>
 
-    {% comment %} SHARED CSS {% endcomment %}
-    {% if not agent_card_styles_included %}
-    <link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}?v=20260916-1">
-    {% endif %}
+    {# agent-card-shared.css is linked in each including page's <head> (extra_css); a link here painted the first card unstyled #}
     {% endwith %}
 </div>
 

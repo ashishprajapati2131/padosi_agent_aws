@@ -1,5 +1,75 @@
 {% load static %}
 <header class="header">
+    <style>
+        @media screen and (max-width: 991px) {
+            .header .mobile-nav-collapse {
+                border-radius: 16px !important;
+                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12) !important;
+                border: 1px solid #e2e8f0 !important;
+                overflow: hidden !important;
+                background: #ffffff !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .mobile-user-profile-header {
+                background: #f8fafc !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                padding: 14px 20px !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link {
+                display: flex !important;
+                align-items: center !important;
+                padding: 14px 20px !important;
+                font-size: 15px !important;
+                font-weight: 500 !important;
+                color: #1e293b !important;
+                background: #ffffff !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                transition: background 0.15s ease, color 0.15s ease;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item i {
+                display: inline-block !important;
+                width: 22px !important;
+                text-align: center !important;
+                margin-right: 12px !important;
+                font-size: 16px !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a:hover,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link:hover {
+                background-color: #f8fafc !important;
+                color: #18529d !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .active > a,
+            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a {
+                background-color: #eff6ff !important;
+                color: #1d4ed8 !important;
+                font-weight: 600 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .active > a i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a i {
+                color: #1d4ed8 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn {
+                color: #dc2626 !important;
+                font-weight: 600 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn i {
+                color: #dc2626 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover {
+                background-color: #fef2f2 !important;
+                color: #b91c1c !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover i {
+                color: #b91c1c !important;
+            }
+        }
+    </style>
     <div class="container">
         <nav class="navbar navbar-expand-lg navbar-light p-0">
             <a class="navbar-brand d-inline-flex align-items-center"
@@ -299,74 +369,4 @@
             {% endif %}
         </nav>
     </div>
-    <style>
-        @media screen and (max-width: 991px) {
-            .header .mobile-nav-collapse {
-                border-radius: 16px !important;
-                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12) !important;
-                border: 1px solid #e2e8f0 !important;
-                overflow: hidden !important;
-                background: #ffffff !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .mobile-user-profile-header {
-                background: #f8fafc !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-                padding: 14px 20px !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item a,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link {
-                display: flex !important;
-                align-items: center !important;
-                padding: 14px 20px !important;
-                font-size: 15px !important;
-                font-weight: 500 !important;
-                color: #1e293b !important;
-                background: #ffffff !important;
-                border-bottom: 1px solid #f1f5f9 !important;
-                transition: background 0.15s ease, color 0.15s ease;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item a i,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link i,
-            .header .mobile-nav-collapse .navbar-nav .nav-item i {
-                display: inline-block !important;
-                width: 22px !important;
-                text-align: center !important;
-                margin-right: 12px !important;
-                font-size: 16px !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item a:hover,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link:hover {
-                background-color: #f8fafc !important;
-                color: #18529d !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .active > a,
-            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a {
-                background-color: #eff6ff !important;
-                color: #1d4ed8 !important;
-                font-weight: 600 !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .active > a i,
-            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a i {
-                color: #1d4ed8 !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn {
-                color: #dc2626 !important;
-                font-weight: 600 !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger i,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn i {
-                color: #dc2626 !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover {
-                background-color: #fef2f2 !important;
-                color: #b91c1c !important;
-            }
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover i,
-            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover i {
-                color: #b91c1c !important;
-            }
-        }
-    </style>
 </header>

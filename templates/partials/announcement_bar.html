@@ -1,30 +1,4 @@
 {% if site_banner and site_banner.is_active %}
-<div id="padosiTopAnnouncementBar" class="padosi-announcement-bar" style="
-    background: {{ site_banner.bg_color|default:'linear-gradient(135deg, #059669 0%, #10b981 100%)' }};
-    color: {{ site_banner.text_color|default:'#ffffff' }};
-    display: none;
-">
-    <div class="container-fluid px-3 px-md-4">
-        <div class="d-flex align-items-center justify-content-between py-2 gap-2">
-            <div class="d-flex align-items-center flex-grow-1 justify-content-center text-center gap-2">
-                <span class="announcement-text fw-medium" style="font-size: 13.5px; line-height: 1.35;">
-                    {{ site_banner.message }}
-                </span>
-                {% if site_banner.btn_text and site_banner.btn_url %}
-                <a href="{{ site_banner.btn_url }}" class="btn btn-sm announcement-btn text-nowrap rounded-pill px-3 ms-2 shadow-xs fw-bold">
-                    {{ site_banner.btn_text }} <i class="fa-solid fa-arrow-right ms-1" style="font-size: 11px;"></i>
-                </a>
-                {% endif %}
-            </div>
-            {% if site_banner.is_dismissible %}
-            <button type="button" class="announcement-close-btn" onclick="dismissPadosiBanner()" aria-label="Close Announcement">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
 <style>
 .padosi-announcement-bar {
     position: relative;
@@ -73,6 +47,32 @@
     }
 }
 </style>
+<div id="padosiTopAnnouncementBar" class="padosi-announcement-bar" style="
+    background: {{ site_banner.bg_color|default:'linear-gradient(135deg, #059669 0%, #10b981 100%)' }};
+    color: {{ site_banner.text_color|default:'#ffffff' }};
+    display: none;
+">
+    <div class="container-fluid px-3 px-md-4">
+        <div class="d-flex align-items-center justify-content-between py-2 gap-2">
+            <div class="d-flex align-items-center flex-grow-1 justify-content-center text-center gap-2">
+                <span class="announcement-text fw-medium" style="font-size: 13.5px; line-height: 1.35;">
+                    {{ site_banner.message }}
+                </span>
+                {% if site_banner.btn_text and site_banner.btn_url %}
+                <a href="{{ site_banner.btn_url }}" class="btn btn-sm announcement-btn text-nowrap rounded-pill px-3 ms-2 shadow-xs fw-bold">
+                    {{ site_banner.btn_text }} <i class="fa-solid fa-arrow-right ms-1" style="font-size: 11px;"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% if site_banner.is_dismissible %}
+            <button type="button" class="announcement-close-btn" onclick="dismissPadosiBanner()" aria-label="Close Announcement">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 
 <script>
 (function() {

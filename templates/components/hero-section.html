@@ -1,204 +1,4 @@
 {% load static html_tags %}
-<section class="pa-hero" role="banner">
-  <div class="pa-hero-bg"></div>
-  <div class="pa-blob pa-blob-1"></div>
-  <div class="pa-blob pa-blob-2"></div>
-
-  <div class="pa-container">
-
-    {# ═══ MOBILE LAYOUT (lg:hidden) ═══ #}
-    <div class="pa-mobile-layout">
-
-      {# 1. Trust badges #}
-      <div class="pa-badges-row">
-        {% for badge in trust_badges %}
-          <div class="pa-badge">
-            <div class="pa-badge-icon-box pa-badge-icon-{% if badge.icon == 'check-circle' %}primary{% elif badge.icon == 'shield' %}secondary{% else %}accent{% endif %}">
-              {% include 'components/hero-icon.html' with name=badge.icon sw='2.6' %}
-            </div>
-            <span class="pa-badge-text">{{ badge.label }}</span>
-          </div>
-        {% endfor %}
-      </div>
-
-      {# 2. DidYouKnow slider (no dots, matching React/Laravel) #}
-      <div class="pa-slider-card">
-        <div class="pa-slider-viewport">
-          <div class="pa-slider-track" id="pa-track-mob">
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-chatbot-vs-agent-doodle-480.webp' %} 480w, {% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Who will help your family with insurance claims — a chatbot or an expert PadosiAgent?" loading="eager" fetchpriority="high" width="1536" height="1024" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nominee-doodle-768.webp' %}" srcset="{% static 'img/hero-nominee-doodle-480.webp' %} 480w, {% static 'img/hero-nominee-doodle-768.webp' %} 768w, {% static 'img/hero-nominee-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Is your nominee an expert in settling insurance claims? If not, buy only from an experienced nearby agent." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nearby-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-nearby-agent-doodle-480.webp' %} 480w, {% static 'img/hero-nearby-agent-doodle-768.webp' %} 768w, {% static 'img/hero-nearby-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Your PadosiAgent at your doorstep — policies, renewals and claims handled in your neighbourhood." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-trusted-expert-doodle-768.webp' %}" srcset="{% static 'img/hero-trusted-expert-doodle-480.webp' %} 480w, {% static 'img/hero-trusted-expert-doodle-768.webp' %} 768w, {% static 'img/hero-trusted-expert-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Trusted. Verified. Nearby. Every PadosiAgent is a licensed expert verified by us." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-faster-claims-768.webp' %}" srcset="{% static 'img/dyk-faster-claims-480.webp' %} 480w, {% static 'img/dyk-faster-claims-768.webp' %} 768w, {% static 'img/dyk-faster-claims.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Claims settled 3× faster with a Padosi agent by your side" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-policy-gaps-768.webp' %}" srcset="{% static 'img/dyk-policy-gaps-480.webp' %} 480w, {% static 'img/dyk-policy-gaps-768.webp' %} 768w, {% static 'img/dyk-policy-gaps.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Spot the policy gaps call-centres miss — your neighbourhood expert knows your city" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-face-to-face-768.webp' %}" srcset="{% static 'img/dyk-face-to-face-480.webp' %} 480w, {% static 'img/dyk-face-to-face-768.webp' %} 768w, {% static 'img/dyk-face-to-face.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Real advice, face to face — 70% understand their cover only after meeting an agent" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-fewer-lapses-768.webp' %}" srcset="{% static 'img/dyk-fewer-lapses-480.webp' %} 480w, {% static 'img/dyk-fewer-lapses-768.webp' %} 768w, {% static 'img/dyk-fewer-lapses.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="40% fewer lapsed policies — your Padosi agent reminds you every renewal" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-zero-fees-768.webp' %}" srcset="{% static 'img/dyk-zero-fees-480.webp' %} 480w, {% static 'img/dyk-zero-fees-768.webp' %} 768w, {% static 'img/dyk-zero-fees.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Zero fees, lifetime advisor — same premium, a real human in your neighbourhood" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-          </div>
-        </div>
-      </div>
-
-      {# 3. H1 Heading #}
-      <h1 class="pa-heading">
-        {{ hero_heading_html|clean_html }}
-      </h1>
-
-      {# 4. Product tiles (4 columns) #}
-      <div style="margin-top: -0.5rem; margin-bottom: -0.65rem;">
-        <div style="font-size: 11px; font-weight: 500; color: #000000; margin: 0; font-family: 'Jost', sans-serif;">
-          Select to Buy New / Port / Renew Insurance
-        </div>
-      </div>
-      <div class="pa-tiles-row">
-        {% for tile in product_tiles %}
-          <a href="{{ tile.url }}" class="pa-tile {{ tile.tileClass }}" aria-label="Find {{ tile.label }} agent near me">
-            <div class="pa-tile-badge">{{ tile.label }}</div>
-            <div class="pa-tile-image-container">
-                {% include 'components/quadrant_icon.html' with tile=tile %}
-              </div>
-          </a>
-        {% endfor %}
-      </div>
-
-      {# 5. Claims & Audit buttons #}
-      <div class="pa-cta-row">
-        <a href="{{ settings.hero_cta_claim_url }}" class="pa-btn pa-btn-claim">
-          {% include 'components/hero-icon.html' with name='life-buoy' sw='2.4' %}
-          <span>{{ settings.hero_cta_claim_text }}</span>
-        </a>
-        <a href="{{ settings.hero_cta_review_url }}" class="pa-btn pa-btn-review">
-          {% include 'components/hero-icon.html' with name='file-search' sw='2.4' %}
-          <span>{{ settings.hero_cta_review_text }}</span>
-        </a>
-      </div>
-
-      {# 6. Stats counters #}
-      <div class="pa-stats-row">
-        {% for s in stats_data %}
-          <a href="/find-agents?openFilter=1" class="pa-stat-btn">
-            <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
-              <div class="pa-stat-top">
-                <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
-                <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
-              </div>
-              <span class="pa-stat-label">{{ s.label }}</span>
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-
-    </div>
-
-    {# ═══ DESKTOP LAYOUT — 2-column grid (lg+) ═══ #}
-    <div class="pa-desktop-layout">
-
-      <div class="pa-grid">
-
-        {# ROW 1 LEFT: Trust Badges + Heading + Stats #}
-        <div class="pa-cell pa-cell-r1l">
-          <div class="pa-cell-inner" id="pa-badges">
-            <div class="pa-badges-row">
-              {% for badge in trust_badges %}
-                <div class="pa-badge">
-                  <div class="pa-badge-icon-box pa-badge-icon-{% if badge.icon == 'check-circle' %}primary{% elif badge.icon == 'shield' %}secondary{% else %}accent{% endif %}">
-                    {% include 'components/hero-icon.html' with name=badge.icon sw='2.6' %}
-                  </div>
-                  <span class="pa-badge-text">{{ badge.label }}</span>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
-
-          {# Same text as the mobile H1 above; a <p> so the page has one H1. #}
-          <p class="pa-heading" id="pa-heading">
-            {{ hero_heading_html|clean_html }}
-          </p>
-
-          <div class="pa-stats-row" id="pa-stats">
-            {% for s in stats_data %}
-              <a href="/find-agents?openFilter=1" class="pa-stat-btn">
-                <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
-                  <div class="pa-stat-top">
-                    <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
-                    <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-d-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
-                  </div>
-                  <span class="pa-stat-label">{{ s.label }}</span>
-                </div>
-              </a>
-            {% endfor %}
-          </div>
-        </div>
-
-        {# ROW 1 RIGHT: DidYouKnow (desktop) #}
-        <div class="pa-cell pa-cell-r1r" id="pa-dyk-desktop">
-          <div class="pa-dyk-desktop-inner">
-            <div class="pa-slider-card pa-slider-card-lg">
-              <div class="pa-slider-viewport">
-                <div class="pa-slider-track" id="pa-track-desk">
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-chatbot-vs-agent-doodle-480.webp' %} 480w, {% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Who will help your family with insurance claims — a chatbot or an expert PadosiAgent?" loading="eager" fetchpriority="high" width="1536" height="1024" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nominee-doodle-768.webp' %}" srcset="{% static 'img/hero-nominee-doodle-480.webp' %} 480w, {% static 'img/hero-nominee-doodle-768.webp' %} 768w, {% static 'img/hero-nominee-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Is your nominee an expert in settling insurance claims? If not, buy only from an experienced nearby agent." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nearby-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-nearby-agent-doodle-480.webp' %} 480w, {% static 'img/hero-nearby-agent-doodle-768.webp' %} 768w, {% static 'img/hero-nearby-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Your PadosiAgent at your doorstep — policies, renewals and claims handled in your neighbourhood." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-trusted-expert-doodle-768.webp' %}" srcset="{% static 'img/hero-trusted-expert-doodle-480.webp' %} 480w, {% static 'img/hero-trusted-expert-doodle-768.webp' %} 768w, {% static 'img/hero-trusted-expert-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Trusted. Verified. Nearby. Every PadosiAgent is a licensed expert verified by us." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-faster-claims-768.webp' %}" srcset="{% static 'img/dyk-faster-claims-480.webp' %} 480w, {% static 'img/dyk-faster-claims-768.webp' %} 768w, {% static 'img/dyk-faster-claims.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Claims settled 3× faster with a Padosi agent by your side" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-policy-gaps-768.webp' %}" srcset="{% static 'img/dyk-policy-gaps-480.webp' %} 480w, {% static 'img/dyk-policy-gaps-768.webp' %} 768w, {% static 'img/dyk-policy-gaps.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Spot the policy gaps call-centres miss — your neighbourhood expert knows your city" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-face-to-face-768.webp' %}" srcset="{% static 'img/dyk-face-to-face-480.webp' %} 480w, {% static 'img/dyk-face-to-face-768.webp' %} 768w, {% static 'img/dyk-face-to-face.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Real advice, face to face — 70% understand their cover only after meeting an agent" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-fewer-lapses-768.webp' %}" srcset="{% static 'img/dyk-fewer-lapses-480.webp' %} 480w, {% static 'img/dyk-fewer-lapses-768.webp' %} 768w, {% static 'img/dyk-fewer-lapses.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="40% fewer lapsed policies — your Padosi agent reminds you every renewal" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-zero-fees-768.webp' %}" srcset="{% static 'img/dyk-zero-fees-480.webp' %} 480w, {% static 'img/dyk-zero-fees-768.webp' %} 768w, {% static 'img/dyk-zero-fees.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Zero fees, lifetime advisor — same premium, a real human in your neighbourhood" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {# ROW 2 LEFT: Product subtitle + tiles #}
-        <div class="pa-cell pa-cell-r2l">
-          <div id="pa-subtitle">
-            <h2 class="pa-subtitle" style="margin-bottom: 0.25rem;">
-              {{ settings.hero_claims_card_label }}
-            </h2>
-            <div style="font-size: 15px; font-weight: 500; color: #000; margin-bottom: 12px; font-family: 'Jost', sans-serif;">
-              Select to Buy New / Port / Renew Insurance
-            </div>
-          </div>
-          <div class="pa-tiles-row" id="pa-tiles">
-            {% for tile in product_tiles %}
-              <a href="{{ tile.url }}" class="pa-tile {{ tile.tileClass }}" aria-label="Find {{ tile.label }} agent near me">
-                <div class="pa-tile-badge">{{ tile.label }}</div>
-                <div class="pa-tile-image-container">
-                {% include 'components/quadrant_icon.html' with tile=tile %}
-              </div>
-              </a>
-            {% endfor %}
-          </div>
-        </div>
-
-        {# ROW 2 RIGHT: Claims & Audit CTA #}
-        <div class="pa-cell pa-cell-r2r" id="pa-claims">
-          <div class="pa-claims-card">
-            <div>
-              <h3 class="pa-claims-heading">{{ settings.hero_claims_card_heading }}</h3>
-              <p class="pa-claims-text">{{ settings.hero_claims_card_text }}</p>
-            </div>
-            <div class="pa-cta-row">
-              <a href="{{ settings.hero_cta_claim_url }}" class="pa-btn pa-btn-claim">
-                {% include 'components/hero-icon.html' with name='life-buoy' sw='2.4' %}
-                <span>{{ settings.hero_cta_claim_text }}</span>
-              </a>
-              <a href="{{ settings.hero_cta_review_url }}" class="pa-btn pa-btn-review">
-                {% include 'components/hero-icon.html' with name='file-search' sw='2.4' %}
-                <span>{{ settings.hero_cta_review_text }}</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-</section>
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&family=Urbanist:wght@400;500;600;700;800;900&display=swap');
 
@@ -1549,6 +1349,206 @@
     color: #7c3aed;
   }
 </style>
+<section class="pa-hero" role="banner">
+  <div class="pa-hero-bg"></div>
+  <div class="pa-blob pa-blob-1"></div>
+  <div class="pa-blob pa-blob-2"></div>
+
+  <div class="pa-container">
+
+    {# ═══ MOBILE LAYOUT (lg:hidden) ═══ #}
+    <div class="pa-mobile-layout">
+
+      {# 1. Trust badges #}
+      <div class="pa-badges-row">
+        {% for badge in trust_badges %}
+          <div class="pa-badge">
+            <div class="pa-badge-icon-box pa-badge-icon-{% if badge.icon == 'check-circle' %}primary{% elif badge.icon == 'shield' %}secondary{% else %}accent{% endif %}">
+              {% include 'components/hero-icon.html' with name=badge.icon sw='2.6' %}
+            </div>
+            <span class="pa-badge-text">{{ badge.label }}</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      {# 2. DidYouKnow slider (no dots, matching React/Laravel) #}
+      <div class="pa-slider-card">
+        <div class="pa-slider-viewport">
+          <div class="pa-slider-track" id="pa-track-mob">
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-chatbot-vs-agent-doodle-480.webp' %} 480w, {% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Who will help your family with insurance claims — a chatbot or an expert PadosiAgent?" loading="eager" fetchpriority="high" width="1536" height="1024" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nominee-doodle-768.webp' %}" srcset="{% static 'img/hero-nominee-doodle-480.webp' %} 480w, {% static 'img/hero-nominee-doodle-768.webp' %} 768w, {% static 'img/hero-nominee-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Is your nominee an expert in settling insurance claims? If not, buy only from an experienced nearby agent." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nearby-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-nearby-agent-doodle-480.webp' %} 480w, {% static 'img/hero-nearby-agent-doodle-768.webp' %} 768w, {% static 'img/hero-nearby-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Your PadosiAgent at your doorstep — policies, renewals and claims handled in your neighbourhood." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-trusted-expert-doodle-768.webp' %}" srcset="{% static 'img/hero-trusted-expert-doodle-480.webp' %} 480w, {% static 'img/hero-trusted-expert-doodle-768.webp' %} 768w, {% static 'img/hero-trusted-expert-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Trusted. Verified. Nearby. Every PadosiAgent is a licensed expert verified by us." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-faster-claims-768.webp' %}" srcset="{% static 'img/dyk-faster-claims-480.webp' %} 480w, {% static 'img/dyk-faster-claims-768.webp' %} 768w, {% static 'img/dyk-faster-claims.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Claims settled 3× faster with a Padosi agent by your side" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-policy-gaps-768.webp' %}" srcset="{% static 'img/dyk-policy-gaps-480.webp' %} 480w, {% static 'img/dyk-policy-gaps-768.webp' %} 768w, {% static 'img/dyk-policy-gaps.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Spot the policy gaps call-centres miss — your neighbourhood expert knows your city" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-face-to-face-768.webp' %}" srcset="{% static 'img/dyk-face-to-face-480.webp' %} 480w, {% static 'img/dyk-face-to-face-768.webp' %} 768w, {% static 'img/dyk-face-to-face.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Real advice, face to face — 70% understand their cover only after meeting an agent" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-fewer-lapses-768.webp' %}" srcset="{% static 'img/dyk-fewer-lapses-480.webp' %} 480w, {% static 'img/dyk-fewer-lapses-768.webp' %} 768w, {% static 'img/dyk-fewer-lapses.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="40% fewer lapsed policies — your Padosi agent reminds you every renewal" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+            <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-zero-fees-768.webp' %}" srcset="{% static 'img/dyk-zero-fees-480.webp' %} 480w, {% static 'img/dyk-zero-fees-768.webp' %} 768w, {% static 'img/dyk-zero-fees.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Zero fees, lifetime advisor — same premium, a real human in your neighbourhood" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+          </div>
+        </div>
+      </div>
+
+      {# 3. H1 Heading #}
+      <h1 class="pa-heading">
+        {{ hero_heading_html|clean_html }}
+      </h1>
+
+      {# 4. Product tiles (4 columns) #}
+      <div style="margin-top: -0.5rem; margin-bottom: -0.65rem;">
+        <div style="font-size: 11px; font-weight: 500; color: #000000; margin: 0; font-family: 'Jost', sans-serif;">
+          Select to Buy New / Port / Renew Insurance
+        </div>
+      </div>
+      <div class="pa-tiles-row">
+        {% for tile in product_tiles %}
+          <a href="{{ tile.url }}" class="pa-tile {{ tile.tileClass }}" aria-label="Find {{ tile.label }} agent near me">
+            <div class="pa-tile-badge">{{ tile.label }}</div>
+            <div class="pa-tile-image-container">
+                {% include 'components/quadrant_icon.html' with tile=tile %}
+              </div>
+          </a>
+        {% endfor %}
+      </div>
+
+      {# 5. Claims & Audit buttons #}
+      <div class="pa-cta-row">
+        <a href="{{ settings.hero_cta_claim_url }}" class="pa-btn pa-btn-claim">
+          {% include 'components/hero-icon.html' with name='life-buoy' sw='2.4' %}
+          <span>{{ settings.hero_cta_claim_text }}</span>
+        </a>
+        <a href="{{ settings.hero_cta_review_url }}" class="pa-btn pa-btn-review">
+          {% include 'components/hero-icon.html' with name='file-search' sw='2.4' %}
+          <span>{{ settings.hero_cta_review_text }}</span>
+        </a>
+      </div>
+
+      {# 6. Stats counters #}
+      <div class="pa-stats-row">
+        {% for s in stats_data %}
+          <a href="/find-agents?openFilter=1" class="pa-stat-btn">
+            <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
+              <div class="pa-stat-top">
+                <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
+                <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
+              </div>
+              <span class="pa-stat-label">{{ s.label }}</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+    </div>
+
+    {# ═══ DESKTOP LAYOUT — 2-column grid (lg+) ═══ #}
+    <div class="pa-desktop-layout">
+
+      <div class="pa-grid">
+
+        {# ROW 1 LEFT: Trust Badges + Heading + Stats #}
+        <div class="pa-cell pa-cell-r1l">
+          <div class="pa-cell-inner" id="pa-badges">
+            <div class="pa-badges-row">
+              {% for badge in trust_badges %}
+                <div class="pa-badge">
+                  <div class="pa-badge-icon-box pa-badge-icon-{% if badge.icon == 'check-circle' %}primary{% elif badge.icon == 'shield' %}secondary{% else %}accent{% endif %}">
+                    {% include 'components/hero-icon.html' with name=badge.icon sw='2.6' %}
+                  </div>
+                  <span class="pa-badge-text">{{ badge.label }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Same text as the mobile H1 above; a <p> so the page has one H1. #}
+          <p class="pa-heading" id="pa-heading">
+            {{ hero_heading_html|clean_html }}
+          </p>
+
+          <div class="pa-stats-row" id="pa-stats">
+            {% for s in stats_data %}
+              <a href="/find-agents?openFilter=1" class="pa-stat-btn">
+                <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
+                  <div class="pa-stat-top">
+                    <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
+                    <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-d-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
+                  </div>
+                  <span class="pa-stat-label">{{ s.label }}</span>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ROW 1 RIGHT: DidYouKnow (desktop) #}
+        <div class="pa-cell pa-cell-r1r" id="pa-dyk-desktop">
+          <div class="pa-dyk-desktop-inner">
+            <div class="pa-slider-card pa-slider-card-lg">
+              <div class="pa-slider-viewport">
+                <div class="pa-slider-track" id="pa-track-desk">
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-chatbot-vs-agent-doodle-480.webp' %} 480w, {% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Who will help your family with insurance claims — a chatbot or an expert PadosiAgent?" loading="eager" fetchpriority="high" width="1536" height="1024" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nominee-doodle-768.webp' %}" srcset="{% static 'img/hero-nominee-doodle-480.webp' %} 480w, {% static 'img/hero-nominee-doodle-768.webp' %} 768w, {% static 'img/hero-nominee-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Is your nominee an expert in settling insurance claims? If not, buy only from an experienced nearby agent." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-nearby-agent-doodle-768.webp' %}" srcset="{% static 'img/hero-nearby-agent-doodle-480.webp' %} 480w, {% static 'img/hero-nearby-agent-doodle-768.webp' %} 768w, {% static 'img/hero-nearby-agent-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Your PadosiAgent at your doorstep — policies, renewals and claims handled in your neighbourhood." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/hero-trusted-expert-doodle-768.webp' %}" srcset="{% static 'img/hero-trusted-expert-doodle-480.webp' %} 480w, {% static 'img/hero-trusted-expert-doodle-768.webp' %} 768w, {% static 'img/hero-trusted-expert-doodle.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Trusted. Verified. Nearby. Every PadosiAgent is a licensed expert verified by us." loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-faster-claims-768.webp' %}" srcset="{% static 'img/dyk-faster-claims-480.webp' %} 480w, {% static 'img/dyk-faster-claims-768.webp' %} 768w, {% static 'img/dyk-faster-claims.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Claims settled 3× faster with a Padosi agent by your side" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-policy-gaps-768.webp' %}" srcset="{% static 'img/dyk-policy-gaps-480.webp' %} 480w, {% static 'img/dyk-policy-gaps-768.webp' %} 768w, {% static 'img/dyk-policy-gaps.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Spot the policy gaps call-centres miss — your neighbourhood expert knows your city" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-face-to-face-768.webp' %}" srcset="{% static 'img/dyk-face-to-face-480.webp' %} 480w, {% static 'img/dyk-face-to-face-768.webp' %} 768w, {% static 'img/dyk-face-to-face.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Real advice, face to face — 70% understand their cover only after meeting an agent" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-fewer-lapses-768.webp' %}" srcset="{% static 'img/dyk-fewer-lapses-480.webp' %} 480w, {% static 'img/dyk-fewer-lapses-768.webp' %} 768w, {% static 'img/dyk-fewer-lapses.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="40% fewer lapsed policies — your Padosi agent reminds you every renewal" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                  <div class="pa-slide"><div class="pa-slide-inner-img"><img src="{% static 'img/dyk-zero-fees-768.webp' %}" srcset="{% static 'img/dyk-zero-fees-480.webp' %} 480w, {% static 'img/dyk-zero-fees-768.webp' %} 768w, {% static 'img/dyk-zero-fees.webp' %} 1536w" sizes="(max-width: 640px) 92vw, 580px" alt="Zero fees, lifetime advisor — same premium, a real human in your neighbourhood" loading="lazy" draggable="false" class="pa-slide-img" /></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# ROW 2 LEFT: Product subtitle + tiles #}
+        <div class="pa-cell pa-cell-r2l">
+          <div id="pa-subtitle">
+            <h2 class="pa-subtitle" style="margin-bottom: 0.25rem;">
+              {{ settings.hero_claims_card_label }}
+            </h2>
+            <div style="font-size: 15px; font-weight: 500; color: #000; margin-bottom: 12px; font-family: 'Jost', sans-serif;">
+              Select to Buy New / Port / Renew Insurance
+            </div>
+          </div>
+          <div class="pa-tiles-row" id="pa-tiles">
+            {% for tile in product_tiles %}
+              <a href="{{ tile.url }}" class="pa-tile {{ tile.tileClass }}" aria-label="Find {{ tile.label }} agent near me">
+                <div class="pa-tile-badge">{{ tile.label }}</div>
+                <div class="pa-tile-image-container">
+                {% include 'components/quadrant_icon.html' with tile=tile %}
+              </div>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ROW 2 RIGHT: Claims & Audit CTA #}
+        <div class="pa-cell pa-cell-r2r" id="pa-claims">
+          <div class="pa-claims-card">
+            <div>
+              <h3 class="pa-claims-heading">{{ settings.hero_claims_card_heading }}</h3>
+              <p class="pa-claims-text">{{ settings.hero_claims_card_text }}</p>
+            </div>
+            <div class="pa-cta-row">
+              <a href="{{ settings.hero_cta_claim_url }}" class="pa-btn pa-btn-claim">
+                {% include 'components/hero-icon.html' with name='life-buoy' sw='2.4' %}
+                <span>{{ settings.hero_cta_claim_text }}</span>
+              </a>
+              <a href="{{ settings.hero_cta_review_url }}" class="pa-btn pa-btn-review">
+                {% include 'components/hero-icon.html' with name='file-search' sw='2.4' %}
+                <span>{{ settings.hero_cta_review_text }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
 
 <script>
   (function () {
