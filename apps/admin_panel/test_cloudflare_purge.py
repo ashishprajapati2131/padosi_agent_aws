@@ -102,3 +102,15 @@ class CloudflarePurgeTests(TestCase):
         zone_id, api_token = cloudflare.get_credentials()
         self.assertEqual(zone_id, "new_zone_999")
         self.assertEqual(api_token, "new_token_888")
+
+
+class AdminCsrfRecoveryScriptTest(TestCase):
+    """Admin AJAX (e.g. Cloudflare purge) must read the live CSRF cookie, not the token baked into the page."""
+
+    def test_admin_pages_load_csrf_recovery_script(self):
+        from apps.admin_panel.tests import authenticate_client
+
+        authenticate_client(self.client)
+        response = self.client.get("/admin/feature-flags/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "admin_panel/admin_csrf.js")
