@@ -130,7 +130,7 @@ class UITranslation(models.Model):
     Overrides the .po file value at runtime, so no deploy is needed to fix wording."""
 
     language = models.CharField(max_length=10, choices=settings.LANGUAGES)
-    msgid = models.CharField(max_length=500)  # CharField: MySQL cannot index TEXT in a unique key
+    msgid = models.CharField(max_length=191)  # 191 chars: fits a utf8mb4 unique index on any InnoDB row format
     text = models.TextField()
     updated_at = models.DateTimeField(auto_now=True)
 

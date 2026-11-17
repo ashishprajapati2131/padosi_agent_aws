@@ -432,6 +432,25 @@ class AdminTests(LocalizationTestCase):
         self.assertGreater(completion("gu")[1], 0)
         self.assertEqual(completion("en"), (1, 1))
 
+    def test_charset_migration_restores_question_mark_names(self):
+        import importlib
+
+        from django.apps import apps
+
+        migration = importlib.import_module(
+            "apps.localization.migrations.0004_utf8mb4_tables"
+        )
+        SiteLanguage.objects.filter(code="gu").update(native_name="???????")
+        SiteLanguage.objects.filter(code="hi").update(native_name="Hindi (custom)")
+        migration.restore_native_names(apps, None)
+        self.assertEqual(SiteLanguage.objects.get(code="gu").native_name, "ગુજરાતી")
+        self.assertEqual(
+            SiteLanguage.objects.get(code="hi").native_name, "Hindi (custom)"
+        )
+
+    def test_every_website_text_fits_the_msgid_column(self):
+        self.assertTrue(all(len(m) <= 191 for m in services.website_messages()))
+
     def test_source_language_cannot_be_disabled(self):
         english = SiteLanguage.objects.get(code="en")
         english.is_active = False
