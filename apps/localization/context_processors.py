@@ -5,14 +5,27 @@ from apps.localization import services
 
 # Header logo per language (static/img/logos/padosi-<code>.webp, 141px tall) -> display width at 47px.
 LANGUAGE_LOGO_WIDTHS = {
-    "en": 156, "hi": 139, "gu": 143, "mr": 139, "ta": 162, "kn": 157,
-    "ml": 169, "bn": 151, "pa": 138, "te": 133, "or": 149, "as": 151,
+    "en": 156,
+    "hi": 139,
+    "gu": 143,
+    "mr": 139,
+    "ta": 162,
+    "kn": 157,
+    "ml": 169,
+    "bn": 151,
+    "pa": 138,
+    "te": 133,
+    "or": 149,
+    "as": 151,
 }
 
 
 def localization(request):
     """Current language, switcher options and hreflang alternates for templates."""
     config = services.get_config()
+    services.sync_ui_overrides(
+        config["ui_version"]
+    )  # portal pages skip the middleware load
     language = getattr(request, "LANGUAGE_CODE", settings.LANGUAGE_CODE)
     context = {
         "current_language": language,

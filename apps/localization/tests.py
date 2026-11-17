@@ -64,6 +64,14 @@ class PrefixRoutingTests(LocalizationTestCase):
         response = self.client.get("/en/about/?a=1")
         self.assertRedirects(response, "/about/?a=1", fetch_redirect_response=False)
 
+    def test_portal_requests_make_no_localization_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as queries:
+            self.client.post("/agent-register-step1/", {})
+        self.assertFalse([q for q in queries if "localization_" in q["sql"]])
+
     def test_portal_paths_are_never_localized(self):
         response = self.client.get("/gu/agent-login/")
         self.assertRedirects(response, "/agent-login/", fetch_redirect_response=False)

@@ -39,11 +39,15 @@ class LanguageMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        config = services.get_config()
-        services.sync_ui_overrides(config["ui_version"])
         code, rest = services.split_language_prefix(request.path_info)
         cookies = {}
         language, prefix, varies = services.SOURCE_LANGUAGE, "", False
+        # Portal, payment, registration and API requests never touch localization config:
+        # no extra queries or cache reads on those hot paths.
+        config = None
+        if code or services.is_localizable(request.path_info):
+            config = services.get_config()
+            services.sync_ui_overrides(config["ui_version"])
 
         if code:
             _rewrite_path(request, rest)
@@ -57,7 +61,7 @@ class LanguageMiddleware:
             elif request.method in ("GET", "HEAD"):
                 # /en/..., disabled languages and portal paths live at the unprefixed URL.
                 return _redirect(request, rest)
-        elif len(config["codes"]) > 1 and services.is_localizable(request.path_info):
+        elif config and len(config["codes"]) > 1:
             varies = True
             preferred, cookies = services.resolve_preferred_language(request, config)
             if (
