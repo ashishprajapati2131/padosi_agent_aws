@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views, renewal as renewal_views, account_deletion, quick_registration
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views, renewal as renewal_views, quick_registration
 
 
 app_name = 'agents'
@@ -64,7 +64,6 @@ urlpatterns = [
     path('agent/log-activity/', dashboard.agent_log_trial_activity, name='agent_log_trial_activity'),
     path('agent/renew/',        renewal_views.renew_plan,         name='agent_renew_plan'),
     path('agent/app-upgrade/',  auth.app_upgrade_handoff,        name='app_upgrade_handoff'),
-    path('agent/delete-account/', account_deletion.account_deletion_view, name='agent_delete_account'),
     path('agent/referral-info/', dashboard.referral_info,        name='agent_referral_info'),
 
     path('agent/google-review/save/', dashboard.save_google_review_settings, name='agent_google_review_save'),

@@ -1,5 +1,4 @@
-"""Audit API2 + API3 + API4:
-- Deletion OTP request gives one generic error for every mismatch (no oracle).
+"""Audit API3 + API4:
 - Reset-password with an unknown email returns the same generic error as a bad token.
 - In-app password change revokes every other UserToken but keeps the caller's JWT alive.
 """
@@ -7,44 +6,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from fastapi import HTTPException
-
-from fastapi_app.routers.account_deletion import request_deletion_otp
 from fastapi_app.services.password_reset_service import PasswordResetService
-
-
-class DeletionEnumerationTests(unittest.TestCase):
-    def _call(self, agent, profile=None):
-        payload = MagicMock(
-            email="victim@example.com",
-            mobile="9876543210",
-            pan_number="ABCDE1234F",
-            fullname="V",
-        )
-        db = MagicMock()
-        db.query.return_value.filter.return_value.first.side_effect = [
-            agent,
-            profile,
-            None,
-        ]
-        with self.assertRaises(HTTPException) as ctx:
-            request_deletion_otp(
-                payload, MagicMock(client=MagicMock(host="1.1.1.1"), headers={}), db
-            )
-        return ctx.exception
-
-    def test_unknown_pan_wrong_phone_and_missing_email_share_one_message(self):
-        unknown = self._call(None).detail
-        bad_pan = self._call(
-            MagicMock(id=1, mobile="9876543210"), MagicMock(pan_number="OTHER1234X")
-        ).detail
-        bad_phone = self._call(
-            MagicMock(id=1, mobile="9999999999"), MagicMock(pan_number="ABCDE1234F")
-        ).detail
-        self.assertEqual(unknown, bad_pan)
-        self.assertEqual(unknown, bad_phone)
-        for leak in ("PAN", "phone", "not exist", "email"):
-            self.assertNotIn(leak, unknown)
 
 
 class ResetEnumerationTests(unittest.TestCase):

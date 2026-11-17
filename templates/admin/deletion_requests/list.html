@@ -142,11 +142,11 @@
                     <td>
                         {% if req.is_verified %}
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                <i class="fa-solid fa-check me-1"></i>OTP Verified
+                                <i class="fa-solid fa-check me-1"></i>Password confirmed
                             </span>
                         {% else %}
                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                                <i class="fa-solid fa-clock me-1"></i>OTP Pending
+                                <i class="fa-solid fa-clock me-1"></i>Not confirmed
                             </span>
                         {% endif %}
                     </td>
@@ -537,7 +537,7 @@
                 <div class="col-md-6">
                     <div class="p-3 bg-light rounded border">
                         <div class="small text-muted mb-1">Status</div>
-                        <div>${statusBadge} &nbsp; ${data.is_verified ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>OTP Verified</span>' : '<span class="badge bg-warning text-dark">Unverified</span>'}</div>
+                        <div>${statusBadge} &nbsp; ${data.is_verified ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Password confirmed</span>' : '<span class="badge bg-warning text-dark">Not confirmed</span>'}</div>
                     </div>
                 </div>
             </div>
@@ -561,6 +561,22 @@
                         <div class="col-sm-6">
                             <span class="text-muted small d-block">Mobile Number</span>
                             <span>${esc(data.mobile || '-')}</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <span class="text-muted small d-block">Profession</span>
+                            <span>${esc(data.profession || '-')}</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <span class="text-muted small d-block">Pincode</span>
+                            <span>${esc(data.pincode || '-')}</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <span class="text-muted small d-block">State</span>
+                            <span>${esc(data.state || '-')}</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <span class="text-muted small d-block">Address</span>
+                            <span>${esc(data.city || '-')}</span>
                         </div>
                     </div>
                 </div>

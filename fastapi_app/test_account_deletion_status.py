@@ -32,7 +32,7 @@ class DeletionStatusMaskingTests(unittest.TestCase):
         self.assertEqual(res.email, "pa***@example.com")
         self.assertEqual(res.mobile, "******3210")
         self.assertEqual(res.admin_notes, "")
-        self.assertEqual(res.status_display, "Pending Review")
+        self.assertEqual(res.status_display, "Pending admin approval")
 
     def test_email_identifier_is_not_shown_as_name(self):
         del_req = MagicMock(

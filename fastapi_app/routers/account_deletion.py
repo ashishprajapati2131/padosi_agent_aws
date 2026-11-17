@@ -1,21 +1,15 @@
-import hashlib
-import hmac
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from fastapi_app.config import settings
 from fastapi_app.database import get_db
 from fastapi_app.models.account_deletion_request import AccountDeletionRequest
-from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.schemas.account_deletion import (
-    RequestDeletionOtpSchema,
-    VerifyDeletionOtpSchema,
+    RequestDeletionByPasswordSchema,
     DeletionResponseSchema,
     DeletionStatusDetailSchema,
 )
@@ -34,289 +28,180 @@ def _now() -> datetime:
     return datetime.now()
 
 
-_utcnow = _now  # old name, still imported by tests
-
-
-def _hash_otp(otp: str) -> str:
-    # Keyed: with a public static salt the 900k possible codes were trivially reversible.
-    return hmac.new(
-        settings.SECRET_KEY.encode("utf-8"), f"del_otp_{otp}".encode("utf-8"), hashlib.sha256
-    ).hexdigest()
-
-
 def _get_client_ip(request: Request) -> str:
     from fastapi_app.utils.client_ip import get_client_ip
 
     return get_client_ip(request)
 
 
-def _send_deletion_otp_email(
-    to_email: str, fullname: str, otp: str, reference_id: str
-) -> bool:
-    """Sends OTP verification email for account deletion using Brevo/SMTP."""
-    subject = f"Your PadosiAgent Account Deletion Code: {otp}"
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; color: #333; }}
-        .card {{ max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #eef2f6; }}
-        .header {{ background: linear-gradient(135deg, #d90429, #ef233c); color: white; padding: 25px 30px; text-align: center; }}
-        .header h1 {{ margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }}
-        .body {{ padding: 30px; }}
-        .otp-box {{ background: #fdf2f2; border: 2px dashed #ef233c; border-radius: 8px; text-align: center; padding: 18px; margin: 25px 0; }}
-        .otp-code {{ font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #d90429; font-family: 'Courier New', monospace; }}
-        .warning-box {{ background: #fffbe6; border-left: 4px solid #faad14; padding: 12px 16px; margin: 20px 0; border-radius: 4px; font-size: 13px; color: #595959; }}
-        .footer {{ background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #8c8c8c; border-top: 1px solid #f0f0f0; }}
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div class="header">
-          <h1>Account Deletion Verification</h1>
-        </div>
-        <div class="body">
-          <p>Hello <strong>{fullname}</strong>,</p>
-          <p>We received a formal request to delete and terminate your <strong>PadosiAgent</strong> account.</p>
-          <p>To confirm that you are the verified owner of this account, please use the following one-time verification code:</p>
-          
-          <div class="otp-box">
-            <div style="font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 1px; margin-bottom: 5px;">Your Verification Code</div>
-            <div class="otp-code">{otp}</div>
-            <div style="font-size: 12px; color: #888; margin-top: 5px;">Valid for 10 minutes</div>
-          </div>
+def _logged_in_agent(request: Request):
+    """The agent behind this call: app bearer token, or the website session cookie.
 
-          <div class="warning-box">
-            <strong>Important Notice:</strong> Upon verification and subsequent administrative execution, your personal and sensitive data (PAN, addresses, KYC documents, claims stats, and segments) will be permanently destroyed. Your name, phone, and invoice history will be retained solely for legal and regulatory compliance.
-          </div>
-
-          <p style="font-size: 13px; color: #666;">
-            <strong>Reference ID:</strong> <span style="font-family: monospace;">{reference_id}</span><br>
-            If you did not request this deletion, please contact our support team immediately or ignore this email.
-          </p>
-        </div>
-        <div class="footer">
-          &copy; {datetime.now().year} PadosiAgent Technologies Pvt Ltd. All rights reserved.
-        </div>
-      </div>
-    </body>
-    </html>
+    Email is never taken from the body, so one login cannot request deletion of another account.
     """
+    from django.contrib.auth import get_user_model
+    from django.contrib.sessions.models import Session
 
-    # 1. Try BrevoEmailService from apps.agents.services.brevo
-    try:
-        from apps.agents.services.brevo import email_service
+    from apps.agents.services.account_auth import find_agent, resolve_agent_for_user
+    from fastapi_app.utils.auth import decode_access_token
 
-        sent = email_service.send_generic(to_email, fullname, subject, html_content)
-        if sent:
-            return True
-    except Exception as ex:
-        logger.warning(f"Brevo email_service generic send failed: {ex}")
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1].strip()
+        try:
+            payload = decode_access_token(token)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Please log in again.",
+            )
+        email = (payload.get("sub") or "").strip()
+        if not email or payload.get("role") != "agent":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Please log in again.",
+            )
+        agent = find_agent(email)
+        if agent is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Please log in again.",
+            )
+        return agent
 
-    # 2. Try FastAPI EmailService HTTP Brevo / SMTP
-    try:
-        from fastapi_app.services.email_service import EmailService
-
-        sent = EmailService._send_brevo_http_sync(
-            to_email, subject, html_content, fullname
+    session_key = request.cookies.get("sessionid")
+    if not session_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please log in to delete your account.",
         )
-        if sent:
-            return True
-    except Exception as ex:
-        logger.warning(f"FastAPI EmailService brevo failed: {ex}")
+    try:
+        session = Session.objects.filter(session_key=session_key).first()
+        data = session.get_decoded() if session else {}
+    except Exception:
+        data = {}
+    user_id = data.get("_auth_user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please log in to delete your account.",
+        )
+    user = get_user_model().objects.filter(pk=user_id).first()
+    agent = resolve_agent_for_user(user) if user else None
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please log in with the agent account you want to delete.",
+        )
+    return agent
 
-    logger.error("Deletion OTP email could not be sent (ref=%s)", reference_id)
-    return False
+
+def _account_snapshot(agent, profile, reason: str, comments: str) -> dict:
+    """Identity the admin reviews. The account itself is not removed."""
+    return {
+        "fullname": (agent.fullname or "").strip(),
+        "email": (agent.email or "").strip(),
+        "mobile": (agent.mobile or "").strip(),
+        "pan_number": ((profile.pan_number if profile else "") or "").strip().upper(),
+        "profession": (agent.profession or "").strip(),
+        "pincode": (agent.agent_pincode or "").strip(),
+        "state": ((profile.state if profile else "") or "").strip(),
+        "city": ((getattr(profile, "address", None) or "") if profile else "").strip()[:180],
+        "agent_status": agent.status or "",
+        "reason_category": reason or "Account deletion requested",
+        "reason_details": comments or "",
+        "verification": "password",
+    }
 
 
-@router.post("/request-otp", response_model=DeletionResponseSchema)
-def request_deletion_otp(
-    payload: RequestDeletionOtpSchema,
+@router.post("/request", response_model=DeletionResponseSchema)
+def request_deletion_with_password(
+    payload: RequestDeletionByPasswordSchema,
     request: Request,
     db: Session = Depends(get_db),
 ):
     """
-    Step 1: Validate agent credentials (Name, Phone, Email, PAN),
-    generate a secure 6-digit OTP, send it to registered email,
-    and initialize an AccountDeletionRequest record.
+    Logged-in agent confirms their password. A match files a request for an admin.
+
+    A wrong password is rejected and nothing is saved. The agent row is never
+    deleted here. An admin approves it from /admin/account-deletion-requests/.
     """
-    email_clean = payload.email.strip().lower()
-    mobile_clean = payload.mobile.strip()
-    pan_clean = payload.pan_number.strip().upper()
-    name_clean = payload.fullname.strip()
+    agent = _logged_in_agent(request)
+    from apps.agents.services.account_auth import verify_agent_password
 
-    # 1. Strictly verify that the email exists in the Agent database
-    # Different messages for unknown email vs wrong PAN vs wrong phone let an attacker test
-    # which emails are agents and brute-force PAN/mobile pairs (audit API2). One generic reply.
-    GENERIC = "We could not verify this account. Please check the details on file and try again."
+    try:
+        password_ok, _, _ = verify_agent_password(agent.email, payload.password, agent=agent)
+    except Exception:
+        logger.exception("Account deletion password check failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not check the password. Please try again.",
+        )
+    if not password_ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is incorrect.",
+        )
 
-    agent = db.query(Agent).filter(func.lower(Agent.email) == email_clean).first()
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
+    email_clean = (agent.email or "").strip().lower()
+    existing = (
+        db.query(AccountDeletionRequest)
+        .filter(
+            AccountDeletionRequest.agent_id == agent.id,
+            AccountDeletionRequest.status == "PENDING",
+            AccountDeletionRequest.is_verified.is_(True),
+        )
+        .order_by(AccountDeletionRequest.id.desc())
+        .first()
+    )
+    if existing:
+        return DeletionResponseSchema(
+            success=True,
+            message=(
+                "A deletion request for this account is already waiting for an admin. "
+                "The account stays active until that request is approved."
+            ),
+            reference_id=existing.reference_id,
+            status="PENDING",
+        )
 
     profile = db.query(AgentProfile).filter(AgentProfile.agent_id == agent.id).first()
-    stored_pan = (profile.pan_number or "").strip().upper() if profile else ""
-    if not stored_pan or stored_pan != pan_clean:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
-
-    if agent.mobile and agent.mobile.strip() != mobile_clean:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GENERIC)
-
-    agent_id = agent.id
-    user_id = agent.user_id
-
-    # Generate 6-digit OTP and Reference ID
-    otp_code = str(secrets.randbelow(900000) + 100000)
+    reason = (payload.reason or "Account deletion requested").strip()
+    comments = (payload.comments or "").strip()
     now = _now()
-    expires_at = now + timedelta(minutes=10)
-    ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(8).upper()}"  # 64 random bits: /status is reachable with the ref alone (audit API1)
+    ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(8).upper()}"
+    summary = _account_snapshot(agent, profile, reason, comments)
 
-    client_ip = _get_client_ip(request)
-    user_agent = request.headers.get("user-agent", "")[:500]
-
-    retention_summary = {
-        "fullname": name_clean,
-        "pan_number": pan_clean,
-        "reason_category": payload.reason,
-        "reason_details": payload.comments or "",
-        "otp_hash": _hash_otp(otp_code),
-        "otp_expires_at": expires_at.isoformat(),
-        "otp_attempts": 0,
-    }
-
-    # Store in database
     del_req = AccountDeletionRequest(
         reference_id=ref_id,
-        identifier=pan_clean,
+        identifier=summary["pan_number"] or email_clean,
         email=email_clean,
-        mobile=mobile_clean,
+        mobile=agent.mobile or "",
         account_type="agent",
         status="PENDING",
-        verification_method="otp_email",
-        is_verified=False,
-        reason=f"[{payload.reason}] {payload.comments or ''}".strip(),
-        data_retention_summary=retention_summary,
-        ip_address=client_ip,
-        user_agent=user_agent,
-        agent_id=agent_id,
-        user_id=user_id,
+        verification_method="password",
+        is_verified=True,
+        reason=f"[{reason}] {comments}".strip(),
+        data_retention_summary=summary,
+        ip_address=_get_client_ip(request),
+        user_agent=(request.headers.get("user-agent") or "")[:500],
+        agent_id=agent.id,
+        user_id=getattr(agent, "user_id", None),
+        admin_notes="Password confirmed by the logged-in account holder. Waiting for admin approval. Account not deleted.",
         created_at=now,
         updated_at=now,
     )
     db.add(del_req)
     db.commit()
 
-    # Dispatch Email
-    if not _send_deletion_otp_email(email_clean, name_clean, otp_code, ref_id):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We could not send the verification code right now. Please try again later.",
-        )
-
-    return DeletionResponseSchema(
-        success=True,
-        message=f"A 6-digit verification code has been sent to your registered email ({email_clean}).",
-        reference_id=ref_id,
-        status="PENDING",
-    )
-
-
-@router.post("/verify-otp", response_model=DeletionResponseSchema)
-def verify_deletion_otp(
-    payload: VerifyDeletionOtpSchema,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    """
-    Step 2: Verify the 6-digit OTP, mark the deletion request
-    as verified, and forward it to the admin panel for termination.
-    """
-    ref_id = payload.reference_id.strip()
-    email_clean = payload.email.strip().lower()
-    otp_input = payload.otp.strip()
-
-    # Row lock: the attempt counter below is a read-modify-write of a JSON column.
-    del_req = (
-        db.query(AccountDeletionRequest)
-        .filter(
-            AccountDeletionRequest.reference_id == ref_id,
-            AccountDeletionRequest.email == email_clean,
-        )
-        .with_for_update()
-        .first()
-    )
-
-    if not del_req:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account deletion request not found or invalid reference ID.",
-        )
-
-    if del_req.is_verified:
-        return DeletionResponseSchema(
-            success=True,
-            message="Your account deletion request has already been verified and is awaiting administrative processing.",
-            reference_id=del_req.reference_id,
-            status=del_req.status,
-        )
-
-    summary = dict(del_req.data_retention_summary or {})
-    attempts = int(summary.get("otp_attempts", 0))
-
-    if attempts >= 5:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Maximum verification attempts exceeded. Please submit a new request.",
-        )
-
-    # A missing or unparseable expiry counts as expired.
-    try:
-        expires_at = datetime.fromisoformat(summary.get("otp_expires_at"))
-    except (TypeError, ValueError):
-        expires_at = None
-    if expires_at is None or _now() > expires_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification code has expired. Please request a new code.",
-        )
-
-    expected_hash = summary.get("otp_hash")
-    input_hash = _hash_otp(otp_input)
-
-    if not hmac.compare_digest(input_hash, str(expected_hash or "")):
-        summary["otp_attempts"] = attempts + 1
-        del_req.data_retention_summary = summary
-        db.commit()
-        remaining = max(0, 5 - (attempts + 1))
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid verification code. {remaining} attempt(s) remaining.",
-        )
-
-    # Success: Mark as verified and pending administrative action
-    now = _now()
-    del_req.is_verified = True
-    del_req.status = "PENDING"
-    del_req.admin_notes = (
-        f"OTP verified successfully via email at {now.strftime('%Y-%m-%d %H:%M:%S')}. "
-        f"Awaiting administrative termination approval."
-    )
-    summary["verified_at"] = now.isoformat()
-    del_req.data_retention_summary = summary
-    del_req.updated_at = now
-    db.commit()
-
     return DeletionResponseSchema(
         success=True,
         message=(
-            "Your deletion request has been verified and received by the administration panel. "
-            "Our compliance team will review and terminate the account. "
-            "As specified, your personal KYC, documents, and stats will be purged while identity records "
-            "are preserved for regulatory compliance."
+            "Your deletion request was sent to the admin team. "
+            "Your account is still active. It is closed only after an admin approves the request. "
+            "Name, phone, email, and compliance records are kept."
         ),
-        reference_id=del_req.reference_id,
+        reference_id=ref_id,
         status="PENDING",
     )
 
@@ -366,7 +251,7 @@ def get_deletion_status(
         msg = f"Your deletion request was rejected. Reason: {rej_msg}"
     else:
         status_display = (
-            "Pending Review" if del_req.is_verified else "Awaiting OTP Verification"
+            "Pending admin approval"
         )
         msg = f"Request status is PENDING. (Verified: {del_req.is_verified})"
 

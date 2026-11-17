@@ -2423,9 +2423,7 @@ class AccountDeletionRequest(models.Model):
         ("REJECTED", "Rejected"),
     ]
     VERIFICATION_METHOD_CHOICES = [
-        ("otp_email", "Email OTP"),
-        ("otp_sms", "SMS OTP"),
-        ("auth_token", "Authenticated Token / Session"),
+        ("password", "Account password"),
     ]
 
     reference_id = models.CharField(max_length=50, unique=True, db_index=True)
@@ -2437,7 +2435,7 @@ class AccountDeletionRequest(models.Model):
         max_length=20, choices=STATUS_CHOICES, db_index=True, default="PENDING"
     )
     verification_method = models.CharField(
-        max_length=30, choices=VERIFICATION_METHOD_CHOICES, default="otp_email"
+        max_length=30, choices=VERIFICATION_METHOD_CHOICES, default="password"
     )
     is_verified = models.BooleanField(default=False)
     reason = models.TextField(blank=True, default="")
@@ -2494,6 +2492,11 @@ class AccountDeletionRequest(models.Model):
             "email": self.email,
             "mobile": self.mobile,
             "pan_number": summary.get("pan_number") or self.identifier,
+            "profession": summary.get("profession") or "",
+            "pincode": summary.get("pincode") or "",
+            "state": summary.get("state") or "",
+            "city": summary.get("city") or "",
+            "verification_method": self.verification_method or "",
             "reason_category": summary.get("reason_category", ""),
             "reason_details": summary.get("reason_details", "") or self.reason,
             "status": self.status,

@@ -16,7 +16,7 @@ SENSITIVE_PATH_MARKERS = (
     "/agents/reset-password",
     "/payment-order",
     "/payment/success",
-    "/account-deletion",  # OTP request + PAN/mobile oracle (audit API2)
+    "/account-deletion",  # password check for a deletion request
 )
 
 

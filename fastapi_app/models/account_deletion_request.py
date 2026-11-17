@@ -13,7 +13,7 @@ class AccountDeletionRequest(Base):
     mobile = Column(String(20), nullable=False, default="")
     account_type = Column(String(50), nullable=False, default="agent")
     status = Column(String(20), nullable=False, default="PENDING", index=True)
-    verification_method = Column(String(30), nullable=False, default="otp_email")
+    verification_method = Column(String(30), nullable=False, default="password")
     is_verified = Column(Boolean, nullable=False, default=False)
     reason = Column(Text, nullable=False, default="")
     rejection_reason = Column(Text, nullable=False, default="")

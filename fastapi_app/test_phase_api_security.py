@@ -1,12 +1,9 @@
-"""API audit fixes: API5 (sync auth endpoints), API11/12 (WAF), API13/20 (deletion OTP), API19 (dead auth code)."""
+"""API audit fixes: API5 (sync auth endpoints), API11/12 (WAF), API19 (dead auth code)."""
 
-import hashlib
 import inspect
 import time
 import unittest
 from unittest.mock import MagicMock, patch
-
-from fastapi import HTTPException
 
 from fastapi_app.middleware import threat_monitor as tm
 from fastapi_app.routers import account_deletion as ad
@@ -80,49 +77,13 @@ class WafTests(unittest.TestCase):
         self.assertEqual(verdict[0], 403)
 
 
-class DeletionOtpTests(unittest.TestCase):
-    def test_otp_hash_is_keyed_not_static_salt(self):
-        old = hashlib.sha256(b"padosi_del_salt_2026_123456").hexdigest()
-        self.assertEqual(ad._hash_otp("123456"), ad._hash_otp("123456"))
-        self.assertNotEqual(ad._hash_otp("123456"), old)
-
+class DeletionClockTests(unittest.TestCase):
     def test_clock_is_naive_local(self):
         now = ad._now()
         self.assertIsNone(now.tzinfo)
         self.assertLess(
             abs((now - __import__("datetime").datetime.now()).total_seconds()), 5
         )
-
-    def test_failed_email_returns_503_and_never_logs_otp(self):
-        agent = MagicMock(id=1, user_id=2, mobile="9876543210", pan_number="ABCDE1234F")
-        db = MagicMock()
-        db.query.return_value.filter.return_value.first.return_value = agent
-        payload = MagicMock(
-            email="del.user@example.com",
-            mobile="9876543210",
-            pan_number="ABCDE1234F",
-            fullname="Del User",
-            reason="other",
-            comments="",
-        )
-        req = MagicMock(headers={})
-        with (
-            patch(
-                "apps.agents.services.brevo.email_service.send_generic",
-                return_value=False,
-            ),
-            patch(
-                "fastapi_app.services.email_service.EmailService._send_brevo_http_sync",
-                return_value=False,
-            ),
-            patch.object(ad, "_get_client_ip", return_value="203.0.113.1"),
-            patch.object(ad.secrets, "randbelow", return_value=123456 - 100000),
-            self.assertLogs("account_deletion", level="INFO") as logs,
-        ):
-            with self.assertRaises(HTTPException) as ctx:
-                ad.request_deletion_otp(payload, req, db)
-        self.assertEqual(ctx.exception.status_code, 503)
-        self.assertNotIn("123456", "\n".join(logs.output))
 
 
 class DeadAuthCodeAndSyncEndpointTests(unittest.TestCase):

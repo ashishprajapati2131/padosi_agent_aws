@@ -1,7 +1,6 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 from .views import pages, seo, calculators
-from apps.agents.views.account_deletion import account_deletion_view
 
 
 app_name = 'home'
@@ -11,6 +10,7 @@ urlpatterns = [
     re_path(r'^(?P<key>[a-zA-Z0-9-]{8,128})\.txt$', seo.indexnow_key, name='indexnow_key'),
     path('favicon.ico',      pages.favicon,         name='favicon'),
     path('',                 pages.home,            name='home'),
+    path('home/segment-compare/', pages.segment_compare, name='segment_compare'),
     path('about/',           pages.about,           name='about'),
     path('faq/',             pages.faq,             name='faq'),
     path('contact/',         pages.contact,         name='contact'),
@@ -37,8 +37,6 @@ urlpatterns = [
     path('lic-agent/', pages.lic_event, name='lic_event'),
     path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),
     path('blacklisted-agents/', pages.blacklisted_agents, name='blacklisted_agents'),
-    path('delete-account/', account_deletion_view, name='delete_account'),
-    path('account-deletion/', account_deletion_view, name='account_deletion'),
     path('api/quick-lead-capture/', pages.quick_lead_capture, name='quick_lead_capture'),
     path('<slug:slug>/',     pages.custom_page,    name='custom_page'),
 ]
