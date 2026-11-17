@@ -12,7 +12,7 @@
                 <i class="fa-solid fa-user-slash text-danger me-2"></i>Account Deletion &amp; Data Privacy Requests
             </h5>
             <p class="text-muted mb-0" style="font-size: 13px;">
-                Review verified deletion requests. Admins can terminate accounts, reactivate terminated accounts, or reject with a reason (e.g. data mismatch).
+                User deletion locks the account immediately. Admins can only Activate a locked account or Terminate an active one. Private data is purged automatically after 1 month (full backup kept).
             </p>
         </div>
     </div>
@@ -34,12 +34,12 @@
 
     <div class="stat-card p-3 bg-white rounded-3 border">
         <div class="d-flex align-items-center gap-3">
-            <div style="width:44px;height:44px;background:#fef3c7;border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                <i class="fa-solid fa-clock text-warning fs-5"></i>
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-user-check text-success fs-5"></i>
             </div>
             <div>
                 <div class="fs-4 fw-bold text-dark">{{ stats.pending }}</div>
-                <div class="text-muted small">Pending Action</div>
+                <div class="text-muted small">Activated</div>
             </div>
         </div>
     </div>
@@ -51,7 +51,7 @@
             </div>
             <div>
                 <div class="fs-4 fw-bold text-danger">{{ stats.completed }}</div>
-                <div class="text-muted small">Terminated</div>
+                <div class="text-muted small">Terminated / Locked</div>
             </div>
         </div>
     </div>
@@ -59,11 +59,11 @@
     <div class="stat-card p-3 bg-white rounded-3 border">
         <div class="d-flex align-items-center gap-3">
             <div style="width:44px;height:44px;background:#f1f5f9;border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                <i class="fa-solid fa-ban text-muted fs-5"></i>
+                <i class="fa-solid fa-database text-muted fs-5"></i>
             </div>
             <div>
-                <div class="fs-4 fw-bold text-dark">{{ stats.rejected }}</div>
-                <div class="text-muted small">Rejected</div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.purged }}</div>
+                <div class="text-muted small">Data Purged</div>
             </div>
         </div>
     </div>
@@ -82,9 +82,9 @@
             <div class="col-md-3">
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
-                    <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending Admin Action</option>
-                    <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Terminated Accounts</option>
-                    <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected Requests</option>
+                    <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Terminated / Locked</option>
+                    <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Activated</option>
+                    <option value="PURGED" {% if status_filter == 'PURGED' %}selected{% endif %}>Data Purged</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -152,13 +152,18 @@
                     </td>
                     <td>
                         {% if req.status == 'PENDING' %}
-                            <span class="badge bg-warning text-dark">Pending Admin</span>
+                            <span class="badge bg-success">Activated</span>
                         {% elif req.status == 'COMPLETED' %}
                             <span class="badge bg-danger">Terminated</span>
+                        {% elif req.status == 'PURGED' %}
+                            <span class="badge bg-dark">Data Purged</span>
                         {% elif req.status == 'REJECTED' %}
                             <span class="badge bg-secondary" title="{{ req.rejection_reason }}">Rejected</span>
                         {% else %}
                             <span class="badge bg-light text-dark">{{ req.status }}</span>
+                        {% endif %}
+                        {% if req.scheduled_purge_date and req.status == 'COMPLETED' %}
+                        <div class="small text-muted mt-1">Purge: {{ req.scheduled_purge_date|date:"d M Y" }}</div>
                         {% endif %}
                     </td>
                     <td class="small text-muted">
@@ -172,19 +177,12 @@
                             <button type="button" class="btn btn-outline-secondary btn-view-details" data-id="{{ req.id }}">
                                 <i class="fa-solid fa-eye me-1"></i>Details
                             </button>
-                            
-                            {% if req.status == 'PENDING' %}
-                            <button type="button" class="btn btn-danger btn-open-term" data-id="{{ req.id }}" data-ref="{{ req.reference_id }}" data-email="{{ req.email }}">
-                                <i class="fa-solid fa-user-xmark me-1"></i>Terminate
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-open-reject" data-id="{{ req.id }}" data-ref="{{ req.reference_id }}">
-                                <i class="fa-solid fa-ban me-1"></i>Reject
-                            </button>
-                            {% elif req.status == 'COMPLETED' %}
+
+                            {% if req.status == 'COMPLETED' %}
                             <button type="button" class="btn btn-success btn-open-activate" data-id="{{ req.id }}" data-ref="{{ req.reference_id }}" data-email="{{ req.email }}">
                                 <i class="fa-solid fa-user-check me-1"></i>Activate
                             </button>
-                            {% elif req.status == 'REJECTED' %}
+                            {% elif req.status == 'PENDING' %}
                             <button type="button" class="btn btn-danger btn-open-term" data-id="{{ req.id }}" data-ref="{{ req.reference_id }}" data-email="{{ req.email }}">
                                 <i class="fa-solid fa-user-xmark me-1"></i>Terminate
                             </button>
@@ -287,44 +285,6 @@
     </div>
 </div>
 
-<!-- Reject Confirmation Modal -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-secondary text-white">
-                <h5 class="modal-title fs-6 fw-bold">
-                    <i class="fa-solid fa-ban me-2"></i>Reject Deletion Request
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <input type="hidden" id="rejRequestId">
-                <p class="mb-3">
-                    Reject deletion request <strong id="rejTargetRef"></strong>?
-                </p>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Select Rejection Reason</label>
-                    <select id="rejReasonPreset" class="form-select form-select-sm mb-2" onchange="updateRejectionText(this.value)">
-                        <option value="Data mismatch in PAN number / mobile credentials">Data mismatch in PAN / Mobile credentials</option>
-                        <option value="Identity verification failed">Identity verification failed</option>
-                        <option value="Active unsettled customer inquiries or ongoing policy commitments">Active unsettled inquiries / ongoing policy commitments</option>
-                        <option value="Duplicate deletion request">Duplicate deletion request</option>
-                        <option value="Custom">Custom Reason (Type below)</option>
-                    </select>
-                    <textarea id="rejReasonCustom" class="form-control form-control-sm" rows="2" placeholder="Explain why the request is rejected (this will be displayed to the user when checking status)..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="btnExecuteRejection" class="btn btn-danger btn-sm" onclick="submitRejection()">
-                    <i class="fa-solid fa-ban me-1"></i>Confirm Rejection
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Request Details Modal -->
 <div class="modal fade" id="detailsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -390,26 +350,6 @@
         modal.show();
     });
 
-    // Delegate Reject button
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.btn-open-reject');
-        if (!btn) return;
-        document.getElementById('rejRequestId').value = btn.dataset.id;
-        document.getElementById('rejTargetRef').textContent = btn.dataset.ref;
-        document.getElementById('rejReasonCustom').value = document.getElementById('rejReasonPreset').value;
-        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
-        modal.show();
-    });
-
-    function updateRejectionText(val) {
-        if (val !== 'Custom') {
-            document.getElementById('rejReasonCustom').value = val;
-        } else {
-            document.getElementById('rejReasonCustom').value = '';
-            document.getElementById('rejReasonCustom').focus();
-        }
-    }
-
     // Submit Terminate
     async function submitTermination() {
         const reqId = document.getElementById('termRequestId').value;
@@ -472,42 +412,6 @@
         }
     }
 
-    // Submit Rejection
-    async function submitRejection() {
-        const reqId = document.getElementById('rejRequestId').value;
-        const reason = document.getElementById('rejReasonCustom').value.trim();
-        const btn = document.getElementById('btnExecuteRejection');
-
-        if (!reason) {
-            alert('Please provide a reason for rejecting this request.');
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Rejecting...';
-
-        try {
-            const response = await fetch('{% url "admin_reject_deletion_request" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-                body: JSON.stringify({ request_id: reqId, rejection_reason: reason })
-            });
-
-            const data = await response.json();
-            if (!response.ok || !data.success) throw new Error(data.message || 'Rejection failed.');
-
-            alert(data.message);
-            window.location.reload();
-        } catch (err) {
-            alert('Error: ' + err.message);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i>Confirm Rejection';
-        }
-    }
-
     // Render Details Modal cleanly
     // Request fields come from the public deletion form; escape before innerHTML.
     function esc(v) {
@@ -519,7 +423,9 @@
         if (data.status === 'COMPLETED') {
             statusBadge = '<span class="badge bg-danger">Terminated</span>';
         } else if (data.status === 'PENDING') {
-            statusBadge = '<span class="badge bg-warning text-dark">Pending Admin Action</span>';
+            statusBadge = '<span class="badge bg-success">Activated</span>';
+        } else if (data.status === 'PURGED') {
+            statusBadge = '<span class="badge bg-dark">Data Purged</span>';
         } else if (data.status === 'REJECTED') {
             statusBadge = '<span class="badge bg-secondary">Rejected</span>';
         } else {

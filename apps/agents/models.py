@@ -2421,6 +2421,7 @@ class AccountDeletionRequest(models.Model):
         ("PROCESSING", "Processing"),
         ("COMPLETED", "Completed"),
         ("REJECTED", "Rejected"),
+        ("PURGED", "Purged"),
     ]
     VERIFICATION_METHOD_CHOICES = [
         ("password", "Account password"),

@@ -589,6 +589,9 @@
                     </tr>
                 </tbody>
             </table>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 16px; line-height: 1.6;">
+                * All data is deleted after one month. We cannot remove everything immediately so that an accidental deletion can still be reviewed and restored if needed within that period.
+            </p>
         </div>
 
         <!-- SECTION 2: Steps to Delete from App -->
@@ -630,14 +633,14 @@
                     <span class="step-number">4</span>
                     <div class="step-content">
                         <h3>Verify Your Identity</h3>
-                        <p>You'll be asked to re-enter your password or verify via OTP to confirm your identity</p>
+                        <p>Re-enter your account password to confirm it is you</p>
                     </div>
                 </li>
                 <li class="step">
                     <span class="step-number">5</span>
                     <div class="step-content">
                         <h3>Confirm Deletion</h3>
-                        <p>Review the data that will be deleted and tap <code>Permanently Delete Account</code> to confirm</p>
+                        <p>Confirm to lock your account immediately. After 1 month, all your data will be permanently deleted.</p>
                     </div>
                 </li>
             </ol>
@@ -663,7 +666,7 @@
                 </button>
                 <div class="faq-answer">
                     <div class="faq-answer-inner">
-                        If you delete your account from within the app, your data is queued for deletion immediately and is fully removed within 24-48 hours. For web form requests, we process deletions within 7 business days after verifying your identity.
+                        After you verify your password in the app, your account is locked immediately. All personal data is permanently deleted after 1 month from that date.
                     </div>
                 </div>
             </div>
@@ -677,7 +680,7 @@
                 </button>
                 <div class="faq-answer">
                     <div class="faq-answer-inner">
-                        No. Once your account is deleted, the action is permanent and cannot be reversed. You can create a new account, but your previous data, leads, and properties cannot be restored.
+                        Your account is locked right away. After the 1-month period, all data is permanently deleted and cannot be restored. Contact support@padosiagent.com quickly if the request was a mistake.
                     </div>
                 </div>
             </div>
@@ -691,7 +694,7 @@
                 </button>
                 <div class="faq-answer">
                     <div class="faq-answer-inner">
-                        No. All your personal data is permanently deleted from our servers. We do not sell, share, or retain any personal information after your account is deleted. Only anonymized, non-personal analytics data may be retained.
+                        No. After 1 month, all your personal data is permanently deleted from our live systems. We do not sell or share personal information. Only anonymized, non-personal analytics may be retained.
                     </div>
                 </div>
             </div>
@@ -737,7 +740,16 @@
             </div>
             <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.8;">
                 If you have questions or need assistance, contact our support team:<br>
-                📧 Email: <a href="mailto:support@padosiagent.com" style="color: var(--secondary); text-decoration: none; font-weight: 500;">support@padosiagent.com</a><br>
+                📧 Email:
+                <a href="mailto:{{ footer_settings.contact_email|default:'support@padosiagent.com' }}"
+                   style="color: var(--secondary); text-decoration: none; font-weight: 500;">
+                    {{ footer_settings.contact_email|default:'support@padosiagent.com' }}
+                </a><br>
+                📞 Phone:
+                <a href="tel:{{ footer_settings.contact_phone|default:'+91 80000 00000' }}"
+                   style="color: var(--secondary); text-decoration: none; font-weight: 500;">
+                    {{ footer_settings.contact_phone|default:'+91 80000 00000' }}
+                </a><br>
                 📱 In-App: <code>Profile → Help & Support</code><br>
                 ⏰ Response Time: Within 24 hours (Mon–Sat)
             </p>
@@ -760,13 +772,11 @@
             const answer = button.nextElementSibling;
             const isActive = button.classList.contains('active');
 
-            // Close all other FAQs
             document.querySelectorAll('.faq-question.active').forEach(q => {
                 q.classList.remove('active');
                 q.nextElementSibling.style.maxHeight = null;
             });
 
-            // Toggle current
             if (!isActive) {
                 button.classList.add('active');
                 answer.style.maxHeight = answer.scrollHeight + 'px';

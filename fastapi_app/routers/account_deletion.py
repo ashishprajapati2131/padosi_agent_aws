@@ -1,15 +1,16 @@
 import logging
-import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from fastapi_app.database import get_db
+from fastapi_app.dependencies.auth import get_current_user
 from fastapi_app.models.account_deletion_request import AccountDeletionRequest
-from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.user import User
 from fastapi_app.schemas.account_deletion import (
     RequestDeletionByPasswordSchema,
+    RequestDeletionPublicSchema,
     DeletionResponseSchema,
     DeletionStatusDetailSchema,
 )
@@ -21,6 +22,8 @@ router = APIRouter(
     prefix="/v1/account-deletion",
     tags=["Account Deletion"],
 )
+
+_GENERIC_PUBLIC_AUTH_ERROR = "Email or password is incorrect."
 
 
 def _now() -> datetime:
@@ -34,99 +37,87 @@ def _get_client_ip(request: Request) -> str:
     return get_client_ip(request)
 
 
-def _logged_in_agent(request: Request):
-    """The agent behind this call: app bearer token, or the website session cookie.
+def _django_agent_from_jwt_user(current_user: User):
+    """Resolve the Django Agent for the login JWT user. Body never picks the account."""
+    from apps.agents.models import Agent as DjangoAgent
+    from apps.agents.services.account_auth import find_agent
 
-    Email is never taken from the body, so one login cannot request deletion of another account.
-    """
-    from django.contrib.auth import get_user_model
-    from django.contrib.sessions.models import Session
-
-    from apps.agents.services.account_auth import find_agent, resolve_agent_for_user
-    from fastapi_app.utils.auth import decode_access_token
-
-    auth = request.headers.get("authorization") or ""
-    if auth.lower().startswith("bearer "):
-        token = auth.split(" ", 1)[1].strip()
-        try:
-            payload = decode_access_token(token)
-        except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please log in again.",
-            )
-        email = (payload.get("sub") or "").strip()
-        if not email or payload.get("role") != "agent":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please log in again.",
-            )
-        agent = find_agent(email)
-        if agent is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please log in again.",
-            )
-        return agent
-
-    session_key = request.cookies.get("sessionid")
-    if not session_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Please log in to delete your account.",
-        )
-    try:
-        session = Session.objects.filter(session_key=session_key).first()
-        data = session.get_decoded() if session else {}
-    except Exception:
-        data = {}
-    user_id = data.get("_auth_user_id")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Please log in to delete your account.",
-        )
-    user = get_user_model().objects.filter(pk=user_id).first()
-    agent = resolve_agent_for_user(user) if user else None
+    email = (current_user.email or "").strip()
+    agent = find_agent(email) if email else None
+    if agent is None and getattr(current_user, "id", None):
+        # Same fallback as get_current_agent when email on the token/user drifted.
+        candidate = DjangoAgent.objects.filter(user_id=current_user.id).first()
+        if candidate and email and (candidate.email or "").lower() == email.lower():
+            agent = candidate
+        elif candidate and not email:
+            agent = candidate
     if agent is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Please log in with the agent account you want to delete.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent profile not found.",
         )
     return agent
 
 
-def _account_snapshot(agent, profile, reason: str, comments: str) -> dict:
-    """Identity the admin reviews. The account itself is not removed."""
-    return {
-        "fullname": (agent.fullname or "").strip(),
-        "email": (agent.email or "").strip(),
-        "mobile": (agent.mobile or "").strip(),
-        "pan_number": ((profile.pan_number if profile else "") or "").strip().upper(),
-        "profession": (agent.profession or "").strip(),
-        "pincode": (agent.agent_pincode or "").strip(),
-        "state": ((profile.state if profile else "") or "").strip(),
-        "city": ((getattr(profile, "address", None) or "") if profile else "").strip()[:180],
-        "agent_status": agent.status or "",
-        "reason_category": reason or "Account deletion requested",
-        "reason_details": comments or "",
-        "verification": "password",
-    }
+def _response_from_del_req(del_req, *, created: bool) -> DeletionResponseSchema:
+    purge = del_req.scheduled_purge_date
+    purge_on = purge.isoformat() if purge else None
+    if created:
+        message = (
+            "Your account has been locked. Login is disabled. "
+            "All personal data will be permanently deleted after 1 month. "
+            "A confirmation email has been sent."
+        )
+    else:
+        message = (
+            "This account is already locked for deletion. "
+            "Personal data will be permanently deleted on the scheduled date."
+        )
+    return DeletionResponseSchema(
+        success=True,
+        message=message,
+        reference_id=del_req.reference_id,
+        status=del_req.status,
+        purge_on=purge_on,
+    )
 
 
-@router.post("/request", response_model=DeletionResponseSchema)
+def _lock_after_password_ok(agent, payload, request: Request) -> DeletionResponseSchema:
+    from apps.admin_panel.services.account_deletion_service import (
+        lock_account_for_user_deletion,
+    )
+
+    try:
+        del_req, created = lock_account_for_user_deletion(
+            agent,
+            reason=getattr(payload, "reason", None) or "",
+            comments=getattr(payload, "comments", None) or "",
+            ip_address=_get_client_ip(request),
+            user_agent=(request.headers.get("user-agent") or "")[:500],
+        )
+    except Exception:
+        logger.exception("Account deletion lock failed for agent_id=%s", getattr(agent, "id", None))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not complete account deletion. Please try again.",
+        )
+    return _response_from_del_req(del_req, created=created)
+
+
+@router.delete("/request", response_model=DeletionResponseSchema)
 def request_deletion_with_password(
     payload: RequestDeletionByPasswordSchema,
     request: Request,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Logged-in agent confirms their password. A match files a request for an admin.
+    App delete: Authorization Bearer = login JWT (same token from login).
 
-    A wrong password is rejected and nothing is saved. The agent row is never
-    deleted here. An admin approves it from /admin/account-deletion-requests/.
+    JWT identifies which account; password in the body confirms the holder.
+    Does not use get_current_agent so expired subscription still allows delete.
     """
-    agent = _logged_in_agent(request)
+    agent = _django_agent_from_jwt_user(current_user)
     from apps.agents.services.account_auth import verify_agent_password
 
     try:
@@ -143,67 +134,44 @@ def request_deletion_with_password(
             detail="Password is incorrect.",
         )
 
-    email_clean = (agent.email or "").strip().lower()
-    existing = (
-        db.query(AccountDeletionRequest)
-        .filter(
-            AccountDeletionRequest.agent_id == agent.id,
-            AccountDeletionRequest.status == "PENDING",
-            AccountDeletionRequest.is_verified.is_(True),
+    return _lock_after_password_ok(agent, payload, request)
+
+
+@router.delete("/request-public", response_model=DeletionResponseSchema)
+def request_deletion_public(
+    payload: RequestDeletionPublicSchema,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Public web / Play Console: email + password → immediate lock.
+    Wrong email or password returns the same generic error.
+    """
+    from apps.agents.services.account_auth import find_agent, verify_agent_password
+
+    email = (payload.email or "").strip().lower()
+    agent = find_agent(email) if email else None
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_GENERIC_PUBLIC_AUTH_ERROR,
         )
-        .order_by(AccountDeletionRequest.id.desc())
-        .first()
-    )
-    if existing:
-        return DeletionResponseSchema(
-            success=True,
-            message=(
-                "A deletion request for this account is already waiting for an admin. "
-                "The account stays active until that request is approved."
-            ),
-            reference_id=existing.reference_id,
-            status="PENDING",
+
+    try:
+        password_ok, _, _ = verify_agent_password(agent.email, payload.password, agent=agent)
+    except Exception:
+        logger.exception("Public account deletion password check failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not check the password. Please try again.",
+        )
+    if not password_ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_GENERIC_PUBLIC_AUTH_ERROR,
         )
 
-    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == agent.id).first()
-    reason = (payload.reason or "Account deletion requested").strip()
-    comments = (payload.comments or "").strip()
-    now = _now()
-    ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(8).upper()}"
-    summary = _account_snapshot(agent, profile, reason, comments)
-
-    del_req = AccountDeletionRequest(
-        reference_id=ref_id,
-        identifier=summary["pan_number"] or email_clean,
-        email=email_clean,
-        mobile=agent.mobile or "",
-        account_type="agent",
-        status="PENDING",
-        verification_method="password",
-        is_verified=True,
-        reason=f"[{reason}] {comments}".strip(),
-        data_retention_summary=summary,
-        ip_address=_get_client_ip(request),
-        user_agent=(request.headers.get("user-agent") or "")[:500],
-        agent_id=agent.id,
-        user_id=getattr(agent, "user_id", None),
-        admin_notes="Password confirmed by the logged-in account holder. Waiting for admin approval. Account not deleted.",
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(del_req)
-    db.commit()
-
-    return DeletionResponseSchema(
-        success=True,
-        message=(
-            "Your deletion request was sent to the admin team. "
-            "Your account is still active. It is closed only after an admin approves the request. "
-            "Name, phone, email, and compliance records are kept."
-        ),
-        reference_id=ref_id,
-        status="PENDING",
-    )
+    return _lock_after_password_ok(agent, payload, request)
 
 
 @router.get("/status/{reference_id}", response_model=DeletionStatusDetailSchema)
@@ -211,10 +179,7 @@ def get_deletion_status(
     reference_id: str,
     db: Session = Depends(get_db),
 ):
-    """
-    Allows user or admin to check the detailed status of an account deletion request.
-    Returns submission time, processed time, rejection reason (if any), and current status.
-    """
+    """Public status check; personal fields are masked (audit API1)."""
     del_req = (
         db.query(AccountDeletionRequest)
         .filter(AccountDeletionRequest.reference_id == reference_id.strip())
@@ -228,8 +193,6 @@ def get_deletion_status(
         )
 
     summary = dict(del_req.data_retention_summary or {})
-
-    # Format submitted_at and processed_at
     sub_at_str = (
         del_req.created_at.strftime("%d %b %Y, %I:%M %p") if del_req.created_at else "-"
     )
@@ -238,10 +201,28 @@ def get_deletion_status(
         if del_req.processed_at
         else "Pending Action"
     )
+    purge_date = del_req.scheduled_purge_date
+    purge_on = None
+    if purge_date is not None and hasattr(purge_date, "isoformat"):
+        try:
+            purge_on = purge_date.isoformat()
+        except Exception:
+            purge_on = None
 
-    if del_req.status == "COMPLETED":
-        status_display = "Terminated"
-        msg = f"Your account has been terminated by administration. Request status is COMPLETED. (Verified: {del_req.is_verified})"
+    if del_req.status == "PURGED" or summary.get("purged_at"):
+        status_display = "Data purged"
+        msg = (
+            "Your account was locked and personal data has been permanently deleted "
+            f"after the retention period. (Verified: {del_req.is_verified})"
+        )
+    elif del_req.status == "COMPLETED":
+        status_display = "Account locked"
+        msg = (
+            "Your account is locked. Login is disabled. "
+            "All personal data will be permanently deleted after 1 month "
+            f"(scheduled: {purge_on or 'pending'}). "
+            f"(Verified: {del_req.is_verified})"
+        )
     elif del_req.status == "REJECTED":
         status_display = "Rejected"
         rej_msg = (
@@ -250,10 +231,11 @@ def get_deletion_status(
         )
         msg = f"Your deletion request was rejected. Reason: {rej_msg}"
     else:
-        status_display = (
-            "Pending admin approval"
+        status_display = "Account active again"
+        msg = (
+            "This account was reactivated by administration. "
+            f"(Verified: {del_req.is_verified})"
         )
-        msg = f"Request status is PENDING. (Verified: {del_req.is_verified})"
 
     return DeletionStatusDetailSchema(
         success=True,
@@ -262,8 +244,6 @@ def get_deletion_status(
         status=del_req.status,
         status_display=status_display,
         is_verified=del_req.is_verified,
-        # Anyone holding the ref can call this, so personal data is masked and staff notes stay
-        # internal (audit API1).
         fullname=_mask_name(summary.get("fullname") or del_req.identifier),
         email=_mask_email(del_req.email),
         mobile=_mask_mobile(del_req.mobile),
@@ -272,6 +252,7 @@ def get_deletion_status(
         reason=summary.get("reason_category") or del_req.reason,
         rejection_reason=del_req.rejection_reason or "",
         admin_notes="",
+        purge_on=purge_on,
     )
 
 

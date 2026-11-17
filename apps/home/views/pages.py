@@ -817,10 +817,8 @@ def cancellation_refund_policy(request):
     return render(request, 'public/cancellation-refund-policy.html')
 
 
-@vary_on_cookie
-@cache_page(60 * 60 * 2)
 def delete_account(request):
-    """Public account-deletion instructions page (Play Store / App Store requirement)."""
+    """Public account-deletion page (Play Store / App Store). Not cached — policy text must stay current."""
     return render(request, 'public/delete-account.html')
 
 

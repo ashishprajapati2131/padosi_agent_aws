@@ -1,8 +1,14 @@
 """/account-deletion/status/{ref} needs no login, so it must not hand out personal data (audit API1)."""
 
+import os
 import unittest
 from datetime import datetime
 from unittest.mock import MagicMock
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
+import django
+
+django.setup()
 
 from fastapi_app.routers.account_deletion import get_deletion_status
 
@@ -21,6 +27,7 @@ class DeletionStatusMaskingTests(unittest.TestCase):
             reason="other",
             created_at=datetime(2026, 11, 7, 10, 0),
             processed_at=None,
+            scheduled_purge_date=None,
             data_retention_summary={"fullname": "Parth Kumar Sadhu"},
         )
         db = MagicMock()
@@ -32,13 +39,13 @@ class DeletionStatusMaskingTests(unittest.TestCase):
         self.assertEqual(res.email, "pa***@example.com")
         self.assertEqual(res.mobile, "******3210")
         self.assertEqual(res.admin_notes, "")
-        self.assertEqual(res.status_display, "Pending admin approval")
+        self.assertEqual(res.status_display, "Account active again")
 
     def test_email_identifier_is_not_shown_as_name(self):
         del_req = MagicMock(
             reference_id="DEL-X", status="PENDING", is_verified=False, email=None, mobile=None,
             identifier="someone@example.com", admin_notes=None, rejection_reason=None, reason=None,
-            created_at=None, processed_at=None, data_retention_summary={},
+            created_at=None, processed_at=None, scheduled_purge_date=None, data_retention_summary={},
         )
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = del_req

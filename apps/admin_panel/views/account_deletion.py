@@ -29,7 +29,7 @@ def deletion_requests_list(request):
 
     qs = AccountDeletionRequest.objects.all().order_by('-created_at')
 
-    if status_filter in ['PENDING', 'COMPLETED', 'REJECTED']:
+    if status_filter in ['PENDING', 'COMPLETED', 'REJECTED', 'PURGED']:
         qs = qs.filter(status=status_filter)
 
     if search_query:
@@ -46,6 +46,7 @@ def deletion_requests_list(request):
         'total': AccountDeletionRequest.objects.count(),
         'pending': AccountDeletionRequest.objects.filter(status='PENDING').count(),
         'completed': AccountDeletionRequest.objects.filter(status='COMPLETED').count(),
+        'purged': AccountDeletionRequest.objects.filter(status='PURGED').count(),
         'rejected': AccountDeletionRequest.objects.filter(status='REJECTED').count(),
     }
 

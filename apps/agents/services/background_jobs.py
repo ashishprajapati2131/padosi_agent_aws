@@ -244,6 +244,20 @@ def _daily_backup_job():
         logger.exception("[bgjobs] daily database backup failed")
 
 
+def _account_deletion_purge_job():
+    """After ~30 days locked: full backup then purge private live fields."""
+    from apps.admin_panel.services.account_deletion_service import (
+        purge_due_deletion_requests,
+    )
+
+    try:
+        stats = purge_due_deletion_requests()
+        if stats.get("scanned"):
+            logger.info("[bgjobs] account-deletion-purge %s", stats)
+    except Exception:
+        logger.exception("[bgjobs] account-deletion-purge failed")
+
+
 def _wa_broadcast_job():
     """Send due WhatsApp broadcast messages; runs ~50 s so it never overlaps the next 60 s claim."""
     from apps.wa_agent_bot.services.broadcast import process_broadcasts
@@ -271,6 +285,7 @@ JOBS = (
     ("wa-log-prune", 24 * 60 * 60, _wa_log_prune_job),
     ("user-token-prune", 24 * 60 * 60, _user_token_prune_job),
     ("daily-db-backup", 24 * 60 * 60, _daily_backup_job),
+    ("account-deletion-purge", 24 * 60 * 60, _account_deletion_purge_job),
 )
 
 
