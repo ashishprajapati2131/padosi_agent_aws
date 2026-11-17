@@ -448,6 +448,41 @@ class AdminTests(LocalizationTestCase):
             SiteLanguage.objects.get(code="hi").native_name, "Hindi (custom)"
         )
 
+    def test_to_utf8mb4_drops_fks_converts_and_restores(self):
+        import importlib
+        from unittest.mock import MagicMock
+
+        migration = importlib.import_module(
+            "apps.localization.migrations.0004_utf8mb4_tables"
+        )
+        mock_editor = MagicMock()
+        mock_editor.connection.vendor = "mysql"
+        mock_cursor = MagicMock()
+        mock_editor.connection.cursor.return_value.__enter__.return_value = mock_cursor
+
+        # Mock information_schema queries:
+        # 1. existing tables
+        # 2. foreign keys
+        # 3. count for settings FK
+        # 4. count for state_languages FK
+        mock_cursor.fetchall.side_effect = [
+            [("localization_languages",), ("localization_settings",)],
+            [("localization_settings", "fk_default_lang", "default_language_id", "localization_languages", "code", "RESTRICT", "RESTRICT")],
+        ]
+        mock_cursor.fetchone.side_effect = [
+            (1,),  # settings FK already restored
+            (1,),  # state_languages FK already restored
+        ]
+
+        migration.to_utf8mb4(None, mock_editor)
+
+        executed_sqls = [call[0][0] for call in mock_cursor.execute.call_args_list]
+        self.assertIn("SET FOREIGN_KEY_CHECKS = 0", executed_sqls)
+        self.assertTrue(any("DROP FOREIGN KEY `fk_default_lang`" in sql for sql in executed_sqls))
+        self.assertTrue(any("CONVERT TO CHARACTER SET utf8mb4" in sql for sql in executed_sqls))
+        self.assertTrue(any("ADD CONSTRAINT `fk_default_lang`" in sql for sql in executed_sqls))
+        self.assertEqual(executed_sqls[-1], "SET FOREIGN_KEY_CHECKS = 1")
+
     def test_every_website_text_fits_the_msgid_column(self):
         self.assertTrue(all(len(m) <= 191 for m in services.website_messages()))
 
