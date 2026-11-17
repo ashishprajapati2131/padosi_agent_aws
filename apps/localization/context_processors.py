@@ -6,16 +6,16 @@ from apps.localization import services
 # Header logo per language (static/img/logos/padosi-<code>.webp, 141px tall) -> display width at 47px.
 LANGUAGE_LOGO_WIDTHS = {
     "en": 156,
-    "hi": 139,
-    "gu": 143,
-    "mr": 139,
-    "ta": 162,
-    "kn": 157,
-    "ml": 169,
-    "bn": 151,
-    "pa": 138,
-    "te": 133,
-    "or": 149,
+    "hi": 160,
+    "gu": 161,
+    "mr": 167,
+    "ta": 170,
+    "kn": 165,
+    "ml": 167,
+    "bn": 166,
+    "pa": 168,
+    "te": 172,
+    "or": 170,
     "as": 151,
 }
 
