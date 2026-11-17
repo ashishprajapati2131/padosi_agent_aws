@@ -1087,6 +1087,7 @@ Overview
                         </div>
 
                         <!-- Professional License Upload Module -->
+                        {% if edit_profile_license_docs_enabled %}
                         <div class="row mb-4" data-feature="edit_profile_certifications">
                             <div class="col-12 mb-3">
                                 <h6 class="text-primary font-weight-bold mb-1">
@@ -1187,8 +1188,10 @@ Overview
                                 </div>
                             </div>
                         </div>
+                        {% endif %}{# /edit_profile_license_docs_enabled #}
 
                         <!-- Investment License Details -->
+                        {% if edit_profile_amfi_investment_enabled %}
                         <div class="row border rounded p-3 mb-4 bg-light mx-0"
                             style="border-color: #cbd5e1 !important; border-radius: 12px !important;">
                             <div class="col-12 px-0">
@@ -1212,6 +1215,7 @@ Overview
                                     value="{{ profile.investment_valid_till|date:'Y-m-d'|default:'' }}">
                             </div>
                         </div>
+                        {% endif %}{# /edit_profile_amfi_investment_enabled #}
 
                         <!-- Lead Preferences Section -->
                         <div class="lead-preferences-section mb-5 pt-4 border-top" id="lead-preferences-section" data-feature="lead_preferences" data-lead-locked="{% if agent_plan and not agent_plan.show_lead_preferences %}1{% else %}0{% endif %}">

@@ -1101,9 +1101,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#leads" data-tab="leads" data-feature="lead_management"><i class="far fa-list-alt mr-2"></i>Leads</a>
                 </li>
+                {% if referral_championship_dashboard_enabled %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'championship:agent_dashboard' %}" style="color: #d97706; font-weight: 700;"><i class="fas fa-trophy mr-2 text-warning"></i>Referral Championship</a>
                 </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" href="#qrcodes" data-tab="qrcodes" data-feature="qr_codes"><i class="fas fa-qrcode mr-2"></i>QR Codes</a>
                 </li>
@@ -1138,7 +1140,7 @@
         </div>
 
         {# Hidden once the campaign has ended, and for festive free-trial agents. #}
-        {% if champ_campaign and champ_campaign.days_left > 0 and not event_referral_participant.grant_expires_at %}
+        {% if referral_championship_dashboard_enabled and champ_campaign and champ_campaign.days_left > 0 and not event_referral_participant.grant_expires_at %}
         <!-- NATIONAL REFERRAL CHAMPIONSHIP HIGHLIGHT CARD (Simplified UI) -->
         <div class="px-2 mb-4">
             <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 18px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #ffffff; border: 1px solid rgba(255,255,255,0.12);">

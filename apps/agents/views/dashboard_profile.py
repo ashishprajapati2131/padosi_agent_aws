@@ -256,6 +256,15 @@ def render_edit_profile(request, agent, is_admin_view=False):
     allow_custom_val = SiteSetting.get_value("profile_banner_allow_custom_upload", "1")
     banner_allow_custom_upload = str(allow_custom_val).lower() in ("1", "true", "yes")
 
+    # ── Edit-Profile section feature-flag toggles (controlled from Admin → Feature Flags) ──
+    try:
+        from apps.admin_panel.services.feature_flags import is_feature_enabled as _ff
+        edit_profile_license_docs_enabled = _ff("edit_profile_license_docs_enabled", default=True)
+        edit_profile_amfi_investment_enabled = _ff("edit_profile_amfi_investment_enabled", default=True)
+    except Exception:
+        edit_profile_license_docs_enabled = True
+        edit_profile_amfi_investment_enabled = True
+
     context = {
         "banner_presets": banner_presets,
         "banner_feature_enabled": banner_feature_enabled,
@@ -290,6 +299,8 @@ def render_edit_profile(request, agent, is_admin_view=False):
         "agent_id": agent.id,
         "force_lock_all_features": force_lock_all_features,
         "event_referral_expired_locked": event_referral_expired_locked,
+        "edit_profile_license_docs_enabled": edit_profile_license_docs_enabled,
+        "edit_profile_amfi_investment_enabled": edit_profile_amfi_investment_enabled,
     }
     return render(request, "agents/edit_profile.html", context)
 

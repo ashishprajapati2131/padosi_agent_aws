@@ -142,6 +142,36 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'icon': 'fa-solid fa-palette',
         'is_system': True,
     },
+    {
+        'key': 'edit_profile_license_docs_enabled',
+        'name': 'Edit Profile — Professional License Documents Section',
+        'category': 'Agent Profile',
+        'description': 'Shows or hides the "Professional License Documents" upload section (IRDAI & AMFI certificate uploads) on the agent Edit Profile page. When disabled, agents cannot see or upload license documents.',
+        'redirect_url': '/agent/dashboard/',
+        'default': True,
+        'icon': 'fa-solid fa-file-contract',
+        'is_system': True,
+    },
+    {
+        'key': 'edit_profile_amfi_investment_enabled',
+        'name': 'Edit Profile — AMFI ARN / Investment License Details Section',
+        'category': 'Agent Profile',
+        'description': 'Shows or hides the "AMFI ARN / Investment License Details" section (ARN number, EUIN, ARN valid till date) on the agent Edit Profile page. When disabled, agents cannot fill or see this section.',
+        'redirect_url': '/agent/dashboard/',
+        'default': True,
+        'icon': 'fa-solid fa-chart-line',
+        'is_system': True,
+    },
+    {
+        'key': 'referral_championship_dashboard_enabled',
+        'name': 'Agent Dashboard — Referral Championship Section',
+        'category': 'Growth & Marketing',
+        'description': 'Master toggle for the entire Referral Championship section on the agent dashboard page (/agent/dashboard/). When disabled, the Championship highlight card, nav tab link, and all championship-related UI are hidden from agents.',
+        'redirect_url': '/agent/championship/',
+        'default': True,
+        'icon': 'fa-solid fa-trophy',
+        'is_system': True,
+    },
 ]
 
 

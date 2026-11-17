@@ -687,6 +687,15 @@ def agent_dashboard(request):
     except Exception as e:
         logger.warning("Referral championship context error: %s", e)
 
+    # ── Referral Championship dashboard section toggle ──
+    try:
+        from apps.admin_panel.services.feature_flags import is_feature_enabled as _ff_check
+        referral_championship_dashboard_enabled = _ff_check(
+            "referral_championship_dashboard_enabled", default=True
+        )
+    except Exception:
+        referral_championship_dashboard_enabled = True
+
     auto_show_studio = bool(
         request.session.pop("auto_show_invite_studio", False)
         or request.GET.get("show_studio") == "1"
@@ -734,6 +743,7 @@ def agent_dashboard(request):
         "champ_is_unlocked": champ_is_unlocked,
         "champ_completion": champ_completion,
         "champ_reviews": champ_reviews,
+        "referral_championship_dashboard_enabled": referral_championship_dashboard_enabled,
         "agent_plan": agent_plan,
         "agent": agent,
         "profile": profile,
