@@ -20,6 +20,7 @@ class StaticViewSitemap(Sitemap):
             'home:calculators',
             'home:blacklisted_agents',
             'home:cancellation_refund',
+            'home:delete_account',
             'home:lic_event',
             'home:terms',
             'home:privacy',

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>{% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Account — Padosi Agent App</title>
+    <meta name="description" content="Request deletion of your Padosi Agent App account and all associated data.">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/logo-icon.png' %}">
+    <link rel="canonical" href="{{ public_site_base }}{% url 'home:delete_account' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Design Tokens (from AppColors) ── */
+        :root {
+            --primary:            #135E3E;
+            --primary-light:      #E6F4EA;
+            --secondary:          #09449C;
+            --text-primary:       #1A1A2E;
+            --text-secondary:     #6B7280;
+            --background:         #FFFFFF;
+            --surface:            #F8F9FA;
+            --surface-card:       #F5F5F5;
+            --error:              #D32F2F;
+            --error-destructive:  #DC2626;
+            --error-light:        #FEF2F2;
+            --warning:            #E65100;
+            --warning-light:      #FFF3E0;
+            --divider:            #E0E0E0;
+            --card-border:        #E8ECF0;
+            --slate-50:           #F8FAFC;
+            --slate-100:          #F1F5F9;
+            --slate-200:          #E2E8F0;
+            --slate-500:          #64748B;
+            --slate-700:          #334155;
+            --slate-800:          #1E293B;
+            --success:            #2E7D32;
+            --success-light:      #E8F5E9;
+            --radius:             12px;
+            --radius-sm:          8px;
+            --shadow:             0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-lg:          0 10px 25px rgba(0,0,0,.08), 0 4px 10px rgba(0,0,0,.04);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text-primary);
+            background: var(--surface);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--background);
+            border-bottom: 1px solid var(--card-border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-inner {
+            max-width: 720px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ── Main Container ── */
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 32px 24px 64px;
+        }
+
+        /* ── Hero Section ── */
+        .hero {
+            text-align: center;
+            padding: 40px 0 32px;
+        }
+        .hero-icon {
+            width: 72px;
+            height: 72px;
+            background: var(--error-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .hero-icon svg {
+            width: 36px;
+            height: 36px;
+            color: var(--error-destructive);
+        }
+        .hero h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .hero p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--background);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card-title .icon-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .card-title .icon-circle svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* ── Alert Boxes ── */
+        .alert {
+            border-radius: var(--radius-sm);
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .alert svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .alert-warning {
+            background: var(--warning-light);
+            border: 1px solid #FFCC80;
+            color: var(--warning);
+        }
+        .alert-error {
+            background: var(--error-light);
+            border: 1px solid #FFCDD2;
+            color: var(--error-destructive);
+        }
+        .alert-info {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #2563EB;
+        }
+
+        /* ── Steps ── */
+        .steps {
+            counter-reset: step-counter;
+            list-style: none;
+            padding: 0;
+        }
+        .step {
+            counter-increment: step-counter;
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--slate-100);
+            align-items: flex-start;
+        }
+        .step:last-child { border-bottom: none; }
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-content h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .step-content p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .step-content code {
+            background: var(--slate-100);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        /* ── Data Table ── */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .data-table th {
+            text-align: left;
+            padding: 10px 14px;
+            background: var(--slate-50);
+            color: var(--slate-500);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--slate-200);
+        }
+        .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--slate-100);
+            color: var(--text-primary);
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-red {
+            background: var(--error-light);
+            color: var(--error-destructive);
+        }
+        .badge-green {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        /* ── Form ── */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .form-label .required {
+            color: var(--error-destructive);
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: var(--background);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(9, 68, 156, 0.1);
+        }
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: #AAAAAA;
+        }
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* ── Checkbox ── */
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px 16px;
+            background: var(--error-light);
+            border: 1px solid #FFCDD2;
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: var(--error-destructive);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .checkbox-group label {
+            font-size: 14px;
+            color: var(--error-destructive);
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-danger {
+            background: var(--error-destructive);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #B91C1C;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        .btn-danger:disabled {
+            background: #BDBDBD;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--slate-200);
+        }
+        .btn-outline:hover {
+            background: var(--slate-50);
+            border-color: var(--slate-300);
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Success State ── */
+        .success-state {
+            display: none;
+            text-align: center;
+            padding: 48px 24px;
+        }
+        .success-state.visible { display: block; }
+        .success-icon {
+            width: 72px;
+            height: 72px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .success-icon svg {
+            width: 36px;
+            height: 36px;
+            color: var(--success);
+        }
+        .success-state h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .success-state p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 6px;
+        }
+        .ref-code {
+            display: inline-block;
+            background: var(--slate-100);
+            padding: 8px 20px;
+            border-radius: var(--radius-sm);
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin: 16px 0;
+            letter-spacing: 1px;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center;
+            padding: 32px 24px;
+            border-top: 1px solid var(--card-border);
+            margin-top: 20px;
+        }
+        .footer p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .footer a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .footer a:hover { text-decoration: underline; }
+
+        /* ── FAQ Accordion ── */
+        .faq-item {
+            border-bottom: 1px solid var(--slate-100);
+        }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question {
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 16px 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq-question:hover { color: var(--secondary); }
+        .faq-question .chevron {
+            transition: transform 0.2s;
+            color: var(--text-secondary);
+        }
+        .faq-question.active .chevron { transform: rotate(180deg); }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .faq-answer-inner {
+            padding: 0 0 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .container { padding: 20px 16px 48px; }
+            .card { padding: 20px; }
+            .hero h1 { font-size: 24px; }
+            .btn-group { flex-direction: column; }
+            .btn { width: 100%; }
+            .data-table th, .data-table td { padding: 8px 10px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <img src="{% static 'img/logo-icon.png' %}" alt="Padosi Logo" class="header-logo"
+                 onerror="this.style.display='none'">
+            <span class="header-title">Padosi Agent App</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container" id="main-content">
+
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                </svg>
+            </div>
+            <h1>Delete Your Account</h1>
+            <p>Request permanent deletion of your Padosi Agent App account and all associated personal data.</p>
+        </section>
+
+        <!-- Warning Alert -->
+        <div class="alert alert-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div>
+                <strong>This action is permanent and cannot be undone.</strong><br>
+                Once your account is deleted, you will lose access to all your data, leads, properties, and transaction history.
+            </div>
+        </div>
+
+        <!-- SECTION 1: What Gets Deleted -->
+        <div class="card">
+            <div class="card-title">
+                <span class="icon-circle" style="background: var(--error-light);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="var(--error-destructive)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                </span>
+                What Data Gets Deleted
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Data Category</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Profile Information (name, email, phone, photo)</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Property Listings & Media</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Leads & Contact History</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Transaction & Deal Records</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Saved Searches & Preferences</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Push Notification Tokens</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Authentication Credentials</td>
+                        <td><span class="badge badge-red">Deleted</span></td>
+                    </tr>
+                    <tr>
+                        <td>Anonymized Analytics (non-personal)</td>
+                        <td><span class="badge badge-green">Retained</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- SECTION 2: Steps to Delete from App -->
+        <div class="card">
+            <div class="card-title">
+                <span class="icon-circle" style="background: #EFF6FF;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2563EB">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                    </svg>
+                </span>
+                Delete from the App
+            </div>
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+                You can delete your account directly from the Padosi Agent App:
+            </p>
+            <ol class="steps">
+                <li class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Open Settings</h3>
+                        <p>Open the Padosi Agent App and navigate to <code>Profile → Settings</code></p>
+                    </div>
+                </li>
+                <li class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Go to Account Section</h3>
+                        <p>Scroll down and tap on <code>Account & Security</code></p>
+                    </div>
+                </li>
+                <li class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Tap Delete Account</h3>
+                        <p>Tap on <code>Delete My Account</code> at the bottom of the page</p>
+                    </div>
+                </li>
+                <li class="step">
+                    <span class="step-number">4</span>
+                    <div class="step-content">
+                        <h3>Verify Your Identity</h3>
+                        <p>You'll be asked to re-enter your password or verify via OTP to confirm your identity</p>
+                    </div>
+                </li>
+                <li class="step">
+                    <span class="step-number">5</span>
+                    <div class="step-content">
+                        <h3>Confirm Deletion</h3>
+                        <p>Review the data that will be deleted and tap <code>Permanently Delete Account</code> to confirm</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <!-- SECTION 4: FAQ -->
+        <div class="card">
+            <div class="card-title">
+                <span class="icon-circle" style="background: var(--slate-100);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="var(--slate-700)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                    </svg>
+                </span>
+                Frequently Asked Questions
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFaq(this)">
+                    How long does account deletion take?
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        If you delete your account from within the app, your data is queued for deletion immediately and is fully removed within 24-48 hours. For web form requests, we process deletions within 7 business days after verifying your identity.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFaq(this)">
+                    Can I recover my account after deletion?
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        No. Once your account is deleted, the action is permanent and cannot be reversed. You can create a new account, but your previous data, leads, and properties cannot be restored.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFaq(this)">
+                    Will my data be shared after I delete my account?
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        No. All your personal data is permanently deleted from our servers. We do not sell, share, or retain any personal information after your account is deleted. Only anonymized, non-personal analytics data may be retained.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFaq(this)">
+                    What happens to my active listings?
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        All your property listings, associated images, and media will be permanently removed from the platform. Any leads linked to those listings will also be deleted.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFaq(this)">
+                    Can I download my data before deleting?
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        Currently, we do not offer a self-service data export feature. If you need a copy of your data before deletion, please contact our support team at <a href="mailto:support@padosiagent.com" style="color: var(--secondary);">support@padosiagent.com</a> before submitting your deletion request.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="card">
+            <div class="card-title">
+                <span class="icon-circle" style="background: var(--primary-light);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="var(--primary)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                    </svg>
+                </span>
+                Need Help?
+            </div>
+            <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.8;">
+                If you have questions or need assistance, contact our support team:<br>
+                📧 Email: <a href="mailto:support@padosiagent.com" style="color: var(--secondary); text-decoration: none; font-weight: 500;">support@padosiagent.com</a><br>
+                📱 In-App: <code>Profile → Help & Support</code><br>
+                ⏰ Response Time: Within 24 hours (Mon–Sat)
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 Padosi Agent App. All rights reserved.</p>
+        <p>
+            <a href="{% url 'home:privacy' %}">Privacy Policy</a> &nbsp;·&nbsp;
+            <a href="{% url 'home:terms' %}">Terms of Service</a>
+        </p>
+    </footer>
+
+    <script>
+        // ── FAQ Accordion ──
+        function toggleFaq(button) {
+            const answer = button.nextElementSibling;
+            const isActive = button.classList.contains('active');
+
+            // Close all other FAQs
+            document.querySelectorAll('.faq-question.active').forEach(q => {
+                q.classList.remove('active');
+                q.nextElementSibling.style.maxHeight = null;
+            });
+
+            // Toggle current
+            if (!isActive) {
+                button.classList.add('active');
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+            }
+        }
+    </script>
+
+</body>
+</html>

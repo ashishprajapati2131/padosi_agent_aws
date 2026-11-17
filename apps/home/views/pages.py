@@ -817,6 +817,13 @@ def cancellation_refund_policy(request):
     return render(request, 'public/cancellation-refund-policy.html')
 
 
+@vary_on_cookie
+@cache_page(60 * 60 * 2)
+def delete_account(request):
+    """Public account-deletion instructions page (Play Store / App Store requirement)."""
+    return render(request, 'public/delete-account.html')
+
+
 def custom_page(request, slug):
     """
     Catch-all view to render custom CMS pages, or route to agent public profile if slug matches an agent.

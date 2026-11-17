@@ -84,6 +84,7 @@ _RESERVED_PROFILE_SLUGS = frozenset(
         "coming-soon",
         "lic-agent",
         "cancellation-refund-policy",
+        "delete-account",
         "blacklisted-agents",
         "marketing",
         "media",

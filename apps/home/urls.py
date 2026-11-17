@@ -36,6 +36,7 @@ urlpatterns = [
     path('coming-soon/', pages.coming_soon, name='coming_soon'),
     path('lic-agent/', pages.lic_event, name='lic_event'),
     path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),
+    path('delete-account/', pages.delete_account, name='delete_account'),
     path('blacklisted-agents/', pages.blacklisted_agents, name='blacklisted_agents'),
     path('api/quick-lead-capture/', pages.quick_lead_capture, name='quick_lead_capture'),
     path('<slug:slug>/',     pages.custom_page,    name='custom_page'),
