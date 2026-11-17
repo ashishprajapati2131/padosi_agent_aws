@@ -58,22 +58,18 @@
                     background: #ffffff !important;
                 }
                 #reviewShareModal .pa-review-tagline {
-                    color: #475569 !important;
-                    font-size: 12.5px !important;
-                    font-weight: 500 !important;
-                    line-height: 1.45 !important;
-                    margin: 0 0 14px !important;
+                    display: none !important;
                 }
 
-                /* 2-Section Tabs Segmented Control */
+                /* 3-Section Tabs Segmented Control */
                 #reviewShareModal .pa-studio-tabs {
                     display: grid !important;
-                    grid-template-columns: 1fr 1fr !important;
+                    grid-template-columns: 1fr 1fr 1fr !important;
                     background: #f1f5f9 !important;
                     border-radius: 12px !important;
                     padding: 4px !important;
                     gap: 4px !important;
-                    margin-bottom: 14px !important;
+                    margin-bottom: 12px !important;
                 }
                 #reviewShareModal .pa-studio-tab-btn {
                     border: none !important;
@@ -106,17 +102,11 @@
                 #reviewShareModal .pa-studio-lang-row {
                     display: flex !important;
                     align-items: center !important;
-                    justify-content: space-between !important;
-                    margin-bottom: 12px !important;
+                    justify-content: flex-end !important;
+                    margin-bottom: 10px !important;
                 }
                 #reviewShareModal .pa-studio-lang-label {
-                    font-size: 12.5px !important;
-                    font-weight: 700 !important;
-                    color: #1e293b !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 6px !important;
-                    margin: 0 !important;
+                    display: none !important;
                 }
                 #reviewShareModal .pa-studio-lang-select {
                     border-radius: 8px !important;
@@ -125,18 +115,21 @@
                     font-size: 12px !important;
                     font-weight: 700 !important;
                     color: #0f172a !important;
-                    padding: 5px 12px !important;
+                    padding: 5px 10px !important;
                     cursor: pointer !important;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
                     outline: none !important;
+                    width: auto !important;
+                    max-width: 168px !important;
+                    margin-left: auto !important;
                 }
                 #reviewShareModal .pa-studio-lang-select:focus {
                     border-color: #2563eb !important;
                 }
 
-                /* Pre-drafted Template Chips */
+                /* Pre-drafted Template Chips — hidden (use default template only) */
                 #reviewShareModal .pa-studio-templates-box {
-                    margin-bottom: 12px !important;
+                    display: none !important;
                 }
                 #reviewShareModal .pa-studio-templates-header {
                     display: flex !important;
@@ -246,15 +239,22 @@
                     text-decoration: underline !important;
                 }
 
-                /* Primary WhatsApp CTA Button */
+                /* Primary WhatsApp + Copy actions */
+                #reviewShareModal .pa-studio-cta-row {
+                    display: flex !important;
+                    align-items: stretch !important;
+                    gap: 8px !important;
+                    margin: 10px 0 12px !important;
+                }
                 #reviewShareModal .pa-studio-wa-btn {
-                    width: 100% !important;
+                    flex: 1 1 auto !important;
+                    width: auto !important;
                     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
                     color: #ffffff !important;
                     border: none !important;
                     border-radius: 12px !important;
-                    padding: 12px 20px !important;
-                    font-size: 14.5px !important;
+                    padding: 11px 14px !important;
+                    font-size: 13.5px !important;
                     font-weight: 800 !important;
                     display: flex !important;
                     align-items: center !important;
@@ -263,8 +263,14 @@
                     box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
                     cursor: pointer !important;
                     transition: all 0.2s ease !important;
-                    margin: 12px 0 14px !important;
+                    margin: 0 !important;
                     text-decoration: none !important;
+                    white-space: nowrap !important;
+                }
+                #reviewShareModal .pa-studio-cta-row .pa-studio-copy-action {
+                    flex: 0 0 auto !important;
+                    width: auto !important;
+                    white-space: nowrap !important;
                 }
                 #reviewShareModal .pa-studio-wa-btn:hover {
                     background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
@@ -427,64 +433,34 @@
                         -webkit-overflow-scrolling: touch !important;
                         flex: 1 1 auto !important;
                     }
-                    #reviewShareModal .pa-review-tagline {
-                        font-size: 11px !important;
-                        line-height: 1.35 !important;
-                        margin: 0 0 10px !important;
-                    }
                     #reviewShareModal .pa-studio-tabs {
                         padding: 3px !important;
                         gap: 3px !important;
-                        margin-bottom: 10px !important;
+                        margin-bottom: 8px !important;
                     }
                     #reviewShareModal .pa-studio-tab-btn {
-                        padding: 8px 4px !important;
-                        font-size: 11.5px !important;
-                        gap: 4px !important;
+                        padding: 8px 2px !important;
+                        font-size: 10.5px !important;
+                        gap: 3px !important;
                         border-radius: 7px !important;
+                    }
+                    #reviewShareModal .pa-studio-tab-btn span {
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
                     }
                     #reviewShareModal .pa-studio-lang-row {
                         margin-bottom: 8px !important;
-                    }
-                    #reviewShareModal .pa-studio-lang-label {
-                        font-size: 11px !important;
+                        justify-content: flex-end !important;
                     }
                     #reviewShareModal .pa-studio-lang-select {
-                        font-size: 11.5px !important;
-                        padding: 4px 8px !important;
-                    }
-                    #reviewShareModal .pa-studio-templates-box {
-                        margin-bottom: 8px !important;
-                    }
-                    #reviewShareModal .pa-studio-templates-header {
-                        margin-bottom: 4px !important;
-                    }
-                    #reviewShareModal .pa-studio-templates-label {
-                        font-size: 10.5px !important;
-                    }
-                    #reviewShareModal .pa-studio-mode-pill {
-                        font-size: 10px !important;
-                        padding: 1px 6px !important;
-                    }
-                    #reviewShareModal .pa-studio-template-chips {
-                        display: flex !important;
-                        flex-wrap: nowrap !important;
-                        overflow-x: auto !important;
-                        -webkit-overflow-scrolling: touch !important;
-                        scrollbar-width: none !important;
-                        padding-bottom: 3px !important;
-                        gap: 5px !important;
-                    }
-                    #reviewShareModal .pa-studio-template-chips::-webkit-scrollbar {
-                        display: none !important;
-                    }
-                    #reviewShareModal .pa-studio-template-chip {
-                        flex-shrink: 0 !important;
-                        padding: 4px 10px !important;
                         font-size: 11px !important;
+                        padding: 4px 8px !important;
+                        width: auto !important;
+                        max-width: 140px !important;
+                        margin-left: auto !important;
                     }
                     #reviewShareModal .pa-studio-textarea {
-                        min-height: 110px !important;
+                        min-height: 100px !important;
                         font-size: 13px !important;
                         padding: 10px 12px !important;
                         line-height: 1.45 !important;
@@ -496,30 +472,34 @@
                     #reviewShareModal .pa-studio-reset-btn {
                         font-size: 10.5px !important;
                     }
+                    #reviewShareModal .pa-studio-cta-row {
+                        gap: 6px !important;
+                        margin: 8px 0 10px !important;
+                    }
                     #reviewShareModal .pa-studio-wa-btn {
-                        padding: 11px 16px !important;
-                        font-size: 14px !important;
-                        margin: 10px 0 10px !important;
+                        padding: 10px 8px !important;
+                        font-size: 12px !important;
                         border-radius: 10px !important;
+                        gap: 5px !important;
+                    }
+                    #reviewShareModal .pa-studio-cta-row .pa-studio-copy-action {
+                        padding: 10px 10px !important;
+                        font-size: 11.5px !important;
+                        border-radius: 10px !important;
+                        justify-content: center !important;
                     }
                     #reviewShareModal .pa-studio-social-bar {
                         display: flex !important;
-                        flex-direction: column !important;
-                        align-items: stretch !important;
-                        gap: 8px !important;
-                        padding-top: 10px !important;
-                    }
-                    #reviewShareModal .pa-studio-copy-action {
-                        width: 100% !important;
+                        flex-direction: row !important;
+                        align-items: center !important;
                         justify-content: center !important;
-                        padding: 8px 12px !important;
-                        font-size: 12px !important;
-                        border-radius: 8px !important;
+                        gap: 8px !important;
+                        padding-top: 8px !important;
                     }
                     #reviewShareModal .pa-studio-social-actions {
                         width: 100% !important;
-                        justify-content: space-between !important;
-                        margin-top: 2px !important;
+                        justify-content: center !important;
+                        margin-top: 0 !important;
                     }
                     #reviewShareModal .pa-studio-social-actions .pa-fab {
                         width: 38px !important;
@@ -555,68 +535,65 @@
 
             <!-- Modal Body -->
             <div class="modal-body pa-review-body">
-                <p class="pa-review-tagline">
-                    {{ studio_modal_subtitle|default:'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.' }}
-                </p>
-
                 <!-- Section Switcher Tabs -->
                 <div class="pa-studio-tabs" role="tablist">
                     <button type="button" class="pa-studio-tab-btn active" id="studioTabReview" data-mode="review">
-                        <i class="fas fa-star" style="color:#f59e0b;"></i> <span>1. {{ studio_tab_review_label|default:'Review & Rating' }}</span>
+                        <i class="fas fa-star" style="color:#f59e0b;"></i> <span>{{ studio_tab_review_label|default:'Review & Rating' }}</span>
                     </button>
                     <button type="button" class="pa-studio-tab-btn" id="studioTabSocial" data-mode="social">
-                        <i class="fas fa-share-alt" style="color:#2563eb;"></i> <span>2. {{ studio_tab_social_label|default:'Social Media Share' }}</span>
+                        <i class="fas fa-share-alt" style="color:#2563eb;"></i> <span>{{ studio_tab_social_label|default:'Social Media Share' }}</span>
+                    </button>
+                    <button type="button" class="pa-studio-tab-btn" id="studioTabRefer" data-mode="refer">
+                        <i class="fas fa-user-plus" style="color:#0d9488;"></i> <span>Refer</span>
                     </button>
                 </div>
 
-                <!-- Language Selector Row -->
+                <!-- Language Selector (label text removed; keep select) -->
                 <div class="pa-studio-lang-row">
-                    <label for="studioLangSelect" class="pa-studio-lang-label">
-                        <i class="fas fa-language text-primary" style="font-size:16px;"></i> Select regional language:
-                    </label>
-                    <select id="studioLangSelect" class="pa-studio-lang-select">
+                    <label for="studioLangSelect" class="pa-studio-lang-label sr-only">Language</label>
+                    <select id="studioLangSelect" class="pa-studio-lang-select" aria-label="Language">
                         <option value="en" selected>English</option>
-                        <option value="hi">हिन्दी (Hindi)</option>
-                        <option value="gu">ગુજરાતી (Gujarati)</option>
-                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="hi">Hindi</option>
+                        <option value="gu">Gujarati</option>
+                        <option value="mr">Marathi</option>
                     </select>
                 </div>
 
-                <!-- Pre-drafted Template Chips -->
-                <div class="pa-studio-templates-box">
+                <!-- Template chips kept in DOM for JS compatibility but hidden via CSS -->
+                <div class="pa-studio-templates-box" aria-hidden="true">
                     <div class="pa-studio-templates-header">
                         <span class="pa-studio-templates-label">Pre-drafted Messages:</span>
                         <span id="studioModeBadge" class="pa-studio-mode-pill bg-warning text-dark border">⭐ Review Mode</span>
                     </div>
-                    <div id="studioTemplateChips" class="pa-studio-template-chips">
-                        <!-- Chips rendered dynamically via JS -->
-                    </div>
+                    <div id="studioTemplateChips" class="pa-studio-template-chips"></div>
                 </div>
 
                 <!-- Custom Editable Message Box -->
-                <div style="margin-bottom: 6px;">
-                    <textarea id="studioMessageBox" class="pa-studio-textarea" rows="6" placeholder="Type or edit your message here..."></textarea>
+                <div style="margin-bottom: 4px;">
+                    <textarea id="studioMessageBox" class="pa-studio-textarea" rows="5" placeholder="Type or edit your message here..."></textarea>
                     <div class="pa-studio-textarea-helper">
                         <span class="pa-studio-textarea-tip">
-                            <i class="fas fa-pen text-primary"></i> You can freely edit this text before sending
+                            <i class="fas fa-pen text-primary"></i> Edit before sending
                         </span>
                         <button type="button" id="studioResetBtn" class="pa-studio-reset-btn">
-                            <i class="fas fa-undo-alt"></i> Reset to template
+                            <i class="fas fa-undo-alt"></i> Reset
                         </button>
                     </div>
                 </div>
 
-                <!-- Primary CTA: Send on WhatsApp Now -->
-                <button type="button" id="studioWaBtn" class="pa-studio-wa-btn">
-                    <i class="fab fa-whatsapp" style="font-size:19px;"></i> Send on WhatsApp Now
-                </button>
-
-                <!-- Quick Share & Social Row -->
-                <div class="pa-studio-social-bar">
+                <!-- WhatsApp + Copy side by side (especially phone) -->
+                <div class="pa-studio-cta-row">
+                    <button type="button" id="studioWaBtn" class="pa-studio-wa-btn">
+                        <i class="fab fa-whatsapp" style="font-size:18px;"></i> Send on WhatsApp Now
+                    </button>
                     <button type="button" class="pa-studio-copy-action" id="studioCopyBtn" title="Copy Message">
                         <i class="fas fa-copy"></i> Copy Message
                     </button>
-                    <div class="pa-studio-social-actions">
+                </div>
+
+                <!-- Social share icons -->
+                <div class="pa-studio-social-bar">
+                    <div class="pa-studio-social-actions" style="width:100%; justify-content:center;">
                         <span style="font-size:11.5px; font-weight:700; color:#64748b; margin-right:4px;">Share:</span>
                         <button type="button" class="pa-fab pa-fab-wa" id="studioQuickWaBtn" title="WhatsApp" aria-label="Share on WhatsApp">
                             <i class="fab fa-whatsapp"></i>
@@ -677,7 +654,7 @@
 
     // Global testing helper
     window.openInviteStudio = function(mode) {
-        if (mode && (mode === 'review' || mode === 'social')) {
+        if (mode && (mode === 'review' || mode === 'social' || mode === 'refer')) {
             currentMode = mode;
             currentTemplateIdx = 0;
             if (typeof updateStudioUI === 'function') {
@@ -704,7 +681,7 @@
     var digitalPrice = "{{ studio_dig_price|escapejs }}";
     var profPrice = "{{ studio_prof_price|escapejs }}";
 
-    var currentMode = 'review'; // 'review' or 'social'
+    var currentMode = 'review'; // 'review', 'social', or 'refer'
     var currentLang = 'en';     // 'en', 'hi', 'gu', 'mr'
     var currentTemplateIdx = 0;
 
@@ -717,6 +694,7 @@
     var copyBtn = document.getElementById('studioCopyBtn');
     var tabReview = document.getElementById('studioTabReview');
     var tabSocial = document.getElementById('studioTabSocial');
+    var tabRefer = document.getElementById('studioTabRefer');
 
     function renderTemplate(rawText) {
         if (!rawText) return '';
@@ -731,24 +709,34 @@
     }
 
     function getTemplatesList() {
-        var modeObj = studioTemplates[currentMode];
+        // Chips removed: each tab loads one default template. Refer uses social referral invite.
+        var modeKey = (currentMode === 'refer') ? 'social' : currentMode;
+        var modeObj = studioTemplates[modeKey];
         if (!modeObj || !modeObj.languages) return [];
         var langObj = modeObj.languages[currentLang] || modeObj.languages['en'];
-        return (langObj && langObj.templates) ? langObj.templates : [];
+        var list = (langObj && langObj.templates) ? langObj.templates.slice() : [];
+        if (!list.length) return [];
+        if (currentMode === 'refer') {
+            return [list[0]]; // Referral invite
+        }
+        if (currentMode === 'social') {
+            return [list[1] || list[0]]; // Digital card / profile share
+        }
+        return [list[0]]; // Review default
     }
 
     function updateStudioUI(resetText) {
-        // Update tab buttons active state
-        if (tabReview && tabSocial) {
-            tabReview.classList.toggle('active', currentMode === 'review');
-            tabSocial.classList.toggle('active', currentMode === 'social');
-        }
+        if (tabReview) tabReview.classList.toggle('active', currentMode === 'review');
+        if (tabSocial) tabSocial.classList.toggle('active', currentMode === 'social');
+        if (tabRefer) tabRefer.classList.toggle('active', currentMode === 'refer');
 
-        // Update mode badge
         if (modeBadge) {
             if (currentMode === 'review') {
                 modeBadge.innerText = '⭐ Review Mode';
                 modeBadge.className = 'pa-studio-mode-pill bg-warning text-dark border';
+            } else if (currentMode === 'refer') {
+                modeBadge.innerText = '🤝 Refer Mode';
+                modeBadge.className = 'pa-studio-mode-pill bg-success text-white border';
             } else {
                 modeBadge.innerText = '🌐 Social Share Mode';
                 modeBadge.className = 'pa-studio-mode-pill bg-primary text-white border';
@@ -756,34 +744,14 @@
         }
 
         var templates = getTemplatesList();
-        if (currentTemplateIdx >= templates.length) {
-            currentTemplateIdx = 0;
-        }
+        currentTemplateIdx = 0;
 
-        // Render chips
         if (chipsContainer) {
             chipsContainer.innerHTML = '';
-            templates.forEach(function(tmpl, idx) {
-                var chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'pa-studio-template-chip' + (idx === currentTemplateIdx ? ' active' : '');
-                chip.innerText = tmpl.title || ('Template ' + (idx + 1));
-                chip.addEventListener('click', function() {
-                    currentTemplateIdx = idx;
-                    document.querySelectorAll('.pa-studio-template-chip').forEach(function(c, i) {
-                        c.classList.toggle('active', i === idx);
-                    });
-                    if (messageBox) {
-                        messageBox.value = renderTemplate(tmpl.text);
-                    }
-                });
-                chipsContainer.appendChild(chip);
-            });
         }
 
-        // Update message box if requested or empty
-        if (resetText !== false && messageBox && templates[currentTemplateIdx]) {
-            messageBox.value = renderTemplate(templates[currentTemplateIdx].text);
+        if (resetText !== false && messageBox && templates[0]) {
+            messageBox.value = renderTemplate(templates[0].text);
         }
     }
 
@@ -801,6 +769,15 @@
         tabSocial.addEventListener('click', function() {
             if (currentMode === 'social') return;
             currentMode = 'social';
+            currentTemplateIdx = 0;
+            updateStudioUI(true);
+        });
+    }
+
+    if (tabRefer) {
+        tabRefer.addEventListener('click', function() {
+            if (currentMode === 'refer') return;
+            currentMode = 'refer';
             currentTemplateIdx = 0;
             updateStudioUI(true);
         });
@@ -901,7 +878,7 @@
     var fbBtn = document.getElementById('studioFbBtn');
     if (fbBtn) {
         fbBtn.addEventListener('click', function() {
-            var targetUrl = (currentMode === 'review') ? reviewUrl : profileUrl;
+            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : profileUrl);
             var msg = getCurrentMessage();
             var url = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(targetUrl) + '&quote=' + encodeURIComponent(msg);
             window.open(url, '_blank', 'noopener,noreferrer');
@@ -911,7 +888,7 @@
     var inBtn = document.getElementById('studioInBtn');
     if (inBtn) {
         inBtn.addEventListener('click', function() {
-            var targetUrl = (currentMode === 'review') ? reviewUrl : profileUrl;
+            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : profileUrl);
             var url = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(targetUrl);
             window.open(url, '_blank', 'noopener,noreferrer');
         });
