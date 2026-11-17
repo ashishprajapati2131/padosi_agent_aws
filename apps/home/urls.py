@@ -10,7 +10,6 @@ urlpatterns = [
     re_path(r'^(?P<key>[a-zA-Z0-9-]{8,128})\.txt$', seo.indexnow_key, name='indexnow_key'),
     path('favicon.ico',      pages.favicon,         name='favicon'),
     path('',                 pages.home,            name='home'),
-    path('home/segment-compare/', pages.segment_compare, name='segment_compare'),
     path('about/',           pages.about,           name='about'),
     path('faq/',             pages.faq,             name='faq'),
     path('contact/',         pages.contact,         name='contact'),
