@@ -126,7 +126,7 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'key': 'enable_multilingual_regional_branding',
         'name': 'Pan-India Multi-Language & Regional Branding (Padosi / પડોશી / शेजारी)',
         'category': 'Growth & Marketing',
-        'description': 'Translates the full page (desktop and phone) with Google Translate into the language the visitor picked or that was detected from their state. Languages and the state map are managed in Django admin, Localization.',
+        'description': 'Master switch for the Google Translate language selector (shown in the header on desktop and phone) that translates the whole website into Indian languages.',
         'redirect_url': '/admin/feature-flags/',
         'default': True,
         'icon': 'fa-solid fa-language',

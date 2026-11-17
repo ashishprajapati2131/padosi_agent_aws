@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% load static localization_tags %}
+{% load static %}
 
 {% block title %}{{ meta_title }}{% endblock %}
 {% block meta_description %}{{ meta_description }}{% endblock %}
 {% block og_title %}{{ meta_title }}{% endblock %}
 {% block og_description %}{{ meta_description }}{% endblock %}
-{% block canonical_url %}{{ canonical_url|localize_url }}{% endblock %}
+{% block canonical_url %}{{ canonical_url }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/calculators.css' %}">

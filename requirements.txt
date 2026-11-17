@@ -36,4 +36,3 @@ cloudinary>=1.41.0
 openai>=1.55.0
 sentry-sdk==2.22.0
 redis>=5.0.0
-geoip2==4.8.1

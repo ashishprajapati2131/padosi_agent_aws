@@ -54,12 +54,9 @@ def seo_context(request):
     from apps.home.models.link_og_setting import LinkOgSetting
 
     # 1. Base SEO defaults from SiteSetting or fallback strings
-    # Per-language overrides: SiteSetting keys seo_meta_title_<lang> / seo_meta_description_<lang>.
-    from django.utils.translation import get_language, gettext
-    lang = get_language()
-    meta_title = (SiteSetting.get_value(f'seo_meta_title_{lang}', '') or SiteSetting.get_value('seo_meta_title', '')
-                  or gettext('PadosiAgent — Expert & Trusted Insurance Agent'))
-    meta_description = SiteSetting.get_value(f'seo_meta_description_{lang}', '') or SiteSetting.get_value('seo_meta_description', '') or gettext(
+    meta_title = SiteSetting.get_value('seo_meta_title', 'PadosiAgent — Expert & Trusted Insurance Agent')
+    meta_description = SiteSetting.get_value(
+        'seo_meta_description',
         'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.'
     )
 
@@ -94,8 +91,7 @@ def seo_context(request):
             meta_description = link_meta['description']
 
     return {
-        # request.path has the /<lang>/ prefix stripped; each language version is its own canonical.
-        'default_canonical_url': build_og_absolute_url(request, getattr(request, 'language_prefix', '') + request.path),
+        'default_canonical_url': build_og_absolute_url(request, request.path),
         'default_meta_title': meta_title,
         'default_meta_description': meta_description,
         'default_og_image': final_og_image,

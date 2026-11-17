@@ -64,6 +64,3 @@ latest_general_rendered.html
 htmlcov/
 
 
-
-# MaxMind GeoIP databases (licensed download, refreshed on the server)
-geoip/*.mmdb

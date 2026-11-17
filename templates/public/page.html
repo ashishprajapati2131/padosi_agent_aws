@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
-{% load html_tags localization_tags %}
+{% load html_tags %}
 
-{% block title %}{% with mt=page|translated:"meta_title" t=page|translated:"title" %}{{ mt|default:t }}{% endwith %} — PadosiAgent{% endblock %}
-{% block meta_description %}{% if page.meta_description %}{{ page|translated:"meta_description" }}{% elif page.description %}{{ page.description|striptags|truncatechars:155 }}{% else %}Explore {{ page.title }} on PadosiAgent, the leading platform connecting you with verified licensed insurance advisors in your neighbourhood across India.{% endif %}{% endblock %}
+{% block title %}{{ page.meta_title|default:page.title }} — PadosiAgent{% endblock %}
+{% block meta_description %}{% if page.meta_description %}{{ page.meta_description }}{% elif page.description %}{{ page.description|striptags|truncatechars:155 }}{% else %}Explore {{ page.title }} on PadosiAgent, the leading platform connecting you with verified licensed insurance advisors in your neighbourhood across India.{% endif %}{% endblock %}
 
 {% block content %}
 <div class="sub_banner position-relative">
@@ -12,7 +12,7 @@
                 <div class="col-xl-8 col-lg-10 col-12 mx-auto text-center text-white">
                     <div class="sub_banner_content">
                         <h1 class="text-white fw-bold mb-3" style="font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.15);">
-                            {{ page|translated:"title" }}
+                            {{ page.title }}
                         </h1>
                         <p class="opacity-90 mb-0 text-white" style="font-size: 1.1rem;">
                             Last Updated: {{ page.updated_at|date:"M d, Y" }}
@@ -30,7 +30,7 @@
             <div class="col-lg-10 mx-auto">
                 <div class="bg-white rounded-3 shadow-sm p-4 p-md-5 border" style="border-radius: 16px !important;">
                     <article class="cms-page-content" style="color: #334155; line-height: 1.8; font-size: 1.05rem;">
-                        {{ page|translated:"content"|clean_html }}
+                        {{ page.content|clean_html }}
                     </article>
                 </div>
             </div>

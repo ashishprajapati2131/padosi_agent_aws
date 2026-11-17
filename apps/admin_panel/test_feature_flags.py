@@ -292,21 +292,27 @@ class FeatureFlagsTests(TestCase):
         self.assertTrue(ctx['enable_multilingual_regional_branding'])
 
     def test_multilingual_templates_render_cleanly(self):
-        """Header shows the server-side language switcher and the regional badge in the active language."""
+        """Verify that header and multilingual widget render with the regional branding."""
         from django.template.loader import render_to_string
-        from django.utils import translation
         req = self._setup_req(self.rf.get('/'))
 
-        with translation.override('gu'):
-            header_html = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': True}, request=req)
-        self.assertIn('action="/i18n/setlang/"', header_html)
-        self.assertIn('ગુજરાતી', header_html)
-        self.assertNotIn('padosi-regional-badge', header_html)  # badge next to the logo was removed
-        self.assertNotIn('translate.google.com', header_html)
+        # When feature flag is enabled
+        header_html = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': True}, request=req)
+        self.assertIn('padosi-lang-dropdown', header_html)
+        self.assertIn('પડોશી', header_html)
+        # The text badge next to the logo was removed; only the logo is shown there.
+        self.assertNotIn('padosi-regional-badge', header_html)
+        # Phone language selector sits outside the collapsed menu so it is always visible.
+        self.assertLess(header_html.index('padosiLangMenuMobile'), header_html.index('navbarSupportedContent'))
 
-        # The switcher follows the active languages, not the flag.
+        widget_html = render_to_string('partials/multilingual_widget.html', {'enable_multilingual_regional_branding': True}, request=req)
+        self.assertIn('padosiGoogleTranslateInit', widget_html)
+        self.assertIn('પડોશી', widget_html)
+        self.assertIn('शेजारी', widget_html)
+
+        # When feature flag is disabled
         header_disabled = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': False}, request=req)
-        self.assertIn('action="/i18n/setlang/"', header_disabled)
+        self.assertNotIn('padosi-lang-dropdown', header_disabled)
 
 
 

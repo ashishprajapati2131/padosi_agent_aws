@@ -1,0 +1,249 @@
+{% if enable_multilingual_regional_branding %}
+<!-- Hidden Google Translate Mount Point -->
+<div id="padosi_google_translate_hidden" style="display:none; position:absolute; left:-9999px;"></div>
+
+<!-- Injected CSS to hide Google Translate toolbar/banner and preserve clean native styling -->
+<style>
+    /* 1. Eliminate Google Translate frame / header banners and layout shifts */
+    .goog-te-banner-frame, 
+    .goog-te-banner-frame.skiptranslate, 
+    iframe.goog-te-banner-frame {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+    }
+    body {
+        top: 0px !important;
+        position: static !important;
+    }
+    #goog-gt-tt, 
+    .goog-te-balloon-frame,
+    .goog-tooltip, 
+    .goog-tooltip:hover {
+        display: none !important;
+    }
+    .goog-text-highlight {
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .goog-te-gadget, 
+    .goog-te-gadget-simple, 
+    .goog-te-combo {
+        display: none !important;
+    }
+    .skiptranslate:not(.notranslate):not(.padosi-lang-control) {
+        display: none !important;
+    }
+
+    /* 2. Language Dropdown styling */
+    .padosi-lang-dropdown .dropdown-item:hover,
+    .padosi-lang-dropdown .dropdown-item:focus {
+        background-color: #f1f5f9;
+        color: #273c8e;
+    }
+    .padosi-lang-dropdown .dropdown-item.active {
+        background-color: #e0e7ff;
+        color: #1e3a8a;
+    }
+    .padosi-lang-dropdown .dropdown-item.active .check-icon {
+        display: inline-block !important;
+    }
+    
+    /* 3. Regional Badge styling */
+    .padosi-regional-badge {
+        display: inline-flex;
+        align-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(39, 60, 142, 0.08);
+        color: #273c8e;
+        border: 1px solid rgba(39, 60, 142, 0.18);
+        border-radius: 8px;
+        padding: 4px 8px;
+        letter-spacing: 0.2px;
+        transition: all 0.25s ease;
+    }
+    @media (max-width: 575.98px) {
+        .padosi-regional-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+        }
+    }
+</style>
+
+<!-- Automated Real-Time Pan-India Translation & Regional Branding Controller -->
+<script>
+(function() {
+    // 1. Regional Master Directory (Padosi native meanings across India)
+    // Note: In Gujarati, 'પડોશી' is used as requested.
+    var PADOSI_REGIONAL_MAP = {
+        'en': { name: 'English', padosi: 'Neighbor', full: 'Neighbor Agent', badge: 'Neighbor Agent' },
+        'gu': { name: 'ગુજરાતી', padosi: 'પડોશી', full: 'પડોશી એજન્ટ', badge: 'પડોશી એજન્ટ' },
+        'hi': { name: 'हिन्दी', padosi: 'पड़ोसी', full: 'पड़ोसी एजेंट', badge: 'पड़ोसी एजेंट' },
+        'mr': { name: 'मराठी', padosi: 'शेजारी', full: 'शेजारी एजंट', badge: 'शेजारी एजंट' },
+        'bn': { name: 'বাংলা', padosi: 'প্রতিবেশী', full: 'প্রতিবেশী এজেন্ট', badge: 'প্রতিবেশী এজেন্ট' },
+        'ta': { name: 'தமிழ்', padosi: 'பக்கத்து', full: 'பக்கத்து வீட்டு முகவர்', badge: 'பக்கத்து முகவர்' },
+        'te': { name: 'తెలుగు', padosi: 'పొరుగు', full: 'పొరుగు ఏજెంట్', badge: 'పొరుగు ఏજెంట్' },
+        'kn': { name: 'ಕನ್ನಡ', padosi: 'ನೆರೆಹೊರೆ', full: 'ನೆರೆಹೊರೆಯ ഏജెంట్', badge: 'ನೆರೆಹೊರೆ ഏജెంట్' },
+        'ml': { name: 'മലയാളം', padosi: 'അയൽപക്കം', full: 'അയൽപക്ക ഏജന്റ്', badge: 'അയൽപക്ക ഏജന്റ്' },
+        'pa': { name: 'ਪੰਜਾਬੀ', padosi: 'ਗੁਆਂਢੀ', full: 'ਗੁਆਂਢੀ ਏਜੈਂਟ', badge: 'ਗੁਆਂਢੀ ਏਜੈਂਟ' },
+        'or': { name: 'ଓଡ଼ିଆ', padosi: 'ପଡ଼ୋଶୀ', full: 'ପଡ଼ୋଶୀ ଏଜେଣ୍ଟ', badge: 'ପଡ଼ୋଶୀ ଏଜେଣ୍ଟ' },
+        'as': { name: 'অসমীয়া', padosi: 'চুবুৰীয়া', full: 'চুবুৰীয়া এজেন্ট', badge: 'চুবুৰীয়া এজেন্ট' },
+        'ur': { name: 'اردو', padosi: 'پڑوسی', full: 'پڑوسی ایجنٹ', badge: 'پڑوسی ایجنٹ' }
+    };
+
+    // 2. Cookie Management Helpers
+    function getCookie(name) {
+        var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+        return match ? decodeURIComponent(match[3]) : null;
+    }
+
+    function setCookie(name, val, days) {
+        var host = window.location.hostname;
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + encodeURIComponent(val) + "; path=/" + expires;
+        document.cookie = name + "=" + encodeURIComponent(val) + "; path=/; domain=" + host + expires;
+        var parts = host.split('.');
+        if (parts.length > 1) {
+            document.cookie = name + "=" + encodeURIComponent(val) + "; path=/; domain=." + parts.slice(-2).join('.') + expires;
+        }
+    }
+
+    // 3. Resolve Active Language (Precedence: LocalStorage -> Cookie -> Detected State -> Browser Locale)
+    function getActiveLanguage() {
+        var stored = localStorage.getItem('padosi_selected_language');
+        if (stored && PADOSI_REGIONAL_MAP[stored]) return stored;
+        
+        var cookieLang = getCookie('padosi_lang');
+        if (cookieLang && PADOSI_REGIONAL_MAP[cookieLang]) return cookieLang;
+
+        var gTrans = getCookie('googtrans');
+        if (gTrans) {
+            var splitted = gTrans.split('/');
+            var target = splitted[splitted.length - 1];
+            if (target && PADOSI_REGIONAL_MAP[target]) return target;
+        }
+
+        // Auto-detect from detected area session if available
+        {% if request.session.detected_area %}
+        var detectedArea = "{{ request.session.detected_area|escapejs }}".toLowerCase();
+        if (detectedArea.indexOf('gujarat') !== -1) return 'gu';
+        if (detectedArea.indexOf('maharashtra') !== -1) return 'mr';
+        if (detectedArea.indexOf('bengal') !== -1) return 'bn';
+        if (detectedArea.indexOf('tamil') !== -1) return 'ta';
+        if (detectedArea.indexOf('karnataka') !== -1) return 'kn';
+        if (detectedArea.indexOf('telangana') !== -1 || detectedArea.indexOf('andhra') !== -1) return 'te';
+        if (detectedArea.indexOf('kerala') !== -1) return 'ml';
+        if (detectedArea.indexOf('punjab') !== -1) return 'pa';
+        {% endif %}
+
+        // Fallback to browser locale
+        var userLang = (navigator.language || navigator.userLanguage || '').toLowerCase().split('-')[0];
+        if (PADOSI_REGIONAL_MAP[userLang]) return userLang;
+
+        return 'en';
+    }
+
+    // 4. Synchronize Regional Branding Badge and Dropdown UI
+    function syncRegionalBranding(langCode) {
+        var data = PADOSI_REGIONAL_MAP[langCode] || PADOSI_REGIONAL_MAP['en'];
+        
+        // Update Regional Meaning in Header Logo Badge
+        var meaningEls = document.querySelectorAll('.js-padosi-regional-meaning');
+        meaningEls.forEach(function(el) {
+            el.textContent = data.badge;
+        });
+
+        // Update Dropdown display text across desktop and mobile
+        var textEls = document.querySelectorAll('.js-padosi-current-lang-text');
+        textEls.forEach(function(el) {
+            el.textContent = data.name + (data.padosi !== 'Neighbor' ? ' (' + data.padosi + ')' : '');
+        });
+
+        // Update active class on dropdown options
+        var items = document.querySelectorAll('.js-padosi-lang-item');
+        items.forEach(function(item) {
+            var itemLang = item.getAttribute('data-lang');
+            var check = item.querySelector('.check-icon');
+            if (itemLang === langCode) {
+                item.classList.add('active', 'font-weight-bold');
+                if (check) check.classList.remove('d-none');
+            } else {
+                item.classList.remove('active', 'font-weight-bold');
+                if (check) check.classList.add('d-none');
+            }
+        });
+    }
+
+    // 5. Global API to change language with instant real-time translation
+    window.setPadosiLanguage = function(langCode) {
+        if (!langCode || !PADOSI_REGIONAL_MAP[langCode]) return;
+
+        localStorage.setItem('padosi_selected_language', langCode);
+        setCookie('padosi_lang', langCode, 365);
+        
+        var gVal = (langCode === 'en') ? '/en/en' : ('/en/' + langCode);
+        setCookie('googtrans', gVal, 365);
+
+        syncRegionalBranding(langCode);
+
+        // Trigger Google Translate dropdown without full reload if available
+        var select = document.querySelector('.goog-te-combo');
+        if (select) {
+            select.value = langCode;
+            select.dispatchEvent(new Event('change'));
+        } else {
+            // First time loading: reload once so Google Translate immediately applies cookie
+            window.location.reload();
+        }
+    };
+
+    // 6. Google Translate Element Init Callback
+    window.padosiGoogleTranslateInit = function() {
+        try {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'en,gu,hi,mr,bn,ta,te,kn,ml,pa,or,as,ur',
+                autoDisplay: false
+            }, 'padosi_google_translate_hidden');
+
+            var activeLang = getActiveLanguage();
+            syncRegionalBranding(activeLang);
+
+            setTimeout(function() {
+                var select = document.querySelector('.goog-te-combo');
+                if (select && activeLang !== 'en' && select.value !== activeLang) {
+                    select.value = activeLang;
+                    select.dispatchEvent(new Event('change'));
+                }
+            }, 500);
+        } catch (e) {
+            console.debug('Google translate element init:', e);
+        }
+    };
+
+    // 7. Initial run on DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+        var activeLang = getActiveLanguage();
+        syncRegionalBranding(activeLang);
+
+        if (activeLang && activeLang !== 'en') {
+            setCookie('googtrans', '/en/' + activeLang, 365);
+        }
+
+        // Dynamically inject script non-blocking
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://translate.google.com/translate_a/element.js?cb=padosiGoogleTranslateInit';
+        script.async = true;
+        document.body.appendChild(script);
+    });
+})();
+</script>
+{% endif %}
+
