@@ -9,10 +9,17 @@ Supports:
 """
 import json
 import logging
+import re
 from urllib.parse import quote
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
+
+_PROFILE_LABEL_RE = re.compile(
+    r'(?i)(view\s+(my\s+)?(complete\s+)?profile|you can also view my complete profile|'
+    r'प्रोफाइल\s*देखें|प्रोफाइल\s*पहा|પ્રોફાઇલ\s*જુઓ|'
+    r'check my verified credentials|प्रोफाइल,\s*सेवाएं|પ્રોફાઇલ,\s*ક્લાયન્ટ)'
+)
 
 STUDIO_TEMPLATES = {
     'review': {
@@ -29,8 +36,6 @@ STUDIO_TEMPLATES = {
                             "Could you please take 30 seconds to share your valuable review and 5-star rating on my official PadosiAgent profile?\n\n"
                             "⭐ Leave your review here:\n"
                             "{{review_link}}\n\n"
-                            "You can also view my complete profile:\n"
-                            "{{profile_link}}\n\n"
                             "Your feedback helps me serve you and others even better!\n"
                             "— {{agent_name}}"
                         )
@@ -70,8 +75,6 @@ STUDIO_TEMPLATES = {
                             "कृपया PadosiAgent पर मेरी आधिकारिक प्रोफाइल पर 30 सेकंड निकालकर अपना बहुमूल्य रिव्यू और 5-स्टार रेटिंग दें:\n\n"
                             "⭐ रिव्यू यहाँ दें:\n"
                             "{{review_link}}\n\n"
-                            "मेरी पूरी प्रोफाइल देखें:\n"
-                            "{{profile_link}}\n\n"
                             "आपकी प्रतिक्रिया मुझे और बेहतर सेवा देने में मदद करती है!\n"
                             "— {{agent_name}}"
                         )
@@ -111,8 +114,6 @@ STUDIO_TEMPLATES = {
                             "PadosiAgent પર મારી ઓફિશિયલ પ્રોફાઇલ પર ફક્ત 30 સેકન્ડ ફાળવીને તમારો કિંમતી રિવ્યૂ અને 5-સ્ટાર રેટિંગ આપવા વિનંતી છે:\n\n"
                             "⭐ અહીં રિવ્યૂ આપો:\n"
                             "{{review_link}}\n\n"
-                            "મારી સંપૂર્ણ પ્રોફાઇલ જુઓ:\n"
-                            "{{profile_link}}\n\n"
                             "તમારો સારો પ્રતિભાવ મને વધુ સારી સેવા આપવા પ્રોત્સાહિત કરશે!\n"
                             "— {{agent_name}}"
                         )
@@ -152,8 +153,6 @@ STUDIO_TEMPLATES = {
                             "कृपया PadosiAgent वर माझ्या प्रोफाइलवर ३० सेकंद काढून आपला बहुमूल्य अभिप्राय आणि ५-स्टार रेटिंग द्या:\n\n"
                             "⭐ येथे रिव्ह्यू द्या:\n"
                             "{{review_link}}\n\n"
-                            "माझे प्रोफाइल पहा:\n"
-                            "{{profile_link}}\n\n"
                             "— {{agent_name}}"
                         )
                     }
@@ -177,8 +176,6 @@ STUDIO_TEMPLATES = {
                             "🚀 Build your digital identity and connect with more potential customers.\n\n"
                             "🔗 Join through my referral:\n"
                             "{{referral_link}}\n\n"
-                            "👤 View my profile:\n"
-                            "{{profile_link}}\n\n"
                             "Let's grow together with PadosiAgent!"
                         )
                     },
@@ -190,8 +187,6 @@ STUDIO_TEMPLATES = {
                             "Save my digital visiting card, explore insurance plans, and connect with me directly:\n\n"
                             "🪪 My Digital Visiting Card:\n"
                             "{{card_link}}\n\n"
-                            "🌐 View Complete Profile:\n"
-                            "{{profile_link}}\n\n"
                             "Feel free to reach out for any life, health, or motor insurance queries!"
                         )
                     },
@@ -201,8 +196,8 @@ STUDIO_TEMPLATES = {
                         'text': (
                             "Looking for trusted and personalized insurance guidance for your family?\n\n"
                             "I'm {{agent_name}}, verified Insurance Advisor on PadosiAgent.\n\n"
-                            "Check my verified credentials, client reviews, and services here:\n"
-                            "{{profile_link}}\n\n"
+                            "Save my digital visiting card and connect with me here:\n"
+                            "{{card_link}}\n\n"
                             "Always happy to help you protect what matters most!"
                         )
                     }
@@ -221,8 +216,6 @@ STUDIO_TEMPLATES = {
                             "🚀 अपनी डिजिटल पहचान बनाएं और अधिक संभावित ग्राहकों से जुड़ें।\n\n"
                             "🔗 मेरे रेफरल से जुड़ें:\n"
                             "{{referral_link}}\n\n"
-                            "👤 मेरी प्रोफाइल देखें:\n"
-                            "{{profile_link}}\n\n"
                             "आइए, PadosiAgent के साथ मिलकर आगे बढ़ें!"
                         )
                     },
@@ -234,8 +227,6 @@ STUDIO_TEMPLATES = {
                             "मेरा डिजिटल विजिटिंग कार्ड सेव करें और बीमा संबंधी सलाह के लिए संपर्क करें:\n\n"
                             "🪪 डिजिटल कार्ड:\n"
                             "{{card_link}}\n\n"
-                            "🌐 मेरी प्रोफाइल देखें:\n"
-                            "{{profile_link}}\n\n"
                             "लाइफ, हेल्थ और मोटर इंश्योरेंस के लिए कभी भी संपर्क करें!"
                         )
                     },
@@ -245,8 +236,8 @@ STUDIO_TEMPLATES = {
                         'text': (
                             "क्या आप अपने परिवार के लिए सही बीमा योजना की तलाश में हैं?\n\n"
                             "मैं {{agent_name}}, PadosiAgent पर वेरिफाइड इंश्योरेंस एडवाइजर हूँ।\n\n"
-                            "मेरी प्रोफाइल, सेवाएं और ग्राहकों के रिव्यूज देखें:\n"
-                            "{{profile_link}}"
+                            "मेरा डिजिटल विजिटिंग कार्ड सेव करें:\n"
+                            "{{card_link}}"
                         )
                     }
                 ]
@@ -264,8 +255,6 @@ STUDIO_TEMPLATES = {
                             "🚀 તમારી ડિજિટલ ઓળખ બનાવો અને વધુ સંભવિત ગ્રાહકો સાથે જોડાઓ.\n\n"
                             "🔗 મારા રેફરલથી જોડાઓ:\n"
                             "{{referral_link}}\n\n"
-                            "👤 મારી પ્રોફાઇલ જુઓ:\n"
-                            "{{profile_link}}\n\n"
                             "ચાલો, PadosiAgent સાથે મળીને આગળ વધીએ!"
                         )
                     },
@@ -277,8 +266,6 @@ STUDIO_TEMPLATES = {
                             "મારું ડિજિટલ વિઝિટિંગ કાર્ડ સેવ કરો અને વીમા સેવાઓ માટે મારો સીધો સંપર્ક કરો:\n\n"
                             "🪪 મારું ડિજિટલ કાર્ડ:\n"
                             "{{card_link}}\n\n"
-                            "🌐 સંપૂર્ણ પ્રોફાઇલ જુઓ:\n"
-                            "{{profile_link}}\n\n"
                             "લાઇફ, હેલ્થ કે વાહન વીમાની માહિતી માટે આજે જ સંપર્ક કરો!"
                         )
                     },
@@ -288,8 +275,8 @@ STUDIO_TEMPLATES = {
                         'text': (
                             "તમારા અને તમારા પરિવાર માટે શ્રેષ્ઠ વીમા આયોજન શોધી રહ્યા છો?\n\n"
                             "હું {{agent_name}}, PadosiAgent પર વેરિફાઇડ ઇન્સ્યોરન્સ એડવાઇઝર છું.\n\n"
-                            "મારી પ્રોફાઇલ, ક્લાયન્ટ રિવ્યૂઝ અને સેવાઓ અહીં જુઓ:\n"
-                            "{{profile_link}}"
+                            "મારું ડિજિટલ વિઝિટિંગ કાર્ડ સેવ કરો:\n"
+                            "{{card_link}}"
                         )
                     }
                 ]
@@ -307,8 +294,6 @@ STUDIO_TEMPLATES = {
                             "🚀 तुमची डिजिटल ओळख तयार करा आणि अधिक संभाव्य ग्राहकांशी जोडा.\n\n"
                             "🔗 माझ्या रेफरलमधून जॉइन करा:\n"
                             "{{referral_link}}\n\n"
-                            "👤 माझे प्रोफाइल पहा:\n"
-                            "{{profile_link}}\n\n"
                             "चला, PadosiAgent सोबत एकत्र वाढूया!"
                         )
                     }
@@ -380,6 +365,53 @@ def strip_saved_campaign_prices(templates):
     return templates
 
 
+def strip_profile_link_from_text(text):
+    """Remove profile URL placeholders and their label lines from invite copy."""
+    if not text:
+        return text
+    lines = str(text).split('\n')
+    cleaned = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        nxt = lines[i + 1] if i + 1 < len(lines) else ''
+        # Drop label + next line when next line is the profile placeholder/URL
+        if (
+            _PROFILE_LABEL_RE.search(line)
+            and (
+                '{{profile_link}}' in nxt
+                or '/gj/' in nxt
+                or 'padosiagent.com' in nxt.lower()
+            )
+        ):
+            i += 2
+            continue
+        if '{{profile_link}}' in line:
+            i += 1
+            continue
+        cleaned.append(line)
+        i += 1
+    text = '\n'.join(cleaned)
+    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+    return text
+
+
+def strip_profile_links_from_templates(templates):
+    """Ensure saved/admin Invite Studio templates never include profile links."""
+    if not isinstance(templates, dict):
+        return templates
+    for mode in templates.values():
+        if not isinstance(mode, dict):
+            continue
+        for lang in (mode.get('languages') or {}).values():
+            if not isinstance(lang, dict):
+                continue
+            for tmpl in (lang.get('templates') or []):
+                if isinstance(tmpl, dict) and tmpl.get('text'):
+                    tmpl['text'] = strip_profile_link_from_text(tmpl['text'])
+    return templates
+
+
 def get_invite_studio_config():
     """
     Fetches the dynamic Invite & Share Studio config from SiteSetting DB table.
@@ -408,19 +440,22 @@ def get_invite_studio_config():
         if k not in config or config[k] is None or config[k] == '':
             config[k] = v
     strip_saved_campaign_prices(config.get('templates'))
+    strip_profile_links_from_templates(config.get('templates'))
     return config
 
 
 def render_template_text(raw_text, agent_name, profile_link, review_link, card_link, referral_link, digital_price="999", professional_price="4999"):
     """
     Replaces template variables with real agent values.
+    Profile links are intentionally stripped from invite messages.
     """
     if not raw_text:
         return ""
+    text = strip_profile_link_from_text(str(raw_text))
     return (
-        str(raw_text)
+        text
         .replace("{{agent_name}}", agent_name or "Insurance Advisor")
-        .replace("{{profile_link}}", profile_link or "")
+        .replace("{{profile_link}}", "")  # never inject profile URLs into invite copy
         .replace("{{review_link}}", review_link or "")
         .replace("{{card_link}}", card_link or "")
         .replace("{{referral_link}}", referral_link or "")

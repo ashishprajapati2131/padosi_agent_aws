@@ -696,16 +696,43 @@
     var tabSocial = document.getElementById('studioTabSocial');
     var tabRefer = document.getElementById('studioTabRefer');
 
+    function stripProfileLinkBlocks(text) {
+        if (!text) return '';
+        var lines = String(text).split('\n');
+        var out = [];
+        var labelRe = /(view\s+(my\s+)?(complete\s+)?profile|you can also view my complete profile|प्रोफाइल\s*देखें|प्रोफाइल\s*पहा|પ્રોફાઇલ\s*જુઓ|check my verified credentials|प्रोफाइल,\s*सेवाएं|પ્રોફાઇલ,\s*ક્લાયન્ટ)/i;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            var next = (i + 1 < lines.length) ? lines[i + 1] : '';
+            var nextLooksLikeProfileUrl = (
+                /\{\{profile_link\}\}/.test(next) ||
+                /\/[a-z]{2}\/[a-z0-9-]+\/?/i.test(next.trim()) ||
+                /padosiagent\.com\/[a-z]{2}\//i.test(next)
+            );
+            if (labelRe.test(line) && nextLooksLikeProfileUrl) {
+                i += 1; // skip label + profile URL line
+                continue;
+            }
+            if (/\{\{profile_link\}\}/.test(line)) continue;
+            // Drop bare resolved profile URLs that match the agent profileUrl
+            if (profileUrl && line.trim() === String(profileUrl).trim()) continue;
+            out.push(line);
+        }
+        return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
     function renderTemplate(rawText) {
         if (!rawText) return '';
-        return rawText
+        // Never inject public profile links into invite messages
+        var text = stripProfileLinkBlocks(rawText)
             .replace(/\{\{agent_name\}\}/g, agentName)
-            .replace(/\{\{profile_link\}\}/g, profileUrl)
+            .replace(/\{\{profile_link\}\}/g, '')
             .replace(/\{\{review_link\}\}/g, reviewUrl)
             .replace(/\{\{card_link\}\}/g, cardUrl)
             .replace(/\{\{referral_link\}\}/g, referralUrl)
             .replace(/\{\{digital_price\}\}/g, digitalPrice)
             .replace(/\{\{professional_price\}\}/g, profPrice);
+        return stripProfileLinkBlocks(text);
     }
 
     function getTemplatesList() {
@@ -811,7 +838,7 @@
         if (templates[currentTemplateIdx]) {
             return renderTemplate(templates[currentTemplateIdx].text);
         }
-        return 'Connect with me on PadosiAgent: ' + profileUrl;
+        return 'Connect with me on PadosiAgent: ' + (cardUrl || reviewUrl || referralUrl || '');
     }
 
     function openWhatsApp() {
@@ -878,7 +905,7 @@
     var fbBtn = document.getElementById('studioFbBtn');
     if (fbBtn) {
         fbBtn.addEventListener('click', function() {
-            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : profileUrl);
+            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : cardUrl);
             var msg = getCurrentMessage();
             var url = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(targetUrl) + '&quote=' + encodeURIComponent(msg);
             window.open(url, '_blank', 'noopener,noreferrer');
@@ -888,7 +915,7 @@
     var inBtn = document.getElementById('studioInBtn');
     if (inBtn) {
         inBtn.addEventListener('click', function() {
-            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : profileUrl);
+            var targetUrl = (currentMode === 'review') ? reviewUrl : ((currentMode === 'refer') ? referralUrl : cardUrl);
             var url = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(targetUrl);
             window.open(url, '_blank', 'noopener,noreferrer');
         });
