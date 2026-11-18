@@ -125,6 +125,11 @@ class EventReferralParticipant(models.Model):
     def __str__(self):
         return f'{self.referral_code} ({self.status}, {self.paid_count}/{self.required_paid_referrals})'
 
+    @property
+    def has_permanent_grant(self):
+        """Admin gave a plan with no end date: the agent is treated like a paying one."""
+        return bool((self.grant_plan_slug or '').strip()) and not self.grant_expires_at
+
     @staticmethod
     def generate_referral_code():
         while True:

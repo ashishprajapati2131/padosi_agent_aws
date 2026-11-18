@@ -68,6 +68,25 @@ class GrantPaldiTrialTests(TestCase):
         newcomer.refresh_from_db()
         self.assertEqual((newcomer.status, newcomer.grant_plan_slug), ("active", ""))
 
+    def test_only_a_grant_without_end_date_counts_as_permanent(self):
+        from apps.event_referral.services.participant_service import admin_grant_win
+
+        temp, perm, plain = (self._participant(n) for n in (1, 2, 3))
+        admin_grant_win(
+            temp, plan_slug="basic", expires_at=datetime.now() + timedelta(days=5)
+        )
+        admin_grant_win(perm, plan_slug="professional", expires_at=None)
+        for p in (temp, perm):
+            p.refresh_from_db()
+        self.assertEqual(
+            (
+                temp.has_permanent_grant,
+                perm.has_permanent_grant,
+                plain.has_permanent_grant,
+            ),
+            (False, True, False),
+        )
+
     def test_failed_email_does_not_stop_the_grant(self):
         p = self._participant(1)
         out = StringIO()

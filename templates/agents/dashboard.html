@@ -801,7 +801,8 @@
             <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold px-4 shadow-sm">Upgrade plan</a>
         </div>
         {% endif %}
-        {% if event_referral_participant and not admin_lock_preview %}
+        {# A permanent admin grant looks like a paid plan: no challenge panel. #}
+        {% if event_referral_participant and not admin_lock_preview and not event_referral_participant.has_permanent_grant %}
         <div class="card border-0 shadow-sm mb-4 {% if event_referral_participant.grant_expires_at %}event-referral-festive-card{% endif %}" id="event-referral-challenge-panel" style="border-radius:16px; overflow:hidden;">
             <div class="card-body p-4 event-referral-panel">
                 {% if event_referral_participant.grant_expires_at %}
@@ -834,7 +835,7 @@
                             <span class="event-referral-progress-pill">{{ event_referral_participant.paid_count }} / {{ event_referral_participant.required_paid_referrals }} paid</span>
                         </div>
                         {% if event_referral_participant.status == 'won' %}
-                        <p class="mb-0 event-referral-panel-text">Congratulations! Your Basic plan is unlocked.</p>
+                        <p class="mb-0 event-referral-panel-text">Congratulations! Your {% if event_referral_participant.reward_plan_slug == 'professional' %}Professional{% else %}Basic{% endif %} plan is unlocked.</p>
                         {% elif event_referral_participant.status == 'blocked' %}
                         <p class="mb-0 event-referral-panel-text">
                             Time is up. You reached <strong class="text-white">{{ event_referral_participant.paid_count }}</strong> of
