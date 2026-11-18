@@ -1,4 +1,4 @@
-{% load json_tags %}
+{% load json_tags message_lang_tags %}
 <div class="modal fade" id="reviewShareModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered pa-review-dialog">
         <div class="modal-content border-0 shadow-lg pa-review-content">
@@ -553,26 +553,25 @@
                 <!-- Language Selector (label text removed; keep select) -->
                 <div class="pa-studio-lang-row">
                     <label for="studioLangSelect" class="pa-studio-lang-label sr-only">Language</label>
-                    <select id="studioLangSelect" class="pa-studio-lang-select" aria-label="Language">
-                        {% for lang in studio_languages %}
-                        <option value="{{ lang.code }}" {% if lang.code == 'en' %}selected{% endif %}>{{ lang.label }}</option>
-                        {% empty %}
-                        <option value="en" selected>English</option>
-                        <option value="hi">Hindi</option>
-                        <option value="gu">Gujarati</option>
-                        <option value="mr">Marathi</option>
-                        <option value="ta">Tamil</option>
-                        <option value="te">Telugu</option>
-                        <option value="kn">Kannada</option>
-                        <option value="bn">Bengali</option>
-                        <option value="pa">Punjabi</option>
-                        <option value="ml">Malayalam</option>
-                        <option value="or">Odia</option>
-                        <option value="ur">Urdu</option>
-                        <option value="as">Assamese</option>
-                        <option value="raj">Rajasthani</option>
-                        {% endfor %}
-                    </select>
+                    {% message_lang_assets %}
+                    {% message_lang_select "studioLangSelect" "en" "pa-studio-lang-select" %}
+                    <span id="studioLangStatus" class="small text-muted" role="status" aria-live="polite" style="margin-left:6px"></span>
+                    <script>
+                    // Languages the admin added to the Invite Studio config (e.g. Rajasthani) that are not in the 23-language list.
+                    (function () {
+                        var sel = document.getElementById('studioLangSelect');
+                        var extra = {{ studio_languages|safe_json:'[]' }};
+                        if (!sel || !Array.isArray(extra)) return;
+                        var have = Array.prototype.map.call(sel.options, function (o) { return o.value; });
+                        extra.forEach(function (lang) {
+                            if (!lang || !lang.code || have.indexOf(lang.code) !== -1) return;
+                            var opt = document.createElement('option');
+                            opt.value = lang.code;
+                            opt.textContent = lang.label || lang.code;
+                            sel.appendChild(opt);
+                        });
+                    })();
+                    </script>
                 </div>
 
                 <!-- Template chips kept in DOM for JS compatibility but hidden via CSS -->
@@ -756,7 +755,8 @@
         var modeKey = (currentMode === 'refer') ? 'social' : currentMode;
         var modeObj = studioTemplates[modeKey];
         if (!modeObj || !modeObj.languages) return [];
-        var langObj = modeObj.languages[currentLang] || modeObj.languages['en'];
+        var langObj = modeObj.languages[currentLang];
+        if (!langObj || !langObj.templates || !langObj.templates.length) langObj = modeObj.languages['en'];
         var list = (langObj && langObj.templates) ? langObj.templates.slice() : [];
         if (!list.length) return [];
         if (currentMode === 'refer') {
@@ -766,6 +766,29 @@
             return [list[1] || list[0]]; // Digital card / profile share
         }
         return [list[0]]; // Review default
+    }
+
+    // Languages without their own templates: translate the English raw text, then render.
+    var fillSeq = 0;
+    function fillMessage(raw) {
+        var seq = ++fillSeq;
+        var status = document.getElementById('studioLangStatus');
+        function say(t) { if (status) status.textContent = t; }
+        var modeObj = studioTemplates[(currentMode === 'refer') ? 'social' : currentMode];
+        var own = modeObj && modeObj.languages && modeObj.languages[currentLang];
+        var hasOwn = currentLang === 'en' || (own && own.templates && own.templates.length);
+        if (hasOwn || !window.PadosiMsgLang) { say(''); messageBox.value = renderTemplate(raw); return; }
+        var lang = currentLang;
+        say('Translating…');
+        window.PadosiMsgLang.translate(raw, [lang]).then(function (t) {
+            if (seq !== fillSeq) return;
+            if (t && t[lang]) { say(''); messageBox.value = renderTemplate(t[lang]); }
+            else { say('Could not translate. Showing English.'); messageBox.value = renderTemplate(raw); }
+        }).catch(function () {
+            if (seq !== fillSeq) return;
+            say('Could not translate. Showing English.');
+            messageBox.value = renderTemplate(raw);
+        });
     }
 
     function updateStudioUI(resetText) {
@@ -794,7 +817,7 @@
         }
 
         if (resetText !== false && messageBox && templates[0]) {
-            messageBox.value = renderTemplate(templates[0].text);
+            fillMessage(templates[0].text);
         }
     }
 
@@ -840,7 +863,7 @@
         resetBtn.addEventListener('click', function() {
             var templates = getTemplatesList();
             if (messageBox && templates[currentTemplateIdx]) {
-                messageBox.value = renderTemplate(templates[currentTemplateIdx].text);
+                fillMessage(templates[currentTemplateIdx].text);
                 toast('Message reset to default template.');
             }
         });

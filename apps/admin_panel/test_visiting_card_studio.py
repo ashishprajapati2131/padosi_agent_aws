@@ -154,6 +154,26 @@ class VisitingCardStudioAdminTestCase(TestCase):
         self.assertEqual(res.status_code, 302)
         self.assertEqual(get_digital_card_studio_config(use_cache=False)['powered_by_url'], 'https://padosiagent.com/')
 
+    def test_default_whatsapp_msg_i18n_saved_and_used_on_public_card(self):
+        from urllib.parse import quote
+        cfg = save_digital_card_studio_config({
+            'default_whatsapp_msg_i18n': json.dumps({'gu': 'નમસ્તે {agent_name}', 'zz': 'bad'}),
+        })
+        self.assertEqual(cfg['default_whatsapp_msg_i18n'], {'gu': 'નમસ્તે {agent_name}'})
+        self.profile.card_config = {'whatsapp_msg': ''}
+        self.profile.save()
+        self.client.cookies['padosi_lang'] = 'gu'
+        res = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': self.profile.slug}))
+        self.assertIn(quote('નમસ્તે'), res.content.decode())
+
+    def test_admin_agent_override_saves_whatsapp_i18n(self):
+        self._login_admin(self.admin)
+        url = reverse('admin_digital_card_agent_save', kwargs={'agent_id': self.agent.id})
+        res = self.client.post(url, {'whatsapp_msg_i18n': json.dumps({'mr': 'नमस्कार'})})
+        self.assertTrue(res.json().get('success'))
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.get_card_config()['whatsapp_msg_i18n'], {'mr': 'नमस्कार'})
+
     def test_default_studio_config_retrieval(self):
         config = get_digital_card_studio_config(use_cache=False)
         self.assertTrue(config.get('enabled'))

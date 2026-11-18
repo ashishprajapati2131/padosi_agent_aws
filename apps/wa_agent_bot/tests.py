@@ -1059,3 +1059,51 @@ class MessageTemplateTests(unittest.TestCase):
                 registration_data={},
             )
             self.assertNotEqual(process_message(mid, "price"), "Plans start at 999")
+
+
+class MessageTemplateLanguageTests(unittest.TestCase):
+    def _settings(self, **values):
+        return patch(
+            GET_VALUE, side_effect=lambda key, default=None: values.get(key, default)
+        )
+
+    def test_render_uses_chosen_language_then_falls_back(self):
+        from apps.wa_agent_bot.services.message_templates import render
+
+        i18n = {"approval": {"gu": "નમસ્તે {agent_name}"}}
+        base = {"wa_message_templates": {"approval": "Hi {agent_name}"}}
+        with self._settings(
+            **base, wa_message_templates_i18n=i18n, wa_bot_message_language="gu"
+        ):
+            self.assertEqual(render("approval", agent_name="Asha"), "નમસ્તે Asha")
+        with self._settings(
+            **base, wa_message_templates_i18n=i18n, wa_bot_message_language="hi"
+        ):  # no Hindi saved
+            self.assertEqual(render("approval", agent_name="Asha"), "Hi Asha")
+        with self._settings(**base, wa_message_templates_i18n=i18n):  # default en
+            self.assertEqual(render("approval", agent_name="Asha"), "Hi Asha")
+
+    def test_render_ignores_translation_with_bad_placeholder(self):
+        from apps.wa_agent_bot.services.message_templates import render
+
+        with self._settings(
+            wa_message_templates={"approval": "Hi {agent_name}"},
+            wa_message_templates_i18n={"approval": {"gu": "નમસ્તે {password}"}},
+            wa_bot_message_language="gu",
+        ):
+            self.assertEqual(render("approval", agent_name="Asha"), "Hi Asha")
+
+    def test_broadcast_template_keeps_only_matching_translations(self):
+        from apps.wa_agent_bot.services import broadcast
+
+        saved = {}
+        with patch.object(broadcast, "get_templates", return_value=[]), patch(
+            "apps.home.models.site_setting.SiteSetting.set_value",
+            side_effect=lambda k, v, group=None: saved.update(v=v),
+        ):
+            broadcast.save_template(
+                "Hello",
+                "Hi {name} {link}",
+                text_i18n=json.dumps({"gu": "નમસ્તે {name} {link}", "hi": "नमस्ते {name}"}),
+            )
+        self.assertEqual(saved["v"][0]["text_i18n"], {"gu": "નમસ્તે {name} {link}"})

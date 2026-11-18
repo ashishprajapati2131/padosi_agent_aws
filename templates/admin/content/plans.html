@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static message_lang_tags %}
 
 {% block title %}Plans & Pricing — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}Content › Plans & Pricing{% endblock %}
@@ -597,6 +597,7 @@
 
 <hr class="my-5">
 
+{% message_lang_assets %}
 <form method="POST" action="{% url 'admin_content_plans' %}update-review-growth/" id="reviewGrowthForm">
     {% csrf_token %}
     <div class="plan-editor-card mb-4" id="section-review-growth" style="border-top: 4px solid #f59e0b;">
@@ -707,11 +708,13 @@
                     <div class="row g-3 mt-1">
                         <div class="col-12">
                             <label class="form-label fw-bold" style="font-size:12px;">Banner title</label>
-                            <input type="text" class="form-control growth-field" name="growth_upgrade_title" value="{{ review_growth.upgrade_title }}">
+                            <input type="text" class="form-control growth-field" id="growthUpgradeTitle" name="growth_upgrade_title" value="{{ review_growth.upgrade_title }}">
+                            {% message_lang_editor "growthUpgradeTitle" "upgrade_title_i18n" review_growth.upgrade_title_i18n %}
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-bold" style="font-size:12px;">Banner message</label>
-                            <textarea class="form-control growth-field" name="growth_upgrade_message" rows="2">{{ review_growth.upgrade_message }}</textarea>
+                            <textarea class="form-control growth-field" id="growthUpgradeMessage" name="growth_upgrade_message" rows="2">{{ review_growth.upgrade_message }}</textarea>
+                            {% message_lang_editor "growthUpgradeMessage" "upgrade_message_i18n" review_growth.upgrade_message_i18n %}
                         </div>
                     </div>
                 </div>

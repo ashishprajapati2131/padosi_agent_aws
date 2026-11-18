@@ -125,7 +125,11 @@ def sanitize_review_growth_config(raw):
     if not message:
         message = DEFAULT_REVIEW_GROWTH["upgrade_message"]
 
+    from apps.home.services.message_languages import clean_translations
+
     return {
+        "upgrade_title_i18n": clean_translations(data.get("upgrade_title_i18n"), 160),
+        "upgrade_message_i18n": clean_translations(data.get("upgrade_message_i18n"), 800),
         "enabled": _as_bool(data.get("enabled"), True),
         "popup_enabled": _as_bool(data.get("popup_enabled"), True),
         "upgrade_cta_enabled": _as_bool(
@@ -213,11 +217,18 @@ def get_qr_config():
         return dict(DEFAULT_QR_CONFIG)
 
 
-def get_review_growth_config():
+def get_review_growth_config(lang=None):
+    """Config; with `lang`, upgrade_title/upgrade_message are the visitor-language versions."""
     try:
-        return sanitize_review_growth_config(
+        cfg = sanitize_review_growth_config(
             SiteSetting.get_value("review_growth_config", DEFAULT_REVIEW_GROWTH)
         )
+        if lang and lang != "en":
+            from apps.home.services.message_languages import pick
+
+            for key in ("upgrade_title", "upgrade_message"):
+                cfg[key] = pick(cfg[key], cfg.get(key + "_i18n"), lang)
+        return cfg
     except Exception:
         logger.exception("Failed to load review_growth_config")
         return dict(DEFAULT_REVIEW_GROWTH)

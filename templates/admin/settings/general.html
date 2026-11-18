@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static message_lang_tags %}
 
 {% block title %}General Settings — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}System &rsaquo; General Settings{% endblock %}
@@ -118,7 +118,9 @@
                         <div class="col-md-12 mb-3">
                             <label class="form-label" style="font-weight: 600;">Default Sharing Message</label>
                             <p class="text-muted" style="font-size: 12px;">This is the exact message your distributors will send to their leads via WhatsApp, SMS, or Email. Use <code>{LINK}</code> where the unique referral URL should appear.</p>
-                            <textarea class="form-control" name="distributor_invite_message" rows="5" required>{{ distributor_invite_message }}</textarea>
+                            <textarea class="form-control" name="distributor_invite_message" id="distributorInviteMessage" rows="5" required>{{ distributor_invite_message }}</textarea>
+                            {% message_lang_assets %}
+                            {% message_lang_editor "distributorInviteMessage" "distributor_invite_message_i18n" distributor_invite_message_i18n %}
                         </div>
                     </div>
                 </div>

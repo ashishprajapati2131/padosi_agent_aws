@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static admin_tags %}
+{% load static admin_tags message_lang_tags %}
 
 {% block title %}Personal Digital Visiting Card Studio — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Content Control › Personal Digital Visiting Card Studio{% endblock %}
@@ -367,7 +367,9 @@
 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small text-dark">Default Pre-filled WhatsApp Message</label>
-                                    <textarea name="default_whatsapp_msg" rows="3" class="form-control">{{ config.default_whatsapp_msg|default:'' }}</textarea>
+                                    <textarea name="default_whatsapp_msg" id="defaultWhatsappMsg" rows="3" class="form-control">{{ config.default_whatsapp_msg|default:'' }}</textarea>
+                                    {% message_lang_assets %}
+                                    {% message_lang_editor "defaultWhatsappMsg" "default_whatsapp_msg_i18n" config.default_whatsapp_msg_i18n %}
                                     <div class="form-text small">Use <code>{agent_name}</code> as dynamic placeholder.</div>
                                 </div>
 
@@ -786,6 +788,7 @@
                         <div class="col-12">
                             <label class="form-label fw-bold small text-dark">Pre-filled WhatsApp Message</label>
                             <textarea name="whatsapp_msg" id="modalWhatsappMsg" rows="2" class="form-control form-control-sm"></textarea>
+                            <div id="modalWhatsappLangHost">{% message_lang_editor "modalWhatsappMsg" "whatsapp_msg_i18n" %}</div>
                         </div>
 
                         <div class="col-md-5">
@@ -902,6 +905,16 @@ function openAgentCardModal(agentId) {
             document.getElementById('modalThemeColorText').value = ag.theme_color || '#0B1F3A';
             document.getElementById('modalBannerStyle').value = ag.banner_style || 'profile';
             document.getElementById('modalWhatsappMsg').value = ag.whatsapp_msg || '';
+            (function () {
+                // Rebuild the language panel so it reads this agent's translations.
+                const old = document.querySelector('#modalWhatsappLangHost [data-msg-lang-editor]');
+                const fresh = old.cloneNode(true);
+                delete fresh.dataset.msgLangReady;
+                fresh.querySelector('[data-msg-lang-store]').value = JSON.stringify(ag.whatsapp_msg_i18n || {});
+                fresh.querySelector('[data-msg-lang-text]').value = '';
+                old.replaceWith(fresh);
+                window.PadosiMsgLang && window.PadosiMsgLang.initEditors(fresh.parentNode);
+            })();
             document.getElementById('modalCustomBtnLabel').value = ag.custom_button_label || '';
             document.getElementById('modalCustomBtnUrl').value = ag.custom_button_url || '';
 

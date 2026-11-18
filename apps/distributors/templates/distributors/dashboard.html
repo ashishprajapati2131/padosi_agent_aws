@@ -1,4 +1,5 @@
 {% extends 'distributors/layout.html' %}
+{% load message_lang_tags %}
 
 {% block page_title %}Dashboard{% endblock %}
 
@@ -132,6 +133,12 @@
             
             <div class="mb-2">
                 <textarea id="inviteMessageText" class="form-control bg-light text-dark shadow-inner" rows="6" style="font-size: 14px; resize: none; border: 1px solid #e2e8f0; border-radius: 8px;" onkeyup="updateShareLinks()">{{ shareMessage }}</textarea>
+            </div>
+            <div class="mb-2 d-flex align-items-center gap-2">
+                <label for="inviteLang" class="small text-muted mb-0">Language</label>
+                {% message_lang_assets %}
+                {% message_lang_select "inviteLang" "en" %}
+                {{ inviteTranslations|json_script:"inviteTr" }}
             </div>
             
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -277,6 +284,30 @@
         navigator.clipboard.writeText(msg);
         alert("Message copied to clipboard!");
     }
+
+    (function () {
+        var url = "{{ referralUrl|escapejs }}";
+        var stored = JSON.parse(document.getElementById("inviteTr").textContent);
+        var box = document.getElementById("inviteMessageText");
+        var sel = document.getElementById("inviteLang");
+        var lastEn = box.value;
+        box.addEventListener("input", function () { lastEn = box.value; });
+        if (sel && window.PadosiMsgLang) {
+            PadosiMsgLang.picker(sel, {
+                // translate the template with {LINK}, then put the real link back
+                base: function () {
+                    return lastEn.split(url).join("{LINK}");
+                },
+                stored: function (c) { return stored[c]; },
+                apply: function (t, c) {
+                    box.value = t.split("{LINK}").join(url);
+                    if (c === "en") lastEn = box.value;
+                    updateShareLinks();
+                },
+                onError: function (m) { alert(m); }
+            });
+        }
+    })();
 
     function updateShareLinks() {
         var msg = document.getElementById("inviteMessageText").value;

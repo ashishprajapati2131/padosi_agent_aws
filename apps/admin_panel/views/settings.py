@@ -717,6 +717,12 @@ def update_hero_section(request):
     return redirect("admin_settings_hero_section")
 
 
+def _saved_translations(key):
+    from apps.home.services.message_languages import clean_translations
+
+    return clean_translations(SiteSetting.get_value(key, {}))
+
+
 def general(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
@@ -766,6 +772,9 @@ def general(request):
         "distributor_invite_message": SiteSetting.get_value(
             "distributor_invite_message", default_message
         ),
+        "distributor_invite_message_i18n": _saved_translations(
+            "distributor_invite_message_i18n"
+        ),
         "wholesale_marketplace_enabled": wm_enabled,
         "agent_digital_card_enabled": card_enabled,
         "wa_agent_bot_enabled": wa_bot_enabled,
@@ -788,6 +797,7 @@ SETTINGS_FORM_KEYS = {
         "contact_address",
         "social_links",
         "distributor_invite_message",
+        "distributor_invite_message_i18n",
         "wholesale_marketplace_enabled",
         "agent_digital_card_enabled",
         "wa_agent_bot_enabled",
@@ -869,6 +879,10 @@ def update_settings(request):
                 if m:
                     value = m.group(1)
                 value = value.strip().strip("\"'")
+            if key == "distributor_invite_message_i18n":
+                from apps.home.services.message_languages import clean_translations
+
+                value = clean_translations(value)
             SiteSetting.set_value(key, value, group=group)
 
         # Handle boolean checkboxes for feature flags

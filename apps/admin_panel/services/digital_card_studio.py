@@ -202,6 +202,12 @@ def save_digital_card_studio_config(updates: Dict[str, Any], request=None) -> Di
             if clean_str:
                 current[k] = clean_str
 
+    if 'default_whatsapp_msg_i18n' in updates:
+        from apps.home.services.message_languages import clean_translations
+        current['default_whatsapp_msg_i18n'] = clean_translations(
+            updates['default_whatsapp_msg_i18n']
+        )
+
     # Validate Theme Color
     if 'default_theme_color' in updates:
         col = str(updates['default_theme_color']).strip()

@@ -9,6 +9,12 @@ from apps.agents.services.feature_unlock import normalize_plan_slug, PLAN_SLUGS
 
 logger = logging.getLogger(__name__)
 
+# Admin-editable texts that can carry per-language versions (stored as '<field>_i18n').
+I18N_FIELDS = (
+    'badge_title', 'badge_subtitle', 'cta_button_text',
+    'nudge_title', 'nudge_message', 'nudge_yes_text', 'nudge_skip_text',
+)
+
 DEFAULT_GOOGLE_REVIEW_SYSTEM = {
     # Master switch
     'enabled': True,
@@ -83,7 +89,11 @@ def sanitize_google_review_config(raw):
     if badge_style not in ('compact', 'detailed', 'cards'):
         badge_style = 'compact'
 
+    from apps.home.services.message_languages import clean_translations
+    i18n = {f + '_i18n': clean_translations(data.get(f + '_i18n')) for f in I18N_FIELDS}
+
     return {
+        **i18n,
         'enabled': _as_bool(data.get('enabled'), DEFAULT_GOOGLE_REVIEW_SYSTEM['enabled']),
         'eligible_plans': eligible,
         'max_reviews_shown': max_reviews,
@@ -153,7 +163,13 @@ def get_agent_google_review_config(agent):
         return None
 
 
-def get_agent_google_review_data(agent):
+def _text(sys_cfg, field, default, lang):
+    """Admin text in the visitor's language, falling back to the base text."""
+    from apps.home.services.message_languages import pick
+    return pick(sys_cfg.get(field, default), sys_cfg.get(field + '_i18n'), lang)
+
+
+def get_agent_google_review_data(agent, lang='en'):
     """
     Build a display-ready dictionary for agent public profile.
     Returns None if:
@@ -204,14 +220,14 @@ def get_agent_google_review_data(agent):
         'has_reviews': len(display_reviews) > 0,
         'badge_style': sys_cfg.get('badge_style', 'compact'),
         'show_google_logo': sys_cfg.get('show_google_logo', True),
-        'badge_title': sys_cfg.get('badge_title', 'Google Reviews'),
-        'badge_subtitle': sys_cfg.get('badge_subtitle', 'Verified client reviews from Google'),
-        'cta_button_text': sys_cfg.get('cta_button_text', 'Review on Google'),
+        'badge_title': _text(sys_cfg, 'badge_title', 'Google Reviews', lang),
+        'badge_subtitle': _text(sys_cfg, 'badge_subtitle', 'Verified client reviews from Google', lang),
+        'cta_button_text': _text(sys_cfg, 'cta_button_text', 'Review on Google', lang),
         'clicks': cfg.google_review_clicks,
     }
 
 
-def get_google_nudge_config(agent):
+def get_google_nudge_config(agent, lang='en'):
     """
     Returns nudge modal config for post-platform-review popup.
     Returns None if agent cannot use Google reviews or has no review URL.
@@ -226,16 +242,16 @@ def get_google_nudge_config(agent):
     sys_cfg = get_google_review_system_config()
     agent_name = getattr(agent, 'fullname', '') or 'your agent'
 
-    title = sys_cfg.get('nudge_title', '').replace('{{agent_name}}', agent_name)
-    message = sys_cfg.get('nudge_message', '').replace('{{agent_name}}', agent_name)
+    title = _text(sys_cfg, 'nudge_title', '', lang).replace('{{agent_name}}', agent_name)
+    message = _text(sys_cfg, 'nudge_message', '', lang).replace('{{agent_name}}', agent_name)
 
     return {
         'enabled': True,
         'google_review_url': cfg.google_review_url,
         'title': title,
         'message': message,
-        'yes_text': sys_cfg.get('nudge_yes_text', 'Yes, Review on Google'),
-        'skip_text': sys_cfg.get('nudge_skip_text', 'Maybe Later'),
+        'yes_text': _text(sys_cfg, 'nudge_yes_text', 'Yes, Review on Google', lang),
+        'skip_text': _text(sys_cfg, 'nudge_skip_text', 'Maybe Later', lang),
         'delay_ms': sys_cfg.get('nudge_delay_ms', 1200),
         'agent_id': agent.id,
     }

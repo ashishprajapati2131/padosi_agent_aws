@@ -310,6 +310,9 @@ def save_google_review_config(request):
         'dashboard_section_desc': request.POST.get('dashboard_section_desc', ''),
         'dashboard_url_placeholder': request.POST.get('dashboard_url_placeholder', ''),
     }
+    for _f in ('badge_title', 'badge_subtitle', 'cta_button_text', 'nudge_title',
+               'nudge_message', 'nudge_yes_text', 'nudge_skip_text'):
+        payload[_f + '_i18n'] = request.POST.get(_f + '_i18n', '')  # sanitised in the service
 
     try:
         saved = save_google_review_system_config(payload)

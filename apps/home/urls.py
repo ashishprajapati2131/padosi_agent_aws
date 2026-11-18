@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 from .views import pages, seo, calculators
+from .views.message_translate import translate_message
 
 
 app_name = 'home'
@@ -9,6 +10,7 @@ urlpatterns = [
     # IndexNow key file; 404 unless the path matches settings.INDEXNOW_KEY.
     re_path(r'^(?P<key>[a-zA-Z0-9-]{8,128})\.txt$', seo.indexnow_key, name='indexnow_key'),
     path('favicon.ico',      pages.favicon,         name='favicon'),
+    path('message-translate/', translate_message,   name='message_translate'),
     path('',                 pages.home,            name='home'),
     path('about/',           pages.about,           name='about'),
     path('faq/',             pages.faq,             name='faq'),

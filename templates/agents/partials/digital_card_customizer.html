@@ -1,4 +1,4 @@
-{% load static %}
+{% load static message_lang_tags %}
 <div class="pa-card-studio-shell">
     <style>
         .pa-card-studio-shell {
@@ -738,6 +738,8 @@
                     <div class="mb-3">
                         <label for="inputWhatsAppMsg" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Pre-filled WhatsApp Message</label>
                         <textarea name="whatsapp_msg" id="inputWhatsAppMsg" class="form-control" rows="2" style="font-size: 13px; border-radius: 10px;" placeholder="Hello, I viewed your Digital Visiting Card and would like consultation..." oninput="updateLivePreview()">{{ card_config.whatsapp_msg|default:'' }}</textarea>
+                        {% message_lang_assets %}
+                        {% message_lang_editor "inputWhatsAppMsg" "whatsapp_msg_i18n" card_config.whatsapp_msg_i18n %}
                         <small class="text-muted">When a client clicks WhatsApp on your card, this message opens ready for them to send.</small>
                     </div>
 

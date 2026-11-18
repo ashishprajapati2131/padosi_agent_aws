@@ -996,6 +996,8 @@ def update_review_growth(request):
             'upgrade_plan': request.POST.get('growth_upgrade_plan') or existing.get('upgrade_plan', 'professional'),
             'upgrade_title': request.POST.get('growth_upgrade_title') or existing.get('upgrade_title', ''),
             'upgrade_message': request.POST.get('growth_upgrade_message') or existing.get('upgrade_message', ''),
+            'upgrade_title_i18n': request.POST.get('upgrade_title_i18n', ''),
+            'upgrade_message_i18n': request.POST.get('upgrade_message_i18n', ''),
             'upgrade_price_enabled': request.POST.get('growth_upgrade_price_enabled') == 'on',
             'upgrade_promo_price': request.POST.get('growth_upgrade_promo_price') or existing.get('upgrade_promo_price'),
             'upgrade_full_price': request.POST.get('growth_upgrade_full_price') or existing.get('upgrade_full_price'),

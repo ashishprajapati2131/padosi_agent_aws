@@ -513,7 +513,9 @@ def agent_dashboard(request):
         should_show_upgrade_progress,
     )
 
-    growth_cfg = get_review_growth_config()
+    from apps.home.services.message_languages import request_language
+
+    growth_cfg = get_review_growth_config(request_language(request))
     growth_status = get_review_growth_status(agent)
     professional_plan = _resolve_agent_plan("professional", agent=agent)
     review_unlock_summary = build_review_unlock_summary(

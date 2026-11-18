@@ -1,0 +1,19 @@
+{% load static json_tags %}{% if not skip %}<script>
+window.PADOSI_MSG_LANGS = {{ languages|safe_json }};
+window.PADOSI_MSG_TRANSLATE_URL = "{% url 'home:message_translate' %}";
+</script>
+<script src="{% static 'js/message-lang.js' %}"></script>
+<style>
+    .pa-msglang { margin-top: 10px; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 10px 12px; background: #F8FAFC; }
+    .pa-msglang-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pa-msglang-head label { font-size: 12.5px; font-weight: 700; color: #1E293B; margin: 0; }
+    .pa-msglang-head select { width: auto; min-width: 150px; flex: 1 1 150px; max-width: 240px; }
+    .pa-msglang-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid #0D9488; background: #ffffff; color: #0F766E; cursor: pointer; }
+    .pa-msglang-btn:hover { background: #F0FDFA; }
+    .pa-msglang-btn:disabled { opacity: .6; cursor: wait; }
+    .pa-msglang-btn:focus-visible { outline: 3px solid #38BDF8; outline-offset: 2px; }
+    .pa-msglang-status { display: block; font-size: 12px; color: #64748B; margin-top: 6px; min-height: 1em; }
+    .pa-msglang-status.is-error { color: #B91C1C; }
+    .pa-msglang textarea { font-size: 13px; border-radius: 10px; }
+</style>
+{% endif %}

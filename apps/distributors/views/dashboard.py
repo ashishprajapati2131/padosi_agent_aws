@@ -124,6 +124,7 @@ def dashboard(request):
     
     # Laravel parity: custom invite message (users.custom_invite_message) wins over the admin site setting
     custom_message = l_user.custom_invite_message if l_user else None
+    invite_translations = {}
     if custom_message:
         raw_message = custom_message
     else:
@@ -132,6 +133,9 @@ def dashboard(request):
             raw_message = setting.value
         except SiteSetting.DoesNotExist:
             raw_message = default_message
+        # Admin translations only fit the admin text, not a distributor's own message.
+        from apps.home.services.message_languages import clean_translations
+        invite_translations = clean_translations(SiteSetting.get_value('distributor_invite_message_i18n', {}))
 
     share_message = raw_message.replace('{LINK}', referral_url)
     
@@ -176,6 +180,7 @@ def dashboard(request):
         'referralStats': referral_stats,
         'referralUrl': referral_url,
         'shareMessage': share_message,
+        'inviteTranslations': invite_translations,
         'totalSubDistributors': total_sub_distributors,
         'activeSubDistributors': active_sub_distributors,
         'subDistributorAgentsCount': sub_distributor_agents_count,

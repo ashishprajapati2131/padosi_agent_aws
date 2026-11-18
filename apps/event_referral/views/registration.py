@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from apps.event_referral.models import EventReferralCampaign
+from apps.home.services.message_languages import pick, request_language
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ def event_registration(request):
             'event_referral_mode': True,
             'event_referral_campaign': campaign,
             'registration_closed': not campaign.is_enabled,
+            'closed_message_text': pick(campaign.closed_message, campaign.closed_message_i18n, request_language(request)),
             'register_step1_url': reverse('agents:agent_register_step1'),
             'hide_header': True,
         },

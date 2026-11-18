@@ -9,6 +9,8 @@ import re
 logger = logging.getLogger(__name__)
 
 TEMPLATES_SETTING = 'wa_message_templates'
+I18N_SETTING = 'wa_message_templates_i18n'  # {key: {lang_code: text}}
+LANGUAGE_SETTING = 'wa_bot_message_language'
 KEYWORDS_SETTING = 'wa_keyword_replies'
 MAX_TEMPLATE_LEN = 3000
 MAX_KEYWORDS = 100
@@ -123,6 +125,15 @@ def get_overrides():
     return _setting(TEMPLATES_SETTING, {})
 
 
+def get_translations():
+    return _setting(I18N_SETTING, {})
+
+
+def get_language():
+    from apps.home.services.message_languages import normalize_lang
+    return normalize_lang(_setting(LANGUAGE_SETTING, 'en'))
+
+
 def template_errors(key, text):
     """Return a list of problems with an admin-edited template ([] when it is safe to save)."""
     errors = []
@@ -149,10 +160,22 @@ def _fill(text, values):
 
 
 def render(key, **context):
-    """Fill a template with context. Falls back to the default text if an admin edit is broken."""
+    """Fill a template with context. Falls back to the default text if an admin edit is broken.
+
+    Uses the admin's "Bot message language" when a saved translation exists, else the base text.
+    """
+    from apps.home.services.message_languages import pick
     spec = TEMPLATES[key]
     values = {p: ('' if context.get(p) is None else str(context.get(p)).strip()) for p in spec['placeholders']}
     text = get_overrides().get(key) or spec['default']
+    lang = get_language()
+    if lang != 'en':
+        translated = pick(text, (get_translations().get(key) or {}), lang)
+        if translated != text and not template_errors(key, translated):
+            try:
+                return _fill(translated, values)
+            except (ValueError, IndexError, KeyError, AttributeError) as e:
+                logger.error(f"[WA-Templates] Broken {lang} translation of '{key}', using base: {e}")
     try:
         return _fill(text, values)
     except (ValueError, IndexError, KeyError, AttributeError) as e:

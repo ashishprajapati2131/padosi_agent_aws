@@ -34,6 +34,7 @@ class EventReferralCampaign(models.Model):
             'Please wait until it opens again.'
         ),
     )
+    closed_message_i18n = models.JSONField(default=dict, blank=True)
     registration_link_open_count = models.PositiveBigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

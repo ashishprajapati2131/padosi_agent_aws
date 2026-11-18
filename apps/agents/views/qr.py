@@ -419,12 +419,22 @@ def public_agent_card(request, slug):
     )
 
     # Pre-filled WhatsApp message
+    from apps.home.services.message_languages import pick, request_language
+
+    wa_lang = request_language(request)
     custom_wa_msg = card_cfg.get("whatsapp_msg")
-    if not custom_wa_msg:
+    if custom_wa_msg:
+        custom_wa_msg = pick(custom_wa_msg, card_cfg.get("whatsapp_msg_i18n"), wa_lang)
+    else:
         default_tpl = (
             studio_cfg.get("default_whatsapp_msg")
             or "Hello {agent_name},\nI viewed your Digital Visiting Card and would like consultation regarding insurance plans."
         )
+        default_tpl = pick(
+            default_tpl, studio_cfg.get("default_whatsapp_msg_i18n"), wa_lang
+        )
+        # Agent translations apply even when the agent left the base text empty.
+        default_tpl = pick(default_tpl, card_cfg.get("whatsapp_msg_i18n"), wa_lang)
         custom_wa_msg = default_tpl.replace("{agent_name}", display_name)
     wa_greeting = urllib.parse.quote(custom_wa_msg)
     whatsapp_url = (
@@ -1162,6 +1172,11 @@ def agent_save_card_customization(request):
     if len(whatsapp_msg) > 500:
         whatsapp_msg = whatsapp_msg[:500]
     cfg["whatsapp_msg"] = whatsapp_msg
+    from apps.home.services.message_languages import clean_translations
+
+    cfg["whatsapp_msg_i18n"] = clean_translations(
+        request.POST.get("whatsapp_msg_i18n"), max_length=500
+    )
 
     # 5. Toggles
     def parse_bool(key, default=True):

@@ -1,3 +1,4 @@
+import json
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -175,6 +176,26 @@ class AgentDigitalCardTestCase(TestCase):
         self.assertContains(card_res, '#059669')
         self.assertContains(card_res, 'Book Video Consultation')
         self.assertNotContains(card_res, 'id="reviewsHeading"')
+
+    def test_whatsapp_msg_translation_saved_and_picked(self):
+        from urllib.parse import quote
+        SiteSetting.set_value('agent_digital_card_enabled', True, group='general')
+        self.client.force_login(self.user)
+        res = self.client.post(reverse('agents:agent_save_card_customization'), {
+            'whatsapp_msg': 'Hello, need advice.',
+            'whatsapp_msg_i18n': json.dumps({'gu': 'નમસ્તે', 'xx': 'bad', 'hi': 'x' * 600}),
+        })
+        self.assertTrue(res.json().get('success'))
+        self.profile.refresh_from_db()
+        i18n = self.profile.get_card_config()['whatsapp_msg_i18n']
+        self.assertEqual(set(i18n), {'gu', 'hi'})
+        self.assertEqual(len(i18n['hi']), 500)
+
+        card_url = reverse('agents:agent_public_card', kwargs={'slug': 'kishan-patel'})
+        self.client.cookies['padosi_lang'] = 'gu'
+        self.assertIn(quote('નમસ્તે'), self.client.get(card_url).content.decode())
+        self.client.cookies['padosi_lang'] = 'ta'  # no Tamil text: falls back to base
+        self.assertIn(quote('Hello, need advice.'), self.client.get(card_url).content.decode())
 
     def test_pure_qr_code_endpoint(self):
         url = reverse('agents:agent_card_pure_qr', kwargs={'slug': 'kishan-patel'})

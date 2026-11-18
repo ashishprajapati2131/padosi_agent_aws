@@ -127,6 +127,9 @@ def admin_update_settings(request):
     campaign.reward_plan_slug = (request.POST.get('reward_plan_slug') or 'basic').strip()
     campaign.page_title = (request.POST.get('page_title') or campaign.page_title).strip()
     campaign.page_instructions = (request.POST.get('page_instructions') or '').strip()
+    from apps.home.services.message_languages import clean_translations
+    campaign.closed_message = (request.POST.get('closed_message') or '').strip()[:2000] or campaign.closed_message
+    campaign.closed_message_i18n = clean_translations(request.POST.get('closed_message_i18n'))
     campaign.save()
     messages.success(request, 'Event referral settings saved.')
     return redirect('admin_event_referral_dashboard')

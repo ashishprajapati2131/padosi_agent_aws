@@ -543,7 +543,7 @@
             <div class="w-full min-w-0{% if event_referral_mode %} event-paldi-form-wrap no-scrollbar{% endif %}">
                 {% if event_referral_mode and registration_closed %}
                 <div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 text-sm font-medium">
-                    Event registration is currently closed. Please check back later or contact support.
+                    {{ closed_message_text|default:"Event registration is currently closed. Please check back later or contact support." }}
                 </div>
                 {% elif event_referral_mode %}
                 <header class="event-paldi-hero">

@@ -1,0 +1,16 @@
+<div class="pa-msglang" data-msg-lang-editor data-source="{{ source_id }}">
+    <input type="hidden" name="{{ field_name }}" value="{{ translations_json }}" data-msg-lang-store>
+    <div class="pa-msglang-head">
+        <label for="{{ field_name }}_lang"><i class="fas fa-language"></i> Other languages</label>
+        <select id="{{ field_name }}_lang" class="form-select form-select-sm" data-msg-lang-pick>
+            {% for code, name, native in languages %}<option value="{{ code }}">{{ native }} · {{ name }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" class="pa-msglang-btn" data-msg-lang-translate>
+            <i class="fas fa-magic"></i> Translate to all languages
+        </button>
+    </div>
+    <textarea class="form-control" rows="3" aria-labelledby="{{ field_name }}_lang" data-msg-lang-text
+              placeholder="Not translated yet. Press &quot;Translate to all languages&quot; or type it here."></textarea>
+    <small class="pa-msglang-status" role="status" data-msg-lang-status></small>
+</div>

@@ -757,14 +757,24 @@ def wa_bot_messages(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        if action == "save_language":
+            from apps.home.services.message_languages import normalize_lang
+
+            lang = normalize_lang(request.POST.get("language"))
+            SiteSetting.set_value(mt.LANGUAGE_SETTING, lang, group="whatsapp")
+            _log_admin_action(request, "wa_save_language", "WhatsAppTemplate", 0, lang)
+            messages.success(request, "Bot message language saved.")
+            return redirect("admin_wa_messages")
         if action in ("save_template", "reset_template"):
             key = request.POST.get("key", "")
             if key not in mt.TEMPLATES:
                 messages.error(request, "Unknown template.")
                 return redirect("admin_wa_messages")
             overrides = dict(mt.get_overrides())
+            i18n = dict(mt.get_translations())
             if action == "reset_template":
                 overrides.pop(key, None)
+                i18n.pop(key, None)
                 messages.success(
                     request,
                     f"'{mt.TEMPLATES[key]['label']}' reset to the default text.",
@@ -780,9 +790,36 @@ def wa_bot_messages(request):
                     for err in errors:
                         messages.error(request, err)
                     return redirect(f"{request.path}#tpl-{key}")
+                from apps.home.services.message_languages import (
+                    LANGUAGES,
+                    clean_translations,
+                )
+
+                names = {c: n for c, n, _ in LANGUAGES}
+                good, bad = {}, []
+                for code, tr in clean_translations(
+                    request.POST.get("text_i18n"), mt.MAX_TEMPLATE_LEN
+                ).items():
+                    if mt.template_errors(key, tr):
+                        bad.append(names.get(code, code))
+                    else:
+                        good[code] = tr
+                if bad:
+                    messages.error(
+                        request,
+                        "Not saved. These translations have wrong or broken {placeholders}: "
+                        + ", ".join(bad)
+                        + ". Fix them or press Translate again.",
+                    )
+                    return redirect(f"{request.path}#tpl-{key}")
                 overrides[key] = text
+                if good:
+                    i18n[key] = good
+                else:
+                    i18n.pop(key, None)
                 messages.success(request, f"'{mt.TEMPLATES[key]['label']}' saved.")
             SiteSetting.set_value(mt.TEMPLATES_SETTING, overrides, group="whatsapp")
+            SiteSetting.set_value(mt.I18N_SETTING, i18n, group="whatsapp")
             _log_admin_action(request, f"wa_{action}", "WhatsAppTemplate", 0, key)
             return redirect(f"{request.path}#tpl-{key}")
 
@@ -841,6 +878,7 @@ def wa_bot_messages(request):
         return redirect("admin_wa_messages")
 
     overrides = mt.get_overrides()
+    i18n = mt.get_translations()
     templates = [
         {
             "key": key,
@@ -848,6 +886,7 @@ def wa_bot_messages(request):
             "placeholders": spec["placeholders"],
             "text": overrides.get(key) or spec["default"],
             "customized": key in overrides,
+            "i18n": i18n.get(key) or {},
         }
         for key, spec in mt.TEMPLATES.items()
     ]
@@ -858,6 +897,7 @@ def wa_bot_messages(request):
             "templates": templates,
             "keywords": mt.get_keyword_replies(),
             "max_len": mt.MAX_TEMPLATE_LEN,
+            "bot_language": mt.get_language(),
         },
     )
 
@@ -1129,7 +1169,10 @@ def wa_bot_broadcast_templates(request):
     try:
         if op == "save":
             items = broadcast.save_template(
-                name, request.POST.get("text", ""), MAX_BROADCAST_LEN
+                name,
+                request.POST.get("text", ""),
+                MAX_BROADCAST_LEN,
+                request.POST.get("text_i18n"),
             )
         elif op == "delete":
             items = broadcast.delete_template(name)

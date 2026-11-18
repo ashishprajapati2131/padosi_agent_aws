@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load json_tags %}
+{% load json_tags message_lang_tags %}
 
 {% block title %}WhatsApp Broadcast — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Broadcast{% endblock %}
@@ -115,8 +115,14 @@
                         <button type="button" class="btn btn-sm btn-light border" data-insert="{name}" title="Insert the person's name">+ Name</button>
                         <button type="button" class="btn btn-sm btn-light border" data-insert="{link}" title="Insert the agent's profile link here">+ Profile link</button>
                     </div>
+                    {% message_lang_assets %}
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <label for="bcLang" class="small fw-bold mb-0">Language</label>
+                        {% message_lang_select "bcLang" "en" %}
+                    </div>
                     <textarea name="message" id="message" rows="10" maxlength="{{ max_len }}" class="form-control small" required
                               placeholder="Type your message, or load a saved one above…"></textarea>
+                    {% message_lang_editor "message" "text_i18n" %}
                     <div class="d-flex justify-content-between small text-muted mt-1">
                         <span>Select text and press B / I / S to format it.</span>
                         <span><span id="charCount">0</span>/{{ max_len }}</span>
@@ -437,10 +443,29 @@
             tplSelect.value = current; return;
         }
         msg.value = t.text; current = t.name; renderTemplates(); preview();
+        // Show this saved message's translations in the language panel, then in the chosen language.
+        const box = document.querySelector('[data-msg-lang-editor]');
+        const fresh = box.cloneNode(true);
+        fresh.removeAttribute('data-msg-lang-ready');
+        fresh.querySelector('[data-msg-lang-store]').value = JSON.stringify(t.text_i18n || {});
+        fresh.querySelector('[data-msg-lang-text]').value = '';
+        box.replaceWith(fresh); window.PadosiMsgLang.initEditors();
+        if (langSel.value !== 'en') langSel.dispatchEvent(new Event('change'));
     });
+    const langSel = $('bcLang');
+    let freeBase = '';
+    msg.addEventListener('input', () => { if (langSel.value === 'en') freeBase = msg.value; });
+    window.PadosiMsgLang.picker(langSel, {
+        base: () => { const t = templates.find(x => x.name === current); return t ? t.text : (freeBase || msg.value); },
+        stored: code => { const t = templates.find(x => x.name === current); return t && t.text_i18n ? t.text_i18n[code] : ''; },
+        apply: text => { msg.value = text; preview(); },
+        onError: m => alert(m),
+    });
+    const i18nValue = () => document.querySelector('[name=text_i18n]').value;
+    const englishOnly = () => { if (langSel.value !== 'en') { alert('Switch the language back to English before saving. The saved message keeps English as its base text.'); return true; } return false; };
     const saveTpl = (op, name, text) => {
         const body = new FormData();
-        body.append('op', op); body.append('name', name); body.append('text', text || '');
+        body.append('op', op); body.append('name', name); body.append('text', text || ''); body.append('text_i18n', i18nValue());
         body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
         return fetch('{% url "admin_wa_broadcast_templates" %}', {method: 'POST', body, headers: {'X-Requested-With': 'XMLHttpRequest'}})
             .then(r => r.json())
@@ -448,6 +473,7 @@
     };
     $('tplSaveNew').addEventListener('click', () => {
         if (!msg.value.trim()) { alert('Write the message first.'); return; }
+        if (englishOnly()) return;
         const name = (prompt('Name for this saved message (e.g. "New Year 2027"):', '') || '').trim();
         if (!name) return;
         if (templates.some(t => t.name === name) && !confirm('“' + name + '” already exists. Replace it?')) return;
@@ -455,7 +481,7 @@
             .catch(e => alert(e.message));
     });
     $('tplUpdate').addEventListener('click', () => {
-        if (!current || !msg.value.trim()) return;
+        if (!current || !msg.value.trim() || englishOnly()) return;
         saveTpl('save', current, msg.value).then(() => alert('Saved changes to “' + current + '”.')).catch(e => alert(e.message));
     });
     $('tplDelete').addEventListener('click', () => {

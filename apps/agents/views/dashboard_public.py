@@ -158,8 +158,11 @@ def agent_public_profile(request, slug, state_code=None):
             get_google_nudge_config,
         )
 
-        context["google_review_display"] = get_agent_google_review_data(agent)
-        context["google_nudge_config"] = get_google_nudge_config(agent)
+        from apps.home.services.message_languages import request_language
+
+        _lang = request_language(request)
+        context["google_review_display"] = get_agent_google_review_data(agent, _lang)
+        context["google_nudge_config"] = get_google_nudge_config(agent, _lang)
     except Exception:
         context["google_review_display"] = None
         context["google_nudge_config"] = None
@@ -392,7 +395,9 @@ def store_review(request, slug, state_code=None):
     try:
         from apps.agents.services.google_review import get_google_nudge_config
 
-        nudge_data = get_google_nudge_config(agent)
+        from apps.home.services.message_languages import request_language
+
+        nudge_data = get_google_nudge_config(agent, request_language(request))
     except Exception:
         pass
 

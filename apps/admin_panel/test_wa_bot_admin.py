@@ -547,3 +547,59 @@ class WaMessagesPageTests(TestCase):
                 }
             ],
         )
+
+
+class WaBotMessageLanguageSaveTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.addCleanup(cache.clear)  # SiteSetting caches outside the test transaction
+
+    def _post(self, data):
+        req = RequestFactory().post("/admin/whatsapp/messages/", data)
+        req.session = {}
+        req.user = AnonymousUser()
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session", return_value=1
+        ), patch("apps.admin_panel.views.wa_bot_admin._log_admin_action"), patch(
+            "apps.admin_panel.views.wa_bot_admin.messages"
+        ) as msgs:
+            from apps.admin_panel.views.wa_bot_admin import wa_bot_messages
+
+            wa_bot_messages(req)
+        return msgs
+
+    def test_save_translations_and_language(self):
+        from apps.home.models.site_setting import SiteSetting
+
+        self._post(
+            {
+                "action": "save_template",
+                "key": "approval",
+                "text": "Hi {agent_name}",
+                "text_i18n": json.dumps({"gu": "નમસ્તે {agent_name}"}),
+            }
+        )
+        self.assertEqual(
+            SiteSetting.get_value("wa_message_templates_i18n"),
+            {"approval": {"gu": "નમસ્તે {agent_name}"}},
+        )
+        self._post({"action": "save_language", "language": "gu"})
+        self.assertEqual(SiteSetting.get_value("wa_bot_message_language"), "gu")
+        self._post({"action": "save_language", "language": "xx"})
+        self.assertEqual(SiteSetting.get_value("wa_bot_message_language"), "en")
+
+    def test_bad_placeholder_translation_rejects_save(self):
+        from apps.home.models.site_setting import SiteSetting
+
+        msgs = self._post(
+            {
+                "action": "save_template",
+                "key": "approval",
+                "text": "Hi {agent_name}",
+                "text_i18n": json.dumps({"gu": "નમસ્તે {password}"}),
+            }
+        )
+        msgs.error.assert_called_once()
+        self.assertFalse(SiteSetting.get_value("wa_message_templates_i18n"))

@@ -1,4 +1,5 @@
 <!-- Google Reviews Manager Tab Panel for Coming Soon Manager -->
+{% load message_lang_tags %}{% message_lang_assets %}
 <div id="panelGoogleReview" style="display: none;">
     <!-- Stats Row -->
     <div class="row g-3 mb-4">
@@ -162,14 +163,17 @@
                             <div class="col-md-6">
                                 <label class="form-label font-weight-bold small text-dark">Badge Section Title</label>
                                 <input type="text" name="badge_title" id="grBadgeTitle" class="form-control" value="{{ google_review_config.badge_title|default:'Google Reviews' }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grBadgeTitle" "badge_title_i18n" google_review_config.badge_title_i18n %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label font-weight-bold small text-dark">Badge Subtitle</label>
                                 <input type="text" name="badge_subtitle" id="grBadgeSubtitle" class="form-control" value="{{ google_review_config.badge_subtitle|default:'Verified client reviews from Google' }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grBadgeSubtitle" "badge_subtitle_i18n" google_review_config.badge_subtitle_i18n %}
                             </div>
                             <div class="col-12">
                                 <label class="form-label font-weight-bold small text-dark">CTA Button Text (Review on Google)</label>
                                 <input type="text" name="cta_button_text" id="grCtaText" class="form-control" value="{{ google_review_config.cta_button_text|default:'Review on Google' }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grCtaText" "cta_button_text_i18n" google_review_config.cta_button_text_i18n %}
                             </div>
                         </div>
                     </div>
@@ -192,22 +196,26 @@
                             <div class="col-12">
                                 <label class="form-label font-weight-bold small text-dark">Nudge Popup Title</label>
                                 <input type="text" name="nudge_title" id="grNudgeTitle" class="form-control" value="{{ google_review_config.nudge_title }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grNudgeTitle" "nudge_title_i18n" google_review_config.nudge_title_i18n %}
                                 <small class="text-muted">Use <code>&#123;&#123;agent_name&#125;&#125;</code> as dynamic placeholder for agent name</small>
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label font-weight-bold small text-dark">Nudge Message Prompt</label>
                                 <textarea name="nudge_message" id="grNudgeMessage" class="form-control" rows="2" oninput="updateGrPreview()">{{ google_review_config.nudge_message }}</textarea>
+                                {% message_lang_editor "grNudgeMessage" "nudge_message_i18n" google_review_config.nudge_message_i18n %}
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label font-weight-bold small text-dark">"Yes" Button Text</label>
                                 <input type="text" name="nudge_yes_text" id="grNudgeYesText" class="form-control" value="{{ google_review_config.nudge_yes_text|default:'Yes, Review on Google' }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grNudgeYesText" "nudge_yes_text_i18n" google_review_config.nudge_yes_text_i18n %}
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label font-weight-bold small text-dark">"Skip" Button Text</label>
                                 <input type="text" name="nudge_skip_text" id="grNudgeSkipText" class="form-control" value="{{ google_review_config.nudge_skip_text|default:'Maybe Later' }}" oninput="updateGrPreview()">
+                                {% message_lang_editor "grNudgeSkipText" "nudge_skip_text_i18n" google_review_config.nudge_skip_text_i18n %}
                             </div>
 
                             <div class="col-md-6">

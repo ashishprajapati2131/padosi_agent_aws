@@ -1,0 +1,4 @@
+<select id="{{ select_id }}" class="{{ css_class }}" aria-label="Message language" data-msg-lang-select>
+    {% for code, name, native in languages %}<option value="{{ code }}"{% if code == selected %} selected{% endif %}>{% if native != name %}{{ native }} · {% endif %}{{ name }}</option>
+    {% endfor %}
+</select>

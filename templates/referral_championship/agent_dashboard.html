@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static json_tags %}
+{% load static json_tags message_lang_tags %}
 
 {% block title %}Championship Command Center | PadosiAgent{% endblock %}
 
@@ -738,17 +738,7 @@
                                     <h3 class="text-xs sm:text-base font-black text-foreground">WhatsApp Invite Studio</h3>
                                     <p class="text-[10px] sm:text-xs text-muted-foreground">Select regional language for invite text</p>
                                 </div>
-                                <select id="waLangSelect" onchange="changeWaLanguage()" class="rounded-lg sm:rounded-xl border border-border bg-muted/70 px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs">
-                                    <option value="en">English</option>
-                                    <option value="hi">हिंदी (Hindi)</option>
-                                    <option value="gu">ગુજરાતી (Gujarati)</option>
-                                    <option value="mr">मराठी (Marathi)</option>
-                                    <option value="ta">தமிழ் (Tamil)</option>
-                                    <option value="te">తెలుగు (Telugu)</option>
-                                    <option value="bn">বাংলা (Bengali)</option>
-                                    <option value="ml">മലയാളം (Malayalam)</option>
-                                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
-                                </select>
+                                {% message_lang_assets %}{% message_lang_select "waLangSelect" "en" "rounded-lg sm:rounded-xl border border-border bg-muted/70 px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs" %}
                             </div>
 
                             <textarea id="waMessageText" rows="4" class="w-full rounded-xl sm:rounded-2xl border border-border bg-muted/20 p-2.5 sm:p-3.5 text-[11px] sm:text-xs leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans">{{ default_wa_text }}</textarea>
@@ -1072,20 +1062,37 @@
     const digPrice = "{{ dig_price }}";
     const profPrice = "{{ prof_price }}";
 
-    function changeWaLanguage() {
-        const langSelect = document.getElementById('waLangSelect');
-        const waMsgBox = document.getElementById('waMessageText');
-        if (!langSelect || !waMsgBox) return;
-        const lang = langSelect.value;
-        const tmpl = waTemplates[lang]?.templates?.[0]?.text || waTemplates['en']?.templates?.[0]?.text || '';
-        const msg = tmpl
+    function fillWaTemplate(tmpl) {
+        return tmpl
             .replace(/\{\{agent_name\}\}/g, agentName)
             .replace(/\{\{referral_link\}\}/g, refLink)
             .replace(/\{\{profile_link\}\}/g, profLink)
             .replace(/\{\{digital_price\}\}/g, digPrice)
             .replace(/\{\{professional_price\}\}/g, profPrice);
-        waMsgBox.value = msg;
     }
+
+    function changeWaLanguage() {
+        const langSelect = document.getElementById('waLangSelect');
+        const waMsgBox = document.getElementById('waMessageText');
+        if (!langSelect || !waMsgBox) return;
+        const lang = langSelect.value;
+        const en = waTemplates['en']?.templates?.[0]?.text || '';
+        const own = waTemplates[lang]?.templates?.[0]?.text;
+        if (own || lang === 'en' || !window.PadosiMsgLang) {
+            waMsgBox.value = fillWaTemplate(own || en);
+            return;
+        }
+        // No hand-written text: translate the raw English template, then fill links/names.
+        const prev = waMsgBox.value;
+        langSelect.disabled = true;
+        waMsgBox.value = 'Translating…';
+        window.PadosiMsgLang.translate(en, [lang]).then(t => {
+            waMsgBox.value = fillWaTemplate((t && t[lang]) || en);
+        }).catch(() => {
+            waMsgBox.value = fillWaTemplate(en);
+        }).then(() => { langSelect.disabled = false; });
+    }
+    document.getElementById('waLangSelect')?.addEventListener('change', changeWaLanguage);
 
     function openWhatsApp() {
         let text = "";

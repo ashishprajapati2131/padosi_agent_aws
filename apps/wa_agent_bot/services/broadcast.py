@@ -13,6 +13,7 @@ import csv
 import io
 import logging
 import random
+import re
 import time
 from datetime import datetime, timedelta
 
@@ -103,7 +104,7 @@ def get_templates():
     return [dict(t) for t in DEFAULT_TEMPLATES]
 
 
-def save_template(name, text, max_len=4000):
+def save_template(name, text, max_len=4000, text_i18n=None):
     """Add or replace a saved message by name. Raises ValueError on bad input."""
     from apps.home.models.site_setting import SiteSetting
 
@@ -115,7 +116,15 @@ def save_template(name, text, max_len=4000):
     items = [t for t in get_templates() if t["name"] != name]
     if len(items) >= MAX_TEMPLATES:
         raise ValueError(f"You can keep up to {MAX_TEMPLATES} saved messages. Delete one first.")
-    items.append({"name": name, "text": text})
+    item = {"name": name, "text": text}
+    from apps.home.services.message_languages import clean_translations
+
+    # A translation must keep exactly the base text's {name}/{link} placeholders.
+    ph = lambda s: sorted(set(re.findall(r"{(?:name|link)}", s)))  # noqa: E731
+    good = {c: t for c, t in clean_translations(text_i18n, max_len).items() if ph(t) == ph(text)}
+    if good:
+        item["text_i18n"] = good
+    items.append(item)
     SiteSetting.set_value(TEMPLATES_KEY, items, group="whatsapp")
     return items
 

@@ -210,6 +210,7 @@ def update_studio_config(request):
         'default_theme_color': request.POST.get('default_theme_color', '#0B1F3A').strip(),
         'default_banner_style': request.POST.get('default_banner_style', 'profile').strip(),
         'default_whatsapp_msg': request.POST.get('default_whatsapp_msg', '').strip(),
+        'default_whatsapp_msg_i18n': request.POST.get('default_whatsapp_msg_i18n', ''),
         'default_card_tagline': request.POST.get('default_card_tagline', '').strip(),
         'default_card_bio': request.POST.get('default_card_bio', '').strip(),
 
@@ -303,6 +304,7 @@ def admin_agent_card_detail_api(request, agent_id):
             'theme_color': cfg.get('theme_color', '#0B1F3A'),
             'banner_style': cfg.get('banner_style', 'profile'),
             'whatsapp_msg': cfg.get('whatsapp_msg', ''),
+            'whatsapp_msg_i18n': cfg.get('whatsapp_msg_i18n') or {},
             'custom_button_label': cfg.get('custom_button_label', ''),
             'custom_button_url': cfg.get('custom_button_url', ''),
             'show_call': cfg.get('show_call', True),
@@ -393,6 +395,11 @@ def admin_agent_card_save_api(request, agent_id):
         cfg['custom_button_url'] = safe_button_url
     if whatsapp_msg:
         cfg['whatsapp_msg'] = whatsapp_msg
+    if 'whatsapp_msg_i18n' in request.POST:
+        from apps.home.services.message_languages import clean_translations
+        cfg['whatsapp_msg_i18n'] = clean_translations(
+            request.POST.get('whatsapp_msg_i18n'), max_length=500
+        )
 
     if 'is_card_visible' in request.POST:
         profile.is_card_visible = request.POST.get('is_card_visible') == '1'
