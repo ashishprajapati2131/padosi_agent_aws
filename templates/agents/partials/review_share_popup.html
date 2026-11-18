@@ -120,7 +120,8 @@
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
                     outline: none !important;
                     width: auto !important;
-                    max-width: 168px !important;
+                    max-width: 160px !important;
+                    min-width: 118px !important;
                     margin-left: auto !important;
                 }
                 #reviewShareModal .pa-studio-lang-select:focus {
@@ -456,7 +457,8 @@
                         font-size: 11px !important;
                         padding: 4px 8px !important;
                         width: auto !important;
-                        max-width: 140px !important;
+                        max-width: 148px !important;
+                        min-width: 110px !important;
                         margin-left: auto !important;
                     }
                     #reviewShareModal .pa-studio-textarea {
@@ -552,10 +554,24 @@
                 <div class="pa-studio-lang-row">
                     <label for="studioLangSelect" class="pa-studio-lang-label sr-only">Language</label>
                     <select id="studioLangSelect" class="pa-studio-lang-select" aria-label="Language">
+                        {% for lang in studio_languages %}
+                        <option value="{{ lang.code }}" {% if lang.code == 'en' %}selected{% endif %}>{{ lang.label }}</option>
+                        {% empty %}
                         <option value="en" selected>English</option>
                         <option value="hi">Hindi</option>
                         <option value="gu">Gujarati</option>
                         <option value="mr">Marathi</option>
+                        <option value="ta">Tamil</option>
+                        <option value="te">Telugu</option>
+                        <option value="kn">Kannada</option>
+                        <option value="bn">Bengali</option>
+                        <option value="pa">Punjabi</option>
+                        <option value="ml">Malayalam</option>
+                        <option value="or">Odia</option>
+                        <option value="ur">Urdu</option>
+                        <option value="as">Assamese</option>
+                        <option value="raj">Rajasthani</option>
+                        {% endfor %}
                     </select>
                 </div>
 

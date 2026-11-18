@@ -3,8 +3,8 @@ Invite & Share Studio service for Agent Dashboard.
 
 Supports:
 - Section 1: Review & Rating (Asking clients for 5-star reviews & testimonials)
-- Section 2: Share on Social Media (Sharing digital visiting card, profile & referral campaign offer)
-- Multi-language support (English, Hindi, Gujarati, Marathi)
+- Section 2: Share on Social Media (Sharing digital visiting card & referral campaign offer)
+- Multi-language support across all product languages
 - Pre-drafted templates with dynamic placeholder replacement
 """
 import json
@@ -304,7 +304,311 @@ STUDIO_TEMPLATES = {
 }
 
 
-_SOCIAL_INVITE_IDS = ('soc_en_1', 'soc_hi_1', 'soc_gu_1', 'soc_mr_1')
+# Full product language set (matches agent registration LANGUAGE_OPTIONS)
+STUDIO_LANGUAGE_ORDER = (
+    ('en', 'English'),
+    ('hi', 'Hindi'),
+    ('gu', 'Gujarati'),
+    ('mr', 'Marathi'),
+    ('ta', 'Tamil'),
+    ('te', 'Telugu'),
+    ('kn', 'Kannada'),
+    ('bn', 'Bengali'),
+    ('pa', 'Punjabi'),
+    ('ml', 'Malayalam'),
+    ('or', 'Odia'),
+    ('ur', 'Urdu'),
+    ('as', 'Assamese'),
+    ('raj', 'Rajasthani'),
+)
+
+# Compact default copy for languages beyond the hand-authored en/hi/gu/mr packs.
+# review = Review & Rating default, refer = Refer tab, card = Social Media Share default
+_ADDITIONAL_LANG_COPY = {
+    'ta': {
+        'label': 'Tamil',
+        'review': (
+            "வணக்கம்! உங்கள் காப்பீட்டு ஆலோசகராக என்னை நம்பியதற்கு நன்றி.\n\n"
+            "PadosiAgent-இல் எனது சேவைக்கு 5-நட்சத்திர மதிப்பீடும் கருத்தும் தர 30 வினாடி ஒதுக்குங்கள்:\n\n"
+            "⭐ இங்கே மதிப்பிடுங்கள்:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "வணக்கம், நான் {{agent_name}}, காப்பீட்டு முகவர்.\n\n"
+            "PadosiAgent மூலம் உங்கள் டிஜிட்டல் இருப்பை வளர்த்து அதிக வாடிக்கையாளர்களை அடையுங்கள்.\n\n"
+            "🔗 என் பரிந்துரை இணைப்பு:\n{{referral_link}}\n\n"
+            "PadosiAgent உடன் சேர்ந்து வளர்வோம்!"
+        ),
+        'card': (
+            "வணக்கம்! நான் {{agent_name}}, உங்கள் பகுதி காப்பீட்டு ஆலோசகர்.\n\n"
+            "🪪 என் டிஜிட்டல் விசிட்டிங் கார்டு:\n{{card_link}}\n\n"
+            "ஆயுள், சுகாதாரம் அல்லது வாகன காப்பீடு குறித்து தொடர்பு கொள்ளுங்கள்!"
+        ),
+    },
+    'te': {
+        'label': 'Telugu',
+        'review': (
+            "నమస్కారం! మీ ఇన్సూరెన్స్ సలహాదారుగా నన్ను నమ్మినందుకు ధన్యవాదాలు.\n\n"
+            "దయచేసి PadosiAgentలో నా సేవకు 5-స్టార్ రేటింగ్ మరియు రివ్యూ ఇవ్వండి:\n\n"
+            "⭐ ఇక్కడ రేట్ చేయండి:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "నమస్కారం, నేను {{agent_name}}, ఇన్సూరెన్స్ ఏజెంట్.\n\n"
+            "PadosiAgentతో మీ డిజిటల్ ఉనికిని పెంచుకుని ఎక్కువ మంది కస్టమర్లను చేరుకోండి.\n\n"
+            "🔗 నా రెఫరల్ లింక్:\n{{referral_link}}\n\n"
+            "PadosiAgentతో కలిసి ఎదుగుదాం!"
+        ),
+        'card': (
+            "నమస్కారం! నేను {{agent_name}}, మీ సమీప ఇన్సూరెన్స్ సలహాదారు.\n\n"
+            "🪪 నా డిజిటల్ విజిటింగ్ కార్డ్:\n{{card_link}}\n\n"
+            "లైఫ్, హెల్త్ లేదా మోటార్ ఇన్సూరెన్స్ కోసం సంప్రదించండి!"
+        ),
+    },
+    'kn': {
+        'label': 'Kannada',
+        'review': (
+            "ನಮಸ್ಕಾರ! ನಿಮ್ಮ ವಿಮಾ ಸಲಹೆಗಾರನಾಗಿ ನನ್ನನ್ನು ನಂಬಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.\n\n"
+            "ದಯವಿಟ್ಟು PadosiAgentನಲ್ಲಿ ನನ್ನ ಸೇವೆಗೆ 5-ಸ್ಟಾರ್ ರೇಟಿಂಗ್ ಮತ್ತು ವಿಮರ್ಶೆ ನೀಡಿ:\n\n"
+            "⭐ ಇಲ್ಲಿ ರೇಟ್ ಮಾಡಿ:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "ನಮಸ್ಕಾರ, ನಾನು {{agent_name}}, ವಿಮಾ ಏಜೆಂಟ್.\n\n"
+            "PadosiAgent ಜೊತೆ ನಿಮ್ಮ ಡಿಜಿಟಲ್ ಹಾಜರಿ ಹೆಚ್ಚಿಸಿ ಹೆಚ್ಚು ಗ್ರಾಹಕರನ್ನು ತಲುಪಿ.\n\n"
+            "🔗 ನನ್ನ ರೆಫರಲ್ ಲಿಂಕ್:\n{{referral_link}}\n\n"
+            "PadosiAgent ಜೊತೆ ಬೆಳೆಯೋಣ!"
+        ),
+        'card': (
+            "ನಮಸ್ಕಾರ! ನಾನು {{agent_name}}, ನಿಮ್ಮ ನೆರೆಹೊರೆಯ ವಿಮಾ ಸಲಹೆಗಾರ.\n\n"
+            "🪪 ನನ್ನ ಡಿಜಿಟಲ್ ವಿಜಿಟಿಂಗ್ ಕಾರ್ಡ್:\n{{card_link}}\n\n"
+            "ಲೈಫ್, ಹೆಲ್ತ್ ಅಥವಾ ಮೋಟಾರ್ ವಿಮೆಗಾಗಿ ಸಂಪರ್ಕಿಸಿ!"
+        ),
+    },
+    'bn': {
+        'label': 'Bengali',
+        'review': (
+            "নমস্কার! আপনার ইনস্যুরেন্স উপদেষ্টা হিসেবে আমাকে বিশ্বাস করার জন্য ধন্যবাদ।\n\n"
+            "অনুগ্রহ করে PadosiAgent-এ আমার সেবায় ৫-স্টার রেটিং ও রিভিউ দিন:\n\n"
+            "⭐ এখানে রেট করুন:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "নমস্কার, আমি {{agent_name}}, ইনস্যুরেন্স এজেন্ট।\n\n"
+            "PadosiAgent-এর সাথে আপনার ডিজিটাল উপস্থিতি বাড়ান এবং আরও গ্রাহকের কাছে পৌঁছান।\n\n"
+            "🔗 আমার রেফারেল লিঙ্ক:\n{{referral_link}}\n\n"
+            "PadosiAgent-এর সাথে একসাথে এগোই!"
+        ),
+        'card': (
+            "নমস্কার! আমি {{agent_name}}, আপনার এলাকার ইনস্যুরেন্স উপদেষ্টা।\n\n"
+            "🪪 আমার ডিজিটাল ভিজিটিং কার্ড:\n{{card_link}}\n\n"
+            "লাইফ, হেলথ বা মোটর ইনস্যুরেন্সের জন্য যোগাযোগ করুন!"
+        ),
+    },
+    'pa': {
+        'label': 'Punjabi',
+        'review': (
+            "ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਤੁਹਾਡੇ ਬੀਮਾ ਸਲਾਹਕਾਰ ਵਜੋਂ ਮੇਰੇ ਉੱਤੇ ਭਰੋਸਾ ਕਰਨ ਲਈ ਧੰਨਵਾਦ।\n\n"
+            "ਕਿਰਪਾ ਕਰਕੇ PadosiAgent ਉੱਤੇ ਮੇਰੀ ਸੇਵਾ ਨੂੰ 5-ਸਟਾਰ ਰੇਟਿੰਗ ਅਤੇ ਰਿਵਿਊ ਦਿਓ:\n\n"
+            "⭐ ਇੱਥੇ ਰੇਟ ਕਰੋ:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਮੈਂ {{agent_name}}, ਇੰਸ਼ੋਰੈਂਸ ਏਜੰਟ ਹਾਂ।\n\n"
+            "PadosiAgent ਨਾਲ ਆਪਣੀ ਡਿਜੀਟਲ ਮੌਜੂਦਗੀ ਵਧਾਓ ਅਤੇ ਹੋਰ ਗਾਹਕਾਂ ਤੱਕ ਪਹੁੰਚੋ।\n\n"
+            "🔗 ਮੇਰਾ ਰੈਫਰਲ ਲਿੰਕ:\n{{referral_link}}\n\n"
+            "PadosiAgent ਨਾਲ ਰਲ ਕੇ ਅੱਗੇ ਵਧੀਏ!"
+        ),
+        'card': (
+            "ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ {{agent_name}}, ਤੁਹਾਡਾ ਨਜ਼ਦੀਕੀ ਬੀਮਾ ਸਲਾਹਕਾਰ ਹਾਂ।\n\n"
+            "🪪 ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ:\n{{card_link}}\n\n"
+            "ਲਾਈਫ, ਹੈਲਥ ਜਾਂ ਮੋਟਰ ਬੀਮੇ ਲਈ ਸੰਪਰਕ ਕਰੋ!"
+        ),
+    },
+    'ml': {
+        'label': 'Malayalam',
+        'review': (
+            "നമസ്കാരം! നിങ്ങളുടെ ഇൻഷുറൻസ് ഉപദേഷ്ടാവായി എന്നെ വിശ്വസിച്ചതിന് നന്ദി.\n\n"
+            "ദയവായി PadosiAgent-ൽ എന്റെ സേവനത്തിന് 5-സ്റ്റാർ റേറ്റിംഗും റിവ്യൂവും നൽകൂ:\n\n"
+            "⭐ ഇവിടെ റേറ്റ് ചെയ്യൂ:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "നമസ്കാരം, ഞാൻ {{agent_name}}, ഇൻഷുറൻസ് ഏജന്റ്.\n\n"
+            "PadosiAgent ഉപയോഗിച്ച് നിങ്ങളുടെ ഡിജിറ്റൽ സാന്നിധ്യം വളർത്തി കൂടുതൽ ഉപഭോക്താക്കളിലേക്ക് എത്തൂ.\n\n"
+            "🔗 എന്റെ റഫറൽ ലിങ്ക്:\n{{referral_link}}\n\n"
+            "PadosiAgent-നൊപ്പം വളരാം!"
+        ),
+        'card': (
+            "നമസ്കാരം! ഞാൻ {{agent_name}}, നിങ്ങളുടെ പ്രദേശത്തെ ഇൻഷുറൻസ് ഉപദേഷ്ടാവ്.\n\n"
+            "🪪 എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ്:\n{{card_link}}\n\n"
+            "ലൈഫ്, ഹെൽത്ത് അല്ലെങ്കിൽ മോട്ടോർ ഇൻഷുറൻസിന് ബന്ധപ്പെടൂ!"
+        ),
+    },
+    'or': {
+        'label': 'Odia',
+        'review': (
+            "ନମସ୍କାର! ଆପଣଙ୍କ ବୀମା ପରାମର୍ଶଦାତା ଭାବରେ ମୋତେ ବିଶ୍ୱାସ କରିଥିବାରୁ ଧନ୍ୟବାଦ।\n\n"
+            "ଦୟାକରି PadosiAgentରେ ମୋ ସେବାକୁ 5-ଷ୍ଟାର ରେଟିଙ୍ଗ ଓ ରିଭ୍ୟୁ ଦିଅନ୍ତୁ:\n\n"
+            "⭐ ଏଠାରେ ରେଟ୍ କରନ୍ତୁ:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "ନମସ୍କାର, ମୁଁ {{agent_name}}, ଇନ୍‌ସ୍ୟୋରେନ୍ସ ଏଜେଣ୍ଟ।\n\n"
+            "PadosiAgent ସହିତ ଆପଣଙ୍କ ଡିଜିଟାଲ୍ ଉପସ୍ଥିତି ବଢ଼ାନ୍ତୁ ଏବଂ ଅଧିକ ଗ୍ରାହକଙ୍କ ପାଖରେ ପହଞ୍ଚନ୍ତୁ।\n\n"
+            "🔗 ମୋ ରେଫରାଲ୍ ଲିଙ୍କ୍:\n{{referral_link}}\n\n"
+            "PadosiAgent ସହିତ ଏକାଠି ଆଗକୁ ବଢ଼ିବା!"
+        ),
+        'card': (
+            "ନମସ୍କାର! ମୁଁ {{agent_name}}, ଆପଣଙ୍କ ଅଞ୍ଚଳର ବୀମା ପରାମର୍ଶଦାତା।\n\n"
+            "🪪 ମୋ ଡିଜିଟାଲ୍ ଭିଜିଟିଙ୍ଗ୍ କାର୍ଡ:\n{{card_link}}\n\n"
+            "ଲାଇଫ୍, ହେଲ୍ଥ୍ କିମ୍ବା ମୋଟର ବୀମା ପାଇଁ ଯୋଗାଯୋଗ କରନ୍ତୁ!"
+        ),
+    },
+    'ur': {
+        'label': 'Urdu',
+        'review': (
+            "السلام علیکم! اپنے انشورنس مشیر کے طور پر مجھ پر اعتماد کرنے کا شکریہ۔\n\n"
+            "براہ کرم PadosiAgent پر میری سروس کو 5-ستارہ ریٹنگ اور ریویو دیں:\n\n"
+            "⭐ یہاں ریٹ کریں:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "السلام علیکم، میں {{agent_name}}، انشورنس ایجنٹ ہوں۔\n\n"
+            "PadosiAgent کے ساتھ اپنی ڈیجیٹل موجودگی بڑھائیں اور زیادہ کلائنٹس تک پہنچیں۔\n\n"
+            "🔗 میرا ریفرل لنک:\n{{referral_link}}\n\n"
+            "PadosiAgent کے ساتھ مل کر آگے بڑھیں!"
+        ),
+        'card': (
+            "السلام علیکم! میں {{agent_name}}، آپ کا قریبی انشورنس مشیر ہوں۔\n\n"
+            "🪪 میرا ڈیجیٹل وزٹنگ کارڈ:\n{{card_link}}\n\n"
+            "لائف، ہیلتھ یا موٹر انشورنس کے لیے رابطہ کریں!"
+        ),
+    },
+    'as': {
+        'label': 'Assamese',
+        'review': (
+            "নমস্কাৰ! আপোনাৰ বীমা পৰামৰ্শদাতা হিচাপে মোক বিশ্বাস কৰাৰ বাবে ধন্যবাদ।\n\n"
+            "অনুগ্ৰহ কৰি PadosiAgentত মোৰ সেৱাক 5-ষ্টাৰ ৰেটিং আৰু ৰিভিউ দিয়ক:\n\n"
+            "⭐ ইয়াত ৰেট কৰক:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "নমস্কাৰ, মই {{agent_name}}, ইনছ্যুৰেন্স এজেণ্ট।\n\n"
+            "PadosiAgentৰ সৈতে আপোনাৰ ডিজিটেল উপস্থিতি বৃদ্ধি কৰক আৰু অধিক গ্ৰাহকলৈ প্ৰসাৰিত হওক।\n\n"
+            "🔗 মোৰ ৰেফাৰেল লিংক:\n{{referral_link}}\n\n"
+            "PadosiAgentৰ সৈতে একেলগে আগবাঢ়োঁ!"
+        ),
+        'card': (
+            "নমস্কাৰ! মই {{agent_name}}, আপোনাৰ অঞ্চলৰ বীমা পৰামৰ্শদাতা।\n\n"
+            "🪪 মোৰ ডিজিটেল ভিজিটিং কাৰ্ড:\n{{card_link}}\n\n"
+            "লাইফ, হেল্থ বা মটৰ বীমাৰ বাবে যোগাযোগ কৰক!"
+        ),
+    },
+    'raj': {
+        'label': 'Rajasthani',
+        'review': (
+            "राम राम! थारा बीमा सलाहकार रूप में म्हारे ऊपर भरोसो करबा रो धन्यवाद।\n\n"
+            "कृपया PadosiAgent पर म्हारी सेवा ने 5-स्टार रेटिंग अर रिव्यू दो:\n\n"
+            "⭐ अठे रेट करो:\n{{review_link}}\n\n"
+            "— {{agent_name}}"
+        ),
+        'refer': (
+            "राम राम, म्हैं {{agent_name}}, इंश्योरेंस एजेंट हूं।\n\n"
+            "PadosiAgent रे साथै थारी डिजिटल पहचान बढ़ाओ अर ज्यादा ग्राहकां तांई पहुंचो।\n\n"
+            "🔗 म्हारो रेफरल लिंक:\n{{referral_link}}\n\n"
+            "PadosiAgent रे साथै मिलकर आगे बढ़ां!"
+        ),
+        'card': (
+            "राम राम! म्हैं {{agent_name}}, थारा इलाके रो बीमा सलाहकार हूं।\n\n"
+            "🪪 म्हारो डिजिटल विजिटिंग कार्ड:\n{{card_link}}\n\n"
+            "लाइफ, हेल्थ या मोटर बीमा खातिर संपर्क करो!"
+        ),
+    },
+}
+
+
+def _lang_pack(code, label, review_text, refer_text, card_text):
+    return {
+        'review': {
+            'label': label,
+            'templates': [{
+                'id': f'rev_{code}_1',
+                'title': '⭐ Review Request',
+                'text': review_text,
+            }],
+        },
+        'social': {
+            'label': label,
+            'templates': [
+                {
+                    'id': f'soc_{code}_1',
+                    'title': '🚀 Referral Invite',
+                    'text': refer_text,
+                },
+                {
+                    'id': f'soc_{code}_2',
+                    'title': '🪪 Digital Visiting Card',
+                    'text': card_text,
+                },
+            ],
+        },
+    }
+
+
+def _merge_all_studio_languages(templates):
+    """Ensure every product language exists in review/social template packs."""
+    if not isinstance(templates, dict):
+        return templates
+    for code, label in STUDIO_LANGUAGE_ORDER:
+        extra = _ADDITIONAL_LANG_COPY.get(code)
+        # Prefer already-authored packs (en/hi/gu/mr). Fill gaps from extras.
+        for mode in ('review', 'social'):
+            mode_obj = templates.setdefault(mode, {'label': mode.title(), 'languages': {}})
+            langs = mode_obj.setdefault('languages', {})
+            if code in langs and isinstance(langs[code], dict) and langs[code].get('templates'):
+                # Ensure social has a card template for Social Media Share tab
+                if mode == 'social' and extra and len(langs[code].get('templates') or []) < 2:
+                    langs[code]['templates'].append({
+                        'id': f'soc_{code}_2',
+                        'title': '🪪 Digital Visiting Card',
+                        'text': extra['card'],
+                    })
+                continue
+            if not extra:
+                continue
+            pack = _lang_pack(code, extra.get('label') or label, extra['review'], extra['refer'], extra['card'])
+            langs[code] = pack[mode]
+    return templates
+
+
+_merge_all_studio_languages(STUDIO_TEMPLATES)
+
+_SOCIAL_INVITE_IDS = tuple(f'soc_{code}_1' for code, _ in STUDIO_LANGUAGE_ORDER)
+
+
+def get_studio_language_options(templates=None):
+    """Ordered language list for the Invite Studio dropdown."""
+    templates = templates or STUDIO_TEMPLATES
+    review_langs = ((templates.get('review') or {}).get('languages') or {})
+    social_langs = ((templates.get('social') or {}).get('languages') or {})
+    options = []
+    seen = set()
+    for code, fallback_label in STUDIO_LANGUAGE_ORDER:
+        lang = review_langs.get(code) or social_langs.get(code)
+        if not lang:
+            continue
+        options.append({
+            'code': code,
+            'label': lang.get('label') or fallback_label,
+        })
+        seen.add(code)
+    # Include any unexpected saved languages at the end
+    for code, lang in {**social_langs, **review_langs}.items():
+        if code in seen or not isinstance(lang, dict):
+            continue
+        options.append({'code': code, 'label': lang.get('label') or code})
+    return options
 
 
 def _price_free_social_invites():
@@ -440,6 +744,8 @@ def get_invite_studio_config():
         if k not in config or config[k] is None or config[k] == '':
             config[k] = v
     strip_saved_campaign_prices(config.get('templates'))
+    # Saved admin JSON may only contain the old 4 languages — always fill the rest
+    _merge_all_studio_languages(config.get('templates'))
     strip_profile_links_from_templates(config.get('templates'))
     return config
 
@@ -550,6 +856,7 @@ def get_studio_context(request, agent, profile=None, champ_participant=None):
     return {
         'studio_config': config,
         'studio_templates_json': json.dumps(templates, ensure_ascii=False),
+        'studio_languages': get_studio_language_options(templates),
         'studio_modal_title': config.get('modal_title', 'PadosiAgent Invite & Share Studio'),
         'studio_modal_subtitle': config.get('modal_subtitle', 'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.'),
         'studio_tab_review_label': config.get('tab_review_label', 'Review & Rating'),
