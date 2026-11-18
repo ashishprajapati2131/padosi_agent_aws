@@ -162,6 +162,21 @@ class VisitingCardStudioAdminTestCase(TestCase):
         self.assertEqual(config.get('policy_lead_form'), 'allow_agent')
         self.assertTrue(config.get('show_powered_by_badge'))
 
+    def test_old_wordy_header_defaults_are_replaced_but_custom_text_kept(self):
+        from apps.admin_panel.services.digital_card_studio import LEGACY_HEADER_DEFAULTS
+        SiteSetting.set_value('digital_card_studio_config', {
+            'style_badge': LEGACY_HEADER_DEFAULTS['style_badge'],
+            'studio_subtitle': LEGACY_HEADER_DEFAULTS['studio_subtitle'],
+            'studio_badge': LEGACY_HEADER_DEFAULTS['studio_badge'],
+        }, group='content')
+        config = get_digital_card_studio_config(use_cache=False)
+        self.assertEqual(config['style_badge'], '')
+        self.assertEqual(config['studio_badge'], '')
+        self.assertNotEqual(config['studio_subtitle'], LEGACY_HEADER_DEFAULTS['studio_subtitle'])
+
+        SiteSetting.set_value('digital_card_studio_config', {'style_badge': 'Gold Agent'}, group='content')
+        self.assertEqual(get_digital_card_studio_config(use_cache=False)['style_badge'], 'Gold Agent')
+
     def test_save_studio_config_syncs_with_master_flag(self):
         updates = {
             'enabled': False,

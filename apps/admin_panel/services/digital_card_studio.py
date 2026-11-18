@@ -28,13 +28,19 @@ CACHE_KEY_STUDIO_CONFIG = 'digital_card_studio_config_v1'
 CACHE_TTL = 300  # 5 minutes
 MAX_CARD_URL_LENGTH = 500
 
+LEGACY_HEADER_DEFAULTS = {
+    'studio_subtitle': 'Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.',
+    'style_badge': 'PassKard Style',
+    'studio_badge': 'Link-In-Bio Studio',
+}
+
 DEFAULT_DIGITAL_CARD_STUDIO_CONFIG: Dict[str, Any] = {
     # 1. Master & Header
     'enabled': True,
     'studio_title': 'Personal Digital Visiting Card Studio',
-    'studio_subtitle': 'Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.',
-    'studio_badge': 'Link-In-Bio Studio',
-    'style_badge': 'PassKard Style',
+    'studio_subtitle': 'Edit your card below, check the live preview, then press Save. Share it with clients by link or QR.',
+    'studio_badge': '',
+    'style_badge': '',
 
     # 2. Agent Customization Permissions
     'allow_theme_customization': True,
@@ -123,6 +129,11 @@ def get_digital_card_studio_config(use_cache: bool = True) -> Dict[str, Any]:
                 config.update(parsed)
         except Exception:
             pass
+
+    # Saved configs still hold the old wordy defaults; show the new ones unless an admin wrote their own.
+    for key, old_default in LEGACY_HEADER_DEFAULTS.items():
+        if config.get(key) == old_default:
+            config[key] = DEFAULT_DIGITAL_CARD_STUDIO_CONFIG[key]
 
     # Ensure synchronization with 'agent_digital_card_enabled' master flag
     raw_master = SiteSetting.get_value('agent_digital_card_enabled', None)

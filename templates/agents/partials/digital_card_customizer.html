@@ -473,31 +473,105 @@
         .pa-mock-footer strong {
             color: #475569;
         }
+
+        .pa-studio-share-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+        }
+
+        /* Usability: buttons reset, focus rings, full-row toggles, sticky save bar */
+        .pa-color-swatch { padding: 0; font: inherit; }
+        .pa-banner-option-item { width: 100%; font: inherit; }
+        .pa-banner-preview-strip { display: block; }
+        .pa-color-swatch:focus-visible,
+        .pa-banner-option-item:focus-visible,
+        .pa-studio-btn:focus-visible,
+        .pa-ios-switch input:focus-visible + .pa-ios-slider {
+            outline: 3px solid #38BDF8;
+            outline-offset: 2px;
+        }
+        label.pa-toggle-row { gap: 12px; margin: 0; cursor: pointer; }
+        .pa-logo-upload-col { min-width: 0; }
+        .pa-card-studio-shell input[type="file"] { height: auto; } /* mobile font scale-up was clipping "Choose File" */
+        .pa-studio-savebar {
+            position: sticky;
+            bottom: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 10px 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
+        }
+        .pa-studio-dirty {
+            margin-right: auto;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #B45309;
+        }
+        .pa-studio-btn-outline {
+            background: #ffffff;
+            color: #0B1F3A !important;
+            border-color: #CBD5E1;
+        }
+        .pa-studio-savebar .pa-preview-jump { display: none; }
+        @media (max-width: 991.98px) {
+            .pa-phone-wrap { position: static; }
+            .pa-phone-device { height: 600px; }
+            .pa-studio-savebar .pa-preview-jump { display: inline-flex; }
+        }
+        @media (max-width: 575.98px) {
+            .pa-studio-hero { padding: 20px 18px; border-radius: 16px; }
+            .pa-studio-title { font-size: 19px; }
+            /* three share buttons on one line: icon above a short label */
+            .pa-studio-btn-row { flex-wrap: nowrap; gap: 8px; }
+            .pa-studio-btn-row .pa-studio-btn {
+                flex: 1 1 0;
+                min-width: 0;
+                flex-direction: column;
+                gap: 4px;
+                padding: 10px 4px;
+                font-size: 12px;
+                line-height: 1.2;
+                text-align: center;
+            }
+            .pa-studio-card { padding: 16px; }
+            .pa-studio-dirty { flex-basis: 100%; text-align: center; }
+            .pa-studio-savebar .pa-studio-btn { flex: 1 1 0; padding: 11px 12px; }
+        }
     </style>
 
     <!-- Studio Hero -->
     <div class="pa-studio-hero">
-        <div class="d-flex align-items-center gap-2 mb-2">
-            <span class="pa-studio-badge"><i class="fas fa-sparkles"></i> {{ studio_config.studio_badge|default:'Link-In-Bio Studio' }}</span>
-            <span class="badge" style="background: rgba(255,255,255,0.2); font-size: 11px;">{{ studio_config.style_badge|default:'PassKard Style' }}</span>
+        {% if studio_config.studio_badge or studio_config.style_badge %}
+        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+            {% if studio_config.studio_badge %}<span class="pa-studio-badge"><i class="fas fa-id-card"></i> {{ studio_config.studio_badge }}</span>{% endif %}
+            {% if studio_config.style_badge %}<span class="pa-studio-badge" style="background: rgba(255,255,255,0.18);">{{ studio_config.style_badge }}</span>{% endif %}
         </div>
+        {% endif %}
         <h2 class="pa-studio-title">{{ studio_config.studio_title|default:'Personal Digital Visiting Card Studio' }}</h2>
-        <p class="pa-studio-sub">
-            {{ studio_config.studio_subtitle|default:'Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.' }}
-        </p>
+        {% if studio_config.studio_subtitle %}<p class="pa-studio-sub">{{ studio_config.studio_subtitle }}</p>{% endif %}
+        <div class="pa-studio-share-label">Share your card</div>
         <div class="pa-studio-btn-row">
-            <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="pa-studio-btn pa-studio-btn-primary">
+            <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" rel="noopener" class="pa-studio-btn pa-studio-btn-primary">
                 <i class="fas fa-external-link-alt"></i> Open Live Card
             </a>
             <button type="button" class="pa-studio-btn pa-studio-btn-light" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
-                <i class="fas fa-copy"></i> Copy Card Link
+                <i class="fas fa-copy"></i> Copy Link
             </button>
             <a href="{{ card_qr_download_url }}" class="pa-studio-btn pa-studio-btn-light" download="QR-{{ agent.agent_slug }}-card.png">
                 <i class="fas fa-qrcode"></i> Download QR
             </a>
-            <button type="button" class="pa-studio-btn" style="background: #ffffff; color: #0B1F3A; font-weight: 800; margin-left: auto;" id="topSaveBtn" onclick="submitCardCustomizationForm()">
-                <i class="fas fa-save" style="color: #10B981;"></i> Save Changes
-            </button>
         </div>
     </div>
 
@@ -521,13 +595,13 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency / Firm Name</label>
+                        <label for="inputAgencyName" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency / Firm Name</label>
                         <input type="text" name="agency_name" id="inputAgencyName" class="form-control" style="font-size: 13.5px; border-radius: 10px;" placeholder="e.g. Patel Wealth &amp; Insurance Advisory" value="{% if card_agency_name %}{{ card_agency_name }}{% elif card_config.agency_name %}{{ card_config.agency_name }}{% elif profile and profile.agency_name %}{{ profile.agency_name }}{% endif %}" oninput="updateLivePreview()">
                         <small class="text-muted">Displays at the top of your digital card as your official brand header.</small>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency Logo</label>
+                        <label for="inputAgencyLogo" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency Logo</label>
                         <div class="d-flex align-items-center gap-3">
                             <div id="agencyLogoPreviewBox" style="width: 58px; height: 58px; border-radius: 12px; border: 1.5px dashed #CBD5E1; display: flex; align-items: center; justify-content: center; background: #F8FAFC; overflow: hidden; flex-shrink: 0;">
                                 {% if profile and profile.agency_logo_url %}
@@ -536,7 +610,7 @@
                                     <i class="fas fa-image text-muted" id="agencyLogoIconPlaceholder" style="font-size: 20px;"></i>
                                 {% endif %}
                             </div>
-                            <div class="flex-grow-1">
+                            <div class="flex-grow-1 pa-logo-upload-col">
                                 <input type="file" name="agency_logo" id="inputAgencyLogo" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewAgencyLogo(this)">
                                 <div class="d-flex align-items-center gap-2 mt-1">
                                     <small class="text-muted">PNG or WebP with transparent background recommended.</small>
@@ -551,13 +625,13 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Card Headline / Tagline</label>
+                        <label for="inputCardTagline" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Card Headline / Tagline</label>
                         <input type="text" name="card_tagline" id="inputCardTagline" class="form-control" style="font-size: 13.5px; border-radius: 10px;" placeholder="e.g. Protecting 1,500+ families with trusted health &amp; life advice" value="{% if card_tagline %}{{ card_tagline }}{% elif card_config.tagline %}{{ card_config.tagline }}{% elif profile and profile.card_tagline %}{{ profile.card_tagline }}{% endif %}" oninput="updateLivePreview()">
                         <small class="text-muted">Featured prominently right under your name on your digital visiting card.</small>
                     </div>
 
                     <div>
-                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Personal About / Welcome Bio</label>
+                        <label for="inputCardBio" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Personal About / Welcome Bio</label>
                         <textarea name="card_bio" id="inputCardBio" class="form-control" rows="3" style="font-size: 13px; border-radius: 10px;" placeholder="Brief personal message introducing yourself and your advisory approach..." oninput="updateLivePreview()">{{ card_config.bio|default:'' }}</textarea>
                         <small class="text-muted">Shown in the "About &amp; Overview" section of your card.</small>
                     </div>
@@ -580,16 +654,16 @@
                         </label>
                         <input type="hidden" name="theme_color" id="themeColorInput" value="{{ card_config.theme_color|default:'#0B1F3A' }}">
                         <div class="pa-color-swatches">
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#0B1F3A' or not card_config.theme_color %}active{% endif %}" style="background: #0B1F3A;" data-color="#0B1F3A" title="Classic Navy" onclick="selectThemeColor('#0B1F3A', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#059669' %}active{% endif %}" style="background: #059669;" data-color="#059669" title="Royal Emerald" onclick="selectThemeColor('#059669', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#4338CA' %}active{% endif %}" style="background: #4338CA;" data-color="#4338CA" title="Royal Indigo" onclick="selectThemeColor('#4338CA', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#0D9488' %}active{% endif %}" style="background: #0D9488;" data-color="#0D9488" title="Modern Teal" onclick="selectThemeColor('#0D9488', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#991B1B' %}active{% endif %}" style="background: #991B1B;" data-color="#991B1B" title="Ruby Maroon" onclick="selectThemeColor('#991B1B', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#7C3AED' %}active{% endif %}" style="background: #7C3AED;" data-color="#7C3AED" title="Deep Purple" onclick="selectThemeColor('#7C3AED', this)"></span>
-                            <span class="pa-color-swatch {% if card_config.theme_color == '#1E293B' %}active{% endif %}" style="background: #1E293B;" data-color="#1E293B" title="Slate Dark" onclick="selectThemeColor('#1E293B', this)"></span>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#0B1F3A' or not card_config.theme_color %}active{% endif %}" style="background: #0B1F3A;" data-color="#0B1F3A" title="Classic Navy" aria-label="Classic Navy theme color" onclick="selectThemeColor('#0B1F3A', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#059669' %}active{% endif %}" style="background: #059669;" data-color="#059669" title="Royal Emerald" aria-label="Royal Emerald theme color" onclick="selectThemeColor('#059669', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#4338CA' %}active{% endif %}" style="background: #4338CA;" data-color="#4338CA" title="Royal Indigo" aria-label="Royal Indigo theme color" onclick="selectThemeColor('#4338CA', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#0D9488' %}active{% endif %}" style="background: #0D9488;" data-color="#0D9488" title="Modern Teal" aria-label="Modern Teal theme color" onclick="selectThemeColor('#0D9488', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#991B1B' %}active{% endif %}" style="background: #991B1B;" data-color="#991B1B" title="Ruby Maroon" aria-label="Ruby Maroon theme color" onclick="selectThemeColor('#991B1B', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#7C3AED' %}active{% endif %}" style="background: #7C3AED;" data-color="#7C3AED" title="Deep Purple" aria-label="Deep Purple theme color" onclick="selectThemeColor('#7C3AED', this)"></button>
+                            <button type="button" class="pa-color-swatch {% if card_config.theme_color == '#1E293B' %}active{% endif %}" style="background: #1E293B;" data-color="#1E293B" title="Slate Dark" aria-label="Slate Dark theme color" onclick="selectThemeColor('#1E293B', this)"></button>
                             
                             <label class="d-inline-flex align-items-center gap-1 mb-0 ms-2" style="cursor: pointer;" title="Custom Color Picker">
-                                <input type="color" id="nativeColorPicker" value="{{ card_config.theme_color|default:'#0B1F3A' }}" style="width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer;" onchange="selectThemeColor(this.value, null)">
+                                <input type="color" id="nativeColorPicker" aria-label="Pick a custom theme color" value="{{ card_config.theme_color|default:'#0B1F3A' }}" style="width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer;" onchange="selectThemeColor(this.value, null)">
                                 <span style="font-size: 11.5px; font-weight: 700; color: #64748B;">Custom</span>
                             </label>
                         </div>
@@ -599,48 +673,48 @@
                         <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Cover Banner Style</label>
                         <input type="hidden" name="banner_style" id="bannerStyleInput" value="{{ card_config.banner_style|default:'profile' }}">
                         <div class="pa-banner-options-grid">
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'profile' or not card_config.banner_style %}active{% endif %}" onclick="selectBannerStyle('profile', this)">
-                                <div class="pa-banner-preview-strip" style="{% if profile and profile.banner_url %}background: url('{{ profile.banner_url }}') center/cover;{% else %}background: linear-gradient(135deg, #0B1F3A, #1E3A8A);{% endif %}"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'profile' or not card_config.banner_style %}active{% endif %}" onclick="selectBannerStyle('profile', this)">
+                                <span class="pa-banner-preview-strip" style="{% if profile and profile.banner_url %}background: url('{{ profile.banner_url }}') center/cover;{% else %}background: linear-gradient(135deg, #0B1F3A, #1E3A8A);{% endif %}"></span>
                                 <span class="pa-banner-option-label">Profile Banner</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_navy' %}active{% endif %}" onclick="selectBannerStyle('gradient_navy', this)">
-                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%);"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'gradient_navy' %}active{% endif %}" onclick="selectBannerStyle('gradient_navy', this)">
+                                <span class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%);"></span>
                                 <span class="pa-banner-option-label">Ocean Twilight</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_emerald' %}active{% endif %}" onclick="selectBannerStyle('gradient_emerald', this)">
-                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%);"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'gradient_emerald' %}active{% endif %}" onclick="selectBannerStyle('gradient_emerald', this)">
+                                <span class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%);"></span>
                                 <span class="pa-banner-option-label">Emerald Glow</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_indigo' %}active{% endif %}" onclick="selectBannerStyle('gradient_indigo', this)">
-                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%);"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'gradient_indigo' %}active{% endif %}" onclick="selectBannerStyle('gradient_indigo', this)">
+                                <span class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%);"></span>
                                 <span class="pa-banner-option-label">Royal Indigo</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_sunset' %}active{% endif %}" onclick="selectBannerStyle('gradient_sunset', this)">
-                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%);"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'gradient_sunset' %}active{% endif %}" onclick="selectBannerStyle('gradient_sunset', this)">
+                                <span class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%);"></span>
                                 <span class="pa-banner-option-label">Sunset Flare</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_purple' %}active{% endif %}" onclick="selectBannerStyle('gradient_purple', this)">
-                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%);"></div>
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'gradient_purple' %}active{% endif %}" onclick="selectBannerStyle('gradient_purple', this)">
+                                <span class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%);"></span>
                                 <span class="pa-banner-option-label">Amethyst Glow</span>
-                            </div>
+                            </button>
 
-                            <div class="pa-banner-option-item {% if card_config.banner_style == 'custom' %}active{% endif %}" onclick="selectBannerStyle('custom', this)">
-                                <div class="pa-banner-preview-strip" id="customBannerThumbStrip" style="background: #F1F5F9; display: flex; align-items: center; justify-content: center;">
+                            <button type="button" class="pa-banner-option-item {% if card_config.banner_style == 'custom' %}active{% endif %}" onclick="selectBannerStyle('custom', this)">
+                                <span class="pa-banner-preview-strip" id="customBannerThumbStrip" style="background: #F1F5F9; display: flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-upload text-muted"></i>
-                                </div>
+                                </span>
                                 <span class="pa-banner-option-label">Upload Custom</span>
-                            </div>
+                            </button>
                         </div>
 
                         <!-- Custom banner file uploader -->
                         <div id="customBannerUploadBox" class="mt-3 p-3 bg-light rounded" style="display: {% if card_config.banner_style == 'custom' %}block{% else %}none{% endif %}; border: 1px dashed #CBD5E1;">
-                            <label class="form-label font-weight-bold small mb-1">Upload Card Banner Image (1200x400 Recommended)</label>
-                            <input type="file" name="custom_banner" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp" onchange="previewCardBanner(this)">
+                            <label for="inputCustomBanner" class="form-label font-weight-bold small mb-1">Upload Card Banner Image (1200x400 Recommended)</label>
+                            <input type="file" name="custom_banner" id="inputCustomBanner" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp" onchange="previewCardBanner(this)">
                             {% if card_config.custom_banner_path %}
                             <div class="mt-2 d-flex align-items-center justify-content-between">
                                 <span class="small text-success"><i class="fas fa-check-circle"></i> Custom banner uploaded</span>
@@ -662,7 +736,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Pre-filled WhatsApp Message</label>
+                        <label for="inputWhatsAppMsg" class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Pre-filled WhatsApp Message</label>
                         <textarea name="whatsapp_msg" id="inputWhatsAppMsg" class="form-control" rows="2" style="font-size: 13px; border-radius: 10px;" placeholder="Hello, I viewed your Digital Visiting Card and would like consultation..." oninput="updateLivePreview()">{{ card_config.whatsapp_msg|default:'' }}</textarea>
                         <small class="text-muted">When a client clicks WhatsApp on your card, this message opens ready for them to send.</small>
                     </div>
@@ -670,60 +744,60 @@
                     <div class="pt-2">
                         <label class="form-label font-weight-bold mb-2" style="font-size: 13px; color: #1E293B;">Visible Contact Buttons</label>
                         
-                        <div class="pa-toggle-row">
-                            <div class="pa-toggle-info">
+                        <label class="pa-toggle-row">
+                            <span class="pa-toggle-info">
                                 <span class="pa-toggle-label"><i class="fas fa-phone mr-1 text-primary"></i> Direct Call Button</span>
                                 <span class="pa-toggle-hint">Calls your registered mobile number: {{ agent.mobile }}</span>
-                            </div>
-                            <label class="pa-ios-switch">
+                            </span>
+                            <span class="pa-ios-switch">
                                 <input type="checkbox" name="show_call" id="toggleShowCall" value="1" {% if card_config.show_call %}checked{% endif %} onchange="updateLivePreview()">
                                 <span class="pa-ios-slider"></span>
-                            </label>
-                        </div>
+                            </span>
+                        </label>
 
-                        <div class="pa-toggle-row">
-                            <div class="pa-toggle-info">
+                        <label class="pa-toggle-row">
+                            <span class="pa-toggle-info">
                                 <span class="pa-toggle-label"><i class="fab fa-whatsapp mr-1 text-success"></i> WhatsApp Chat Button</span>
                                 <span class="pa-toggle-hint">Instant 1-tap WhatsApp consultation link</span>
-                            </div>
-                            <label class="pa-ios-switch">
+                            </span>
+                            <span class="pa-ios-switch">
                                 <input type="checkbox" name="show_whatsapp" id="toggleShowWhatsapp" value="1" {% if card_config.show_whatsapp %}checked{% endif %} onchange="updateLivePreview()">
                                 <span class="pa-ios-slider"></span>
-                            </label>
-                        </div>
+                            </span>
+                        </label>
 
-                        <div class="pa-toggle-row">
-                            <div class="pa-toggle-info">
+                        <label class="pa-toggle-row">
+                            <span class="pa-toggle-info">
                                 <span class="pa-toggle-label"><i class="fas fa-envelope mr-1 text-danger"></i> Email Button</span>
                                 <span class="pa-toggle-hint">Opens email composer to {{ agent.email }}</span>
-                            </div>
-                            <label class="pa-ios-switch">
+                            </span>
+                            <span class="pa-ios-switch">
                                 <input type="checkbox" name="show_email" id="toggleShowEmail" value="1" {% if card_config.show_email %}checked{% endif %} onchange="updateLivePreview()">
                                 <span class="pa-ios-slider"></span>
-                            </label>
-                        </div>
+                            </span>
+                        </label>
 
-                        <div class="pa-toggle-row">
-                            <div class="pa-toggle-info">
+                        <label class="pa-toggle-row">
+                            <span class="pa-toggle-info">
                                 <span class="pa-toggle-label"><i class="fas fa-map-marker-alt mr-1 text-danger"></i> Office Navigation (Google Maps)</span>
                                 <span class="pa-toggle-hint">Direct Google Maps link for your office location</span>
-                            </div>
-                            <label class="pa-ios-switch">
+                            </span>
+                            <span class="pa-ios-switch">
                                 <input type="checkbox" name="show_address" id="toggleShowAddress" value="1" {% if card_config.show_address %}checked{% endif %} onchange="updateLivePreview()">
                                 <span class="pa-ios-slider"></span>
-                            </label>
-                        </div>
+                            </span>
+                        </label>
 
-                        <div class="pa-toggle-row">
-                            <div class="pa-toggle-info">
+                        <label class="pa-toggle-row">
+                            <span class="pa-toggle-info">
                                 <span class="pa-toggle-label"><i class="fas fa-address-card mr-1 text-secondary"></i> Save Contact (vCard 3.0)</span>
                                 <span class="pa-toggle-hint">Clients save your name, number, &amp; agency directly to phone contacts</span>
-                            </div>
-                            <label class="pa-ios-switch">
+                            </span>
+                            <span class="pa-ios-switch">
                                 <input type="checkbox" name="show_save_contact" id="toggleShowSaveContact" value="1" {% if card_config.show_save_contact %}checked{% endif %} onchange="updateLivePreview()">
                                 <span class="pa-ios-slider"></span>
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                     </div>
                 </div>
 
@@ -737,49 +811,49 @@
                         </div>
                     </div>
 
-                    <div class="pa-toggle-row">
-                        <div class="pa-toggle-info">
+                    <label class="pa-toggle-row">
+                        <span class="pa-toggle-info">
                             <span class="pa-toggle-label"><i class="fas fa-file-invoice mr-1 text-primary"></i> Direct Lead Enquiry Form</span>
                             <span class="pa-toggle-hint">Allows clients to request consultation; enquiries appear in your Leads dashboard</span>
-                        </div>
-                        <label class="pa-ios-switch">
+                        </span>
+                        <span class="pa-ios-switch">
                             <input type="checkbox" name="show_lead_form" id="toggleShowLeadForm" value="1" {% if card_config.show_lead_form %}checked{% endif %} onchange="updateLivePreview()">
                             <span class="pa-ios-slider"></span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
 
-                    <div class="pa-toggle-row">
-                        <div class="pa-toggle-info">
+                    <label class="pa-toggle-row">
+                        <span class="pa-toggle-info">
                             <span class="pa-toggle-label"><i class="fas fa-shield-alt mr-1 text-info"></i> Insurance Specialties Chips</span>
                             <span class="pa-toggle-hint">Highlights Health, Term Life, Motor, and SME insurance services</span>
-                        </div>
-                        <label class="pa-ios-switch">
+                        </span>
+                        <span class="pa-ios-switch">
                             <input type="checkbox" name="show_services" id="toggleShowServices" value="1" {% if card_config.show_services %}checked{% endif %} onchange="updateLivePreview()">
                             <span class="pa-ios-slider"></span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
 
-                    <div class="pa-toggle-row">
-                        <div class="pa-toggle-info">
+                    <label class="pa-toggle-row">
+                        <span class="pa-toggle-info">
                             <span class="pa-toggle-label"><i class="fas fa-star mr-1 text-warning"></i> Client Reviews &amp; Rating Badge</span>
                             <span class="pa-toggle-hint">Displays verified client star rating and review link</span>
-                        </div>
-                        <label class="pa-ios-switch">
+                        </span>
+                        <span class="pa-ios-switch">
                             <input type="checkbox" name="show_reviews" id="toggleShowReviews" value="1" {% if card_config.show_reviews %}checked{% endif %} onchange="updateLivePreview()">
                             <span class="pa-ios-slider"></span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
 
-                    <div class="pa-toggle-row">
-                        <div class="pa-toggle-info">
+                    <label class="pa-toggle-row">
+                        <span class="pa-toggle-info">
                             <span class="pa-toggle-label"><i class="fas fa-qrcode mr-1 text-dark"></i> Desktop "Scan with Phone" QR Box</span>
                             <span class="pa-toggle-hint">Dedicated scan card shown to desktop visitors</span>
-                        </div>
-                        <label class="pa-ios-switch">
+                        </span>
+                        <span class="pa-ios-switch">
                             <input type="checkbox" name="show_qr_card" id="toggleShowQrCard" value="1" {% if card_config.show_qr_card %}checked{% endif %} onchange="updateLivePreview()">
                             <span class="pa-ios-slider"></span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
                 </div>
 
                 <!-- 5. Custom Action Button / External Link -->
@@ -794,23 +868,29 @@
 
                     <div class="row g-2">
                         <div class="col-md-5">
-                            <label class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Button Title</label>
+                            <label for="inputCustomBtnLabel" class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Button Title</label>
                             <input type="text" name="custom_button_label" id="inputCustomBtnLabel" class="form-control" style="font-size: 13px; border-radius: 10px;" placeholder="e.g. Book 15-min Call" value="{{ card_config.custom_button_label|default:'' }}" oninput="updateLivePreview()">
                         </div>
                         <div class="col-md-7">
-                            <label class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Target URL</label>
+                            <label for="inputCustomBtnUrl" class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Target URL</label>
                             <input type="url" name="custom_button_url" id="inputCustomBtnUrl" class="form-control" style="font-size: 13px; border-radius: 10px;" placeholder="https://calendly.com/your-name" value="{{ card_config.custom_button_url|default:'' }}" oninput="updateLivePreview()">
                         </div>
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between mb-4">
-                    <button type="submit" class="btn btn-lg pa-studio-btn-primary px-4 py-2" id="bottomSaveBtn">
-                        <i class="fas fa-save mr-1"></i> Save Customizations
+                <div class="pa-studio-savebar">
+                    <span class="pa-studio-dirty" id="studioDirtyNote" role="status" hidden>
+                        <i class="fas fa-circle-exclamation"></i> You have unsaved changes
+                    </span>
+                    <button type="button" class="pa-studio-btn pa-studio-btn-outline pa-preview-jump" onclick="document.getElementById('phoneMockupFrame').scrollIntoView({block: 'start'})">
+                        <i class="fas fa-mobile-alt"></i> See Preview
                     </button>
-                    <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="btn btn-outline-secondary font-weight-bold px-3 py-2" style="border-radius: 10px; font-size: 13px;">
-                        <i class="fas fa-eye mr-1"></i> View Live Card
+                    <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="pa-studio-btn pa-studio-btn-outline d-none d-lg-inline-flex">
+                        <i class="fas fa-eye"></i> View Live Card
                     </a>
+                    <button type="submit" class="pa-studio-btn pa-studio-btn-primary" id="bottomSaveBtn">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
                 </div>
             </form>
         </div>
@@ -862,6 +942,7 @@
                         <!-- Body -->
                         <div class="pa-mock-body">
                             <h3 class="pa-mock-name">{{ display_name|default:agent.fullname }}</h3>
+                            <div class="pa-mock-tagline" id="mockTaglinePreview">{% if card_tagline %}{{ card_tagline }}{% elif card_config.tagline %}{{ card_config.tagline }}{% elif profile and profile.card_tagline %}{{ profile.card_tagline }}{% else %}Certified Insurance Advisor{% endif %}</div>
                             {% if profile and profile.profession and profile.profession|lower != 'lic agent' %}
                             <div class="pa-mock-profession">{{ profile.profession }} · {{ agent.state|default:'Gujarat' }}</div>
                             {% endif %}
@@ -897,6 +978,12 @@
                                 <button type="button" class="btn w-100 btn-sm text-white font-weight-bold" id="mockCustomBtnElement" style="background: var(--mock-theme, #0B1F3A); border-radius: 8px; font-size: 11px; padding: 7px;">
                                     <i class="fas fa-calendar-check mr-1"></i> <span id="mockCustomBtnText">{{ card_config.custom_button_label }}</span>
                                 </button>
+                            </div>
+
+                            <!-- About / Bio Mock -->
+                            <div class="pa-mock-box" id="mockBioBox" style="display: {% if card_config.bio %}block{% else %}none{% endif %};">
+                                <div class="pa-mock-box-title"><i class="fas fa-user text-primary"></i> About</div>
+                                <div id="mockBioText" style="font-size: 10px; color: #475569; line-height: 1.45; white-space: pre-line;">{{ card_config.bio|default:'' }}</div>
                             </div>
 
                             <!-- Trust Metrics -->
@@ -938,8 +1025,9 @@
         document.getElementById('nativeColorPicker').value = hex;
         document.getElementById('phoneMockupFrame').style.setProperty('--mock-theme', hex);
         
-        document.querySelectorAll('.pa-color-swatch').forEach(s => s.classList.remove('active'));
-        if (el) el.classList.add('active');
+        document.querySelectorAll('.pa-color-swatch').forEach(s => { s.classList.remove('active'); s.setAttribute('aria-pressed', 'false'); });
+        if (el) { el.classList.add('active'); el.setAttribute('aria-pressed', 'true'); }
+        markStudioDirty(true);
         updateLivePreview();
     }
 
@@ -954,8 +1042,9 @@
 
     function selectBannerStyle(style, el) {
         document.getElementById('bannerStyleInput').value = style;
-        document.querySelectorAll('.pa-banner-option-item').forEach(b => b.classList.remove('active'));
-        if (el) el.classList.add('active');
+        document.querySelectorAll('.pa-banner-option-item').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+        if (el) { el.classList.add('active'); el.setAttribute('aria-pressed', 'true'); }
+        markStudioDirty(true);
 
         const uploadBox = document.getElementById('customBannerUploadBox');
         if (uploadBox) uploadBox.style.display = (style === 'custom') ? 'block' : 'none';
@@ -992,8 +1081,9 @@
         document.getElementById('removeAgencyLogoInput').value = '1';
         document.getElementById('agencyLogoPreviewBox').innerHTML = '<i class="fas fa-image text-muted" style="font-size: 20px;"></i>';
         const mockWrap = document.getElementById('mockHeaderBrandWrap');
-        const agencyName = document.getElementById('inputAgencyName').value || 'Insurance Advisor';
-        mockWrap.innerHTML = '<span class="pa-mock-agency-title"><i class="fas fa-shield-alt text-primary"></i> <span>' + agencyName + '</span></span>';
+        mockWrap.innerHTML = '<span class="pa-mock-agency-title" id="mockHeaderAgencyTitle"><i class="fas fa-shield-alt text-primary"></i> <span></span></span>';
+        markStudioDirty(true);
+        updateLivePreview();
     }
 
     function previewCardBanner(input) {
@@ -1009,6 +1099,7 @@
 
     function removeCardBanner() {
         document.getElementById('removeCardBannerInput').value = '1';
+        markStudioDirty(true);
         selectBannerStyle('profile', document.querySelector('.pa-banner-option-item'));
     }
 
@@ -1024,6 +1115,11 @@
         if (headerTitleEl) {
             headerTitleEl.querySelector('span').textContent = agencyName || 'Insurance Advisor';
         }
+
+        // About / bio
+        const bio = document.getElementById('inputCardBio').value.trim();
+        document.getElementById('mockBioText').textContent = bio;
+        document.getElementById('mockBioBox').style.display = bio ? 'block' : 'none';
 
         // Toggles
         document.getElementById('mockTileCall').style.display = document.getElementById('toggleShowCall').checked ? 'block' : 'none';
@@ -1065,12 +1161,13 @@
                 'X-Requested-With': 'XMLHttpRequest',
             }
         })
-        .then(res => res.json())
+        .then(res => res.json().catch(() => ({ status: 'error', message: 'Server error (' + res.status + '). Please try again.' })))
         .then(data => {
             if (saveBtn1) { saveBtn1.disabled = false; saveBtn1.innerHTML = originalText1; }
             if (saveBtn2) { saveBtn2.disabled = false; saveBtn2.innerHTML = originalText2; }
 
             if (data.status === 'success') {
+                markStudioDirty(false);
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'success',
@@ -1099,7 +1196,36 @@
             if (saveBtn1) { saveBtn1.disabled = false; saveBtn1.innerHTML = originalText1; }
             if (saveBtn2) { saveBtn2.disabled = false; saveBtn2.innerHTML = originalText2; }
             console.error('Save card error:', err);
-            alert('Network error while saving card customizations.');
+            alert('Network error while saving card customizations. Please check your internet and try again.');
         });
     }
+
+    // The QR widget defines this too, but it is not on every dashboard, which left "Copy Link" dead.
+    if (!window.copyAgentCardLink) {
+        window.copyAgentCardLink = function (cardPath) {
+            const url = cardPath.indexOf('http') === 0 ? cardPath : window.location.origin + cardPath;
+            const done = () => (typeof Swal !== 'undefined')
+                ? Swal.fire({ toast: true, position: 'top-end', timer: 2200, showConfirmButton: false, icon: 'success', title: 'Card link copied!' })
+                : alert('Card link copied!');
+            const manual = () => window.prompt('Copy your card link:', url);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done, manual);
+            } else {
+                manual();
+            }
+        };
+    }
+
+    // "Unsaved changes" hint so agents know to press Save
+    function markStudioDirty(dirty) {
+        const note = document.getElementById('studioDirtyNote');
+        if (note) note.hidden = !dirty;
+    }
+    (function () {
+        const form = document.getElementById('cardCustomizationForm');
+        if (!form) return;
+        form.addEventListener('input', () => markStudioDirty(true));
+        form.addEventListener('change', () => markStudioDirty(true));
+        document.querySelectorAll('.pa-color-swatch, .pa-banner-option-item').forEach(b => b.setAttribute('aria-pressed', b.classList.contains('active') ? 'true' : 'false'));
+    })();
 </script>
