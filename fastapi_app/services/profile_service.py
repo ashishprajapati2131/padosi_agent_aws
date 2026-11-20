@@ -505,9 +505,14 @@ class ProfileService:
                 stat = AgentPerformanceStat(agent_id=agent_id)
                 db.add(stat)
             
-            stat.claims_processed = str(cp)
-            stat.claims_settled = str(cs)
-            stat.claims_amount = str(perf.claims_amount)
+            # Persist as numbers (DB columns may be varchar; avoid str() so Django
+            # public profile can compare/format claims_amount reliably).
+            stat.claims_processed = int(cp or 0)
+            stat.claims_settled = int(cs or 0)
+            try:
+                stat.claims_amount = float(perf.claims_amount or 0)
+            except (TypeError, ValueError):
+                stat.claims_amount = 0.0
             resp_time_val = 2
             try:
                 import re
@@ -517,7 +522,7 @@ class ProfileService:
             except Exception:
                 pass
             stat.response_time = resp_time_val
-            stat.success_rate = str(success_rate)
+            stat.success_rate = float(success_rate or 0)
             
             # Step 3: Insurance Segments & Expertise
             db.query(AgentInsuranceSegment).filter(AgentInsuranceSegment.agent_id == agent_id).delete(synchronize_session=False)
@@ -930,9 +935,12 @@ class ProfileService:
             stat = AgentPerformanceStat(agent_id=agent_id)
             db.add(stat)
 
-        stat.claims_processed = str(cp)
-        stat.claims_settled = str(cs)
-        stat.claims_amount = str(perf.claims_amount)
+        stat.claims_processed = int(cp or 0)
+        stat.claims_settled = int(cs or 0)
+        try:
+            stat.claims_amount = float(perf.claims_amount or 0)
+        except (TypeError, ValueError):
+            stat.claims_amount = 0.0
         resp_time_val = 2
         try:
             import re
@@ -942,7 +950,7 @@ class ProfileService:
         except Exception:
             pass
         stat.response_time = resp_time_val
-        stat.success_rate = str(success_rate)
+        stat.success_rate = float(success_rate or 0)
 
     def update_basic_profile(self, agent_id: int, payload: BasicProfileUpdateRequest) -> AgentProfileResponse:
         db = self.agent_repo.db

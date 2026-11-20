@@ -455,11 +455,12 @@ def get_agent_profile_completion(db: Session, agent_id: int) -> int:
 
 
 def get_agent_review_count(db: Session, agent_id: int) -> int:
-    """Get count of verified/approved reviews for agent with fallback to agent record."""
+    """Verified unlock reviews: approved + logged-in reviewer (Django agent_review_count)."""
     try:
         count = db.query(func.count(AgentReview.id)).filter(
             AgentReview.agent_id == agent_id,
-            AgentReview.is_approved == True
+            AgentReview.is_approved == True,
+            AgentReview.user_id.isnot(None),
         ).scalar()
         if count is not None and count > 0:
             return count

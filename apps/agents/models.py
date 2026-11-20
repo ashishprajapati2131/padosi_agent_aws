@@ -1363,12 +1363,25 @@ class AgentPerformanceStat(models.Model):
         managed = True
 
     @property
+    def numeric_claims_amount(self):
+        """Safe Decimal for claims_amount (DB column may be varchar)."""
+        from apps.agents.services.display_format import parse_claims_amount
+
+        return parse_claims_amount(self.claims_amount)
+
+    @property
+    def has_claims_amount(self) -> bool:
+        return self.numeric_claims_amount > 0
+
+    @property
     def formatted_claims_processed(self):
-        return format_indian_number(self.claims_processed)
+        from apps.agents.services.display_format import parse_claims_count
+
+        return format_indian_number(parse_claims_count(self.claims_processed))
 
     @property
     def formatted_claims_amount(self):
-        return format_indian_number(self.claims_amount)
+        return format_indian_number(self.numeric_claims_amount)
 
     @property
     def display_success_rate(self):
@@ -1378,10 +1391,12 @@ class AgentPerformanceStat(models.Model):
 
     @property
     def effective_claims_settled(self) -> int:
-        settled = int(self.claims_settled or 0)
+        from apps.agents.services.display_format import parse_claims_count
+
+        settled = parse_claims_count(self.claims_settled)
         if settled > 0:
             return settled
-        processed = int(self.claims_processed or 0)
+        processed = parse_claims_count(self.claims_processed)
         if processed <= 0:
             return 0
         from apps.agents.services.display_format import parse_success_rate_percent

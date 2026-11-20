@@ -701,7 +701,7 @@
                 </div>
                 <div class="stat-box">
                     <div class="stat-value">
-                        {% if performanceStats and performanceStats.claims_amount > 0 %}
+                        {% if performanceStats and performanceStats.has_claims_amount %}
                             ₹{{ performanceStats.formatted_claims_amount }}
                         {% else %}
                             —

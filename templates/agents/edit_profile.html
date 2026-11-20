@@ -1438,9 +1438,9 @@ Overview
                                             title="The total monetary value of claims settled through your assistance"
                                             style="font-size: 12px; cursor: help;"></i></label>
                                     <input type="text" class="form-control" name="claims_amount" id="claims_amount"
-                                        value="{{ agent.performanceStats.claims_amount|floatformat:0|default:'' }}"
-                                        placeholder="e.g., 25000000" maxlength="10"
-                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 10) this.value = this.value.slice(0, 10);">
+                                        value="{% if agent.performanceStats and agent.performanceStats.has_claims_amount %}{{ agent.performanceStats.numeric_claims_amount|floatformat:0 }}{% endif %}"
+                                        placeholder="e.g., 25000000" maxlength="12"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 12) this.value = this.value.slice(0, 12);">
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Claim Success Rate <i

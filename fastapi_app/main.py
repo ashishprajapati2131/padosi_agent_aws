@@ -17,7 +17,8 @@ from fastapi_app.routers import (
     auth, dashboard, profile, public_profile,
     pincode, leads, notifications, analytics,
     qr, referral, find_agents, championship,
-    plans, app_version, account_deletion
+    plans, app_version, account_deletion,
+    reviews, digital_card, public_digital_card,
 )
 import fastapi_app.models
 
@@ -57,6 +58,7 @@ app.include_router(profile.router)
 app.include_router(public_profile.router)
 app.include_router(pincode.router)
 app.include_router(leads.router)
+app.include_router(reviews.router)
 app.include_router(notifications.router)
 app.include_router(analytics.router)
 app.include_router(qr.router)
@@ -66,6 +68,9 @@ app.include_router(championship.router)
 app.include_router(plans.router)
 app.include_router(app_version.router)
 app.include_router(account_deletion.router)
+app.include_router(digital_card.router)
+app.include_router(digital_card.invite_router)
+app.include_router(public_digital_card.router)
 
 
 class RestrictedStaticFiles(StaticFiles):

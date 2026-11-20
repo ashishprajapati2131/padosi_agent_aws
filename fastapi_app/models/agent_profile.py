@@ -30,6 +30,9 @@ class AgentProfile(Base):
     desired_services = Column(JSON, nullable=True)
     
     agency_name = Column(String(191), nullable=True)
+    agency_logo_path = Column(String(255), nullable=True)
+    card_tagline = Column(String(255), nullable=True)
+    card_config = Column(JSON, nullable=True)
     office_address = Column(Text, nullable=True)
     service_pincodes = Column(JSON, nullable=True)
     

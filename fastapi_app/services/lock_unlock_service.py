@@ -346,9 +346,11 @@ class LockUnlockService:
     def collect_agent_metrics(self, agent: Agent) -> Dict[str, Any]:
         profile = self.db.query(AgentProfile).filter(AgentProfile.agent_id == agent.id).first()
 
+        # Match Django agent_review_count(): approved + logged-in reviewer only.
         reviews_count = self.db.query(AgentReview).filter(
             AgentReview.agent_id == agent.id,
-            AgentReview.is_approved == True
+            AgentReview.is_approved == True,
+            AgentReview.user_id.isnot(None),
         ).count()
         if reviews_count == 0:
             reviews_count = int(getattr(agent, 'review_count', 0) or 0)
