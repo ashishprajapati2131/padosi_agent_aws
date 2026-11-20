@@ -16,7 +16,7 @@ class HomePageTests(TestCase):
         SiteSetting.set_value('hero_section', custom_hero, 'homepage')
         response = self.client.get(reverse('home:home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Our <span class="pa-heading-trusted">Trusted</span> Team')
+        self.assertContains(response, 'Meet the Right Expert Near')
 
     def test_home_page_renders_cms_sections(self):
         SiteSetting.set_value('hero_section', {
@@ -50,29 +50,42 @@ class HomePageTests(TestCase):
                     'body': 'Only you can contact an agent.',
                 }],
             },
-            'works': {
-                'visible': True,
-                'steps': [{'icon': 'search', 'accent': 'accent-primary', 'badge': '1', 'title': 'Search', 'desc': 'Find verified agents'}],
-            },
         }, 'homepage')
 
         response = self.client.get(reverse('home:home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Licensed Experts')
+        self.assertContains(response, 'Expert Agents')
         self.assertContains(response, 'Health Insurance')
         self.assertContains(response, 'Expert Agents')
-        self.assertContains(response, '3× faster claim settlements')
         self.assertContains(response, 'Mediclaim')
         self.assertContains(response, 'Privacy-first by design')
-        self.assertContains(response, 'Find verified agents')
+        self.assertContains(response, 'How it works')
 
     def test_home_page_falls_back_to_defaults_when_cms_empty(self):
         response = self.client.get(reverse('home:home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Licensed')
+        self.assertContains(response, 'Expert Agents')
         self.assertContains(response, 'Health Insurance')
         self.assertContains(response, 'Mediclaim')
-        self.assertContains(response, 'Find verified agents')
+        self.assertContains(response, 'Top rated experts')
+
+    def test_home_page_new_sections_render(self):
+        from django.core.cache import cache
+        cache.delete('homepage_cms_context')
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Meet the Right Expert Near')
+        self.assertContains(response, 'How it works')
+        self.assertContains(response, 'Tell us your need')
+        self.assertContains(response, 'Popular products')
+        self.assertContains(response, 'Insurance services')
+        self.assertContains(response, 'Mutual fund services')
+        self.assertContains(response, 'Why PadosiAgent')
+        self.assertContains(response, 'Top rated experts')
+        self.assertContains(response, 'Meet the Right Expert Near')
+        self.assertNotContains(response, 'Gulbai tekra')
+        self.assertNotContains(response, 'Find My PadosiAgent in 4 Simple Steps')
+        self.assertNotContains(response, 'pa-hero')
 
     def test_home_has_no_placeholder_reviews_and_has_org_schema(self):
         from django.core.cache import cache
@@ -84,11 +97,13 @@ class HomePageTests(TestCase):
         self.assertContains(response, '"@type": "Organization"')
         self.assertContains(response, '"@type": "WebSite"')
 
-    def test_hero_stats_render_real_values_not_zero(self):
-        # Crawlers and no-JS visitors must see the counter's final value.
+    def test_platform_stats_under_segment_experts(self):
+        from django.core.cache import cache
+        cache.delete('homepage_cms_context')
         response = self.client.get(reverse('home:home'))
-        self.assertContains(response, 'id="pa-counter-0">1,000</span>')
-        self.assertNotContains(response, 'id="pa-counter-0">0</span>')
+        self.assertContains(response, 'hp-platform-stats')
+        self.assertContains(response, 'Expert Agents')
+        self.assertContains(response, 'hp-platform-stat-value')
 
     def test_reviews_from_pending_approval_agent_not_displayed_on_homepage(self):
         from django.core.cache import cache

@@ -1,0 +1,50 @@
+{% load static %}
+<section class="hp-section hp-top-rated" id="hp-top-rated">
+    <div class="container">
+        <h2 class="hp-section-title text-center">Top rated experts</h2>
+        <p class="text-center text-muted hp-section-sub">Trusted PadosiAgents loved by families across India</p>
+        {% if top_rated_experts %}
+        <div class="hp-hscroll no-scrollbar" data-hp-carousel="top-rated">
+            <div class="hp-top-rated-track">
+                {% for expert in top_rated_experts %}
+                <article class="hp-top-card">
+                    <div class="hp-top-identity">
+                        <div class="hp-top-photo-wrap">
+                            <img src="{{ expert.photo|default:'' }}" alt="{{ expert.name }}" width="64" height="64" loading="lazy" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
+                            <span class="hp-top-trusted" title="Verified" aria-label="Verified">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            </span>
+                        </div>
+                        <div class="hp-top-identity-text">
+                            <h3>{{ expert.name }}</h3>
+                            <p class="hp-top-city">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                {{ expert.city }}
+                            </p>
+                            <div class="hp-top-rating-line">
+                                <p class="hp-top-rating-score">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                    <strong>{{ expert.rating }}</strong>
+                                </p>
+                                <p class="hp-top-rating-count">({{ expert.review_count|default:0 }} review{{ expert.review_count|default:0|pluralize }})</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hp-top-tags">
+                        <span class="hp-top-tag">{{ expert.segment_label }}</span>
+                        <span class="hp-top-tag">{% if expert.experience_display and expert.experience_display != '—' %}{{ expert.experience_display }} exp{% else %}—{% endif %}</span>
+                    </div>
+                    <a href="{{ expert.profile_url }}" class="hp-top-profile-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <span>View Profile</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-center text-muted">Experts will appear here as reviews grow.</p>
+        {% endif %}
+    </div>
+</section>

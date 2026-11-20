@@ -2,7 +2,7 @@
 
 from apps.home.models.homepage import (
     HomePageSettings, HeroTrustBadge, HeroStatistic, HeroProductTile,
-    HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard, HowItWorksStep,
+    HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard,
 )
 from apps.home.models.site_setting import SiteSetting
 from apps.home.services.avatar_thumbs import small_avatar_url
@@ -16,8 +16,8 @@ DEFAULT_TRUST_BADGES = [
 ]
 
 DEFAULT_STATS = [
-    {'label': 'Expert Agents', 'target': 1000, 'suffix': '+', 'icon': 'users', 'is_large': True, 'is_decimal': False},
-    {'label': 'Cities Covered', 'target': 50, 'suffix': '+', 'icon': 'map-pin', 'is_large': False, 'is_decimal': False},
+    {'label': 'Expert Agents', 'target': 500, 'suffix': '+', 'icon': 'users', 'is_large': False, 'is_decimal': False},
+    {'label': 'Cities Covered', 'target': 10, 'suffix': '+', 'icon': 'map-pin', 'is_large': False, 'is_decimal': False},
     {'label': 'Rating', 'target': 4.8, 'suffix': '', 'icon': 'star', 'is_large': False, 'is_decimal': True},
     {'label': 'Families Covered', 'target': 1, 'suffix': 'L+', 'icon': 'heart', 'is_large': False, 'is_decimal': False},
 ]
@@ -66,11 +66,137 @@ DEFAULT_WHY_CARDS = [
     {'stat_text': '5.0★', 'caption': 'Average Rating', 'icon': 'star', 'title': 'Loved by buyers across India', 'body': 'Real reviews from real customers — no incentivised ratings, no fake testimonials.'},
 ]
 
-DEFAULT_WORKS_STEPS = [
-    {'icon': 'search', 'accent_class': 'accent-primary', 'badge_number': '1', 'title': 'Search', 'description': 'Find verified agents', 'tooltip': 'Find verified insurance experts by area or service.'},
-    {'icon': 'git-compare', 'accent_class': 'accent-secondary', 'badge_number': '2', 'title': 'Compare', 'description': 'Review ratings', 'tooltip': 'Review ratings and profiles to find your perfect match.'},
-    {'icon': 'message-square', 'accent_class': 'accent-accent', 'badge_number': '3', 'title': 'Connect', 'description': 'Call or WhatsApp', 'tooltip': 'Get in touch via Call or WhatsApp instantly.'},
-    {'icon': 'hand-heart', 'accent_class': 'accent-violet', 'badge_number': '4', 'title': 'Assist Me', 'description': 'Personalized service', 'tooltip': 'Get professional support for policies, claims, and more.'},
+DEFAULT_SEGMENT_SHOWCASE = [
+    {
+        'key': 'health',
+        'title': 'Health Insurance Expert',
+        'theme_class': 'hp-seg-teal',
+        'image': 'img/home/segment-health.png',
+        'services': [
+            'Individual & Family Health Plans',
+            'Cashless Hospitalization',
+            'Claim Assistance & Renewal',
+        ],
+        'rating': '4.9',
+        'experience': '12+ Years',
+        'customers': '1.2k+',
+        'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Health+Insurance&openFilter=1',
+    },
+    {
+        'key': 'life',
+        'title': 'Life Insurance Expert',
+        'theme_class': 'hp-seg-blue',
+        'image': 'img/home/segment-life.png',
+        'services': [
+            'Term Life Insurance',
+            'Child & Retirement Plans',
+            'Policy Revival & Renewal',
+        ],
+        'rating': '4.8',
+        'experience': '14+ Years',
+        'customers': '1.1k+',
+        'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Life+Insurance&openFilter=1',
+    },
+    {
+        'key': 'motor',
+        'title': 'Vehicle Insurance Expert',
+        'theme_class': 'hp-seg-green',
+        'image': 'img/home/segment-motor.png',
+        'services': [
+            'Two-Wheeler & Car Insurance',
+            'New Policy & Renewal',
+            'Comprehensive & Third-Party Cover',
+            'Claim Assistance',
+        ],
+        'rating': '4.9',
+        'experience': '9+ Years',
+        'customers': '980+',
+        'url': '/find-agents?ServiceType=New+Policy&InsuranceType=Motor+Insurance&openFilter=1',
+    },
+    {
+        'key': 'sme',
+        'title': 'SME / General Insurance Expert',
+        'theme_class': 'hp-seg-orange',
+        'image': 'img/home/segment-sme.png',
+        'services': [
+            'Business & Property Protection',
+            'Fire & Marine Insurance',
+            'Liability & Employee Insurance',
+            'Commercial Vehicle Insurance',
+        ],
+        'rating': '4.8',
+        'experience': '15+ Years',
+        'customers': '1.0k+',
+        'url': '/find-agents?ServiceType=New+Policy&InsuranceType=SME+Insurance&openFilter=1',
+    },
+    {
+        'key': 'mutual_fund',
+        'title': 'Mutual Fund Expert',
+        'theme_class': 'hp-seg-purple',
+        'image': 'img/home/segment-mutual.png',
+        'services': [
+            'SIP & Wealth Creation',
+            'Goal-Based Investment',
+            'Portfolio Review & Management',
+            'Retirement Planning',
+        ],
+        'rating': '4.9',
+        'experience': '10+ Years',
+        'customers': '1.5k+',
+        'url': '/find-agents?openFilter=1',
+    },
+]
+
+DEFAULT_PROMO_SLIDES = [
+    {
+        'image': 'img/dyk-zero-fees.webp',
+        'image_md': 'img/dyk-zero-fees-768.webp',
+        'alt': 'Zero fees. Lifetime advisor — same premium, a real human in your neighbourhood.',
+    },
+    {
+        'image': 'img/hero-chatbot-vs-agent-doodle.webp',
+        'image_md': 'img/hero-chatbot-vs-agent-doodle-768.webp',
+        'alt': 'Chatbot or expert PadosiAgent — who will help your family with insurance claims?',
+    },
+    {
+        'image': 'img/hero-nominee-doodle.webp',
+        'image_md': 'img/hero-nominee-doodle-768.webp',
+        'alt': 'Is your nominee a claims expert? Buy from an experienced nearby agent.',
+    },
+]
+
+DEFAULT_INSURANCE_SERVICE_TABS = [
+    {'id': 'buy', 'label': 'Buy New Policy', 'service_type': 'New Policy'},
+    {'id': 'transfer', 'label': 'Transfer & Renew', 'service_type': 'Port / transfer'},
+    {'id': 'audit', 'label': 'Portfolio Audit', 'service_type': 'Policy Review'},
+]
+
+DEFAULT_INSURANCE_CATEGORIES = [
+    {'label': 'Health Insurance', 'icon': 'heart', 'insurance_type': 'Health Insurance'},
+    {'label': 'Life Insurance', 'icon': 'shield', 'insurance_type': 'Life Insurance'},
+    {'label': 'Motor Insurance', 'icon': 'car', 'insurance_type': 'Motor Insurance'},
+    {'label': 'SME Insurance', 'icon': 'building-2', 'insurance_type': 'SME Insurance'},
+]
+
+DEFAULT_MUTUAL_FUND_TABS = [
+    {'id': 'sip', 'label': 'SIP / STP', 'query': 'SIP'},
+    {'id': 'lumpsum', 'label': 'Lumpsum', 'query': 'Lumpsum'},
+    {'id': 'tax', 'label': 'Tax Saving', 'query': 'ELSS'},
+]
+
+DEFAULT_MUTUAL_FUND_CARDS = [
+    {'label': 'Equity SIP', 'icon': 'trending-up', 'tabs': 'sip', 'service': 'Equity SIP'},
+    {'label': 'Debt STP', 'icon': 'trending-up', 'tabs': 'sip', 'service': 'Debt STP'},
+    {'label': 'Index SIP', 'icon': 'trending-up', 'tabs': 'sip', 'service': 'Index SIP'},
+    {'label': 'Flexi Cap SIP', 'icon': 'scale', 'tabs': 'sip', 'service': 'Flexi Cap SIP'},
+    {'label': 'Lumpsum Equity', 'icon': 'trending-up', 'tabs': 'lumpsum', 'service': 'Lumpsum Equity'},
+    {'label': 'Balanced Advantage', 'icon': 'scale', 'tabs': 'lumpsum', 'service': 'Balanced Advantage'},
+    {'label': 'Debt Lumpsum', 'icon': 'piggy-bank', 'tabs': 'lumpsum', 'service': 'Debt Lumpsum'},
+    {'label': 'Hybrid Funds', 'icon': 'scale', 'tabs': 'lumpsum', 'service': 'Hybrid Funds'},
+    {'label': 'ELSS Tax Saver', 'icon': 'badge-percent', 'tabs': 'tax', 'service': 'ELSS Tax Saver'},
+    {'label': 'Tax-Free Bonds', 'icon': 'badge-percent', 'tabs': 'tax', 'service': 'Tax-Free Bonds'},
+    {'label': 'Retirement Plans', 'icon': 'piggy-bank', 'tabs': 'tax', 'service': 'Retirement Plans'},
+    {'label': '80C Investments', 'icon': 'badge-percent', 'tabs': 'tax', 'service': '80C Investments'},
 ]
 
 SLIDE_GRADIENTS = [
@@ -287,21 +413,12 @@ def _map_why_cards(items):
     return mapped
 
 
-def _map_works_steps(items):
-    mapped = []
-    for item in items:
-        title = _attr(item, 'title')
-        if not title:
-            continue
-        mapped.append({
-            'badge_number': _attr(item, 'badge_number', 'badge'),
-            'icon': _attr(item, 'icon', default='search'),
-            'accent_class': _attr(item, 'accent_class', 'accent', default='accent-primary'),
-            'title': title,
-            'description': _attr(item, 'description', 'desc'),
-            'tooltip': _attr(item, 'tooltip'),
-        })
-    return mapped
+def build_segment_showcase_context():
+    return list(DEFAULT_SEGMENT_SHOWCASE)
+
+
+def build_promo_slides_context():
+    return list(DEFAULT_PROMO_SLIDES)
 
 
 def _zip_with_index(items, extra_fn=None):
@@ -320,7 +437,6 @@ def _overlay_settings(settings, hero, content):
     dyk = content.get('dyk') or {}
     quickpicks = content.get('quickpicks') or {}
     why = content.get('why_choose') or {}
-    works = content.get('works') or {}
     testimonials = content.get('testimonials') or {}
 
     if 'visible' in dyk:
@@ -329,8 +445,8 @@ def _overlay_settings(settings, hero, content):
         settings.show_quickpicks = _is_visible(quickpicks.get('visible'))
     if 'visible' in why:
         settings.show_why_choose = _is_visible(why.get('visible'))
-    if 'visible' in works:
-        settings.show_how_it_works = _is_visible(works.get('visible'))
+    # How it works section removed from homepage UI
+    settings.show_how_it_works = False
     if 'visible' in testimonials:
         settings.show_testimonials = _is_visible(testimonials.get('visible'))
 
@@ -346,11 +462,6 @@ def _overlay_settings(settings, hero, content):
         (why, 'description', 'why_choose_description'),
         (why, 'button_text', 'why_choose_button_text'),
         (why, 'button_url', 'why_choose_button_url'),
-        (works, 'label', 'works_label'),
-        (works, 'title', 'works_title'),
-        (works, 'subtitle', 'works_subtitle'),
-        (works, 'button_text', 'works_button_text'),
-        (works, 'button_url', 'works_button_url'),
         (testimonials, 'label', 'testimonials_label'),
         (testimonials, 'title', 'testimonials_title'),
         (testimonials, 'subtitle', 'testimonials_subtitle'),
@@ -445,12 +556,6 @@ def build_homepage_cms_context():
         list(WhyChooseCard.objects.all()),
         DEFAULT_WHY_CARDS,
     ))
-    works_steps = _map_works_steps(_first_filled(
-        (content.get('works') or {}).get('steps'),
-        list(HowItWorksStep.objects.all()),
-        DEFAULT_WORKS_STEPS,
-    ))
-
     why_cards_zipped = []
     for idx, card in enumerate(why_cards):
         accent = CARD_ACCENTS[idx % len(CARD_ACCENTS)]
@@ -479,11 +584,16 @@ def build_homepage_cms_context():
         'quick_picks': quick_picks,
         'why_cards': why_cards,
         'why_cards_zipped': why_cards_zipped,
-        'works_steps': works_steps,
         'facts_zipped': facts_zipped,
         'slides_zipped': slides_zipped,
         'custom_reviews': custom_reviews,
         'hero_heading': settings.hero_heading,
+        'segment_showcase': build_segment_showcase_context(),
+        'promo_slides': build_promo_slides_context(),
+        'insurance_service_tabs': list(DEFAULT_INSURANCE_SERVICE_TABS),
+        'insurance_categories': list(DEFAULT_INSURANCE_CATEGORIES),
+        'mutual_fund_tabs': list(DEFAULT_MUTUAL_FUND_TABS),
+        'mutual_fund_cards': list(DEFAULT_MUTUAL_FUND_CARDS),
     }
     # post_save/post_delete signals and SiteSetting.set_value() clear this key on every CMS edit.
     cache.set('homepage_cms_context', context, timeout=3600)

@@ -1,0 +1,15 @@
+{% load static %}
+<section class="hp-section hp-promo" id="hp-promo">
+    <div class="container">
+        <div class="hp-promo-viewport hp-hscroll no-scrollbar" data-hp-carousel="promo" id="hp-promo-slider">
+            <div class="hp-promo-track">
+                {% for slide in promo_slides %}
+                <div class="hp-promo-slide">
+                    <img src="{% static slide.image_md %}" srcset="{% static slide.image_md %} 768w, {% static slide.image %} 1536w" sizes="(max-width: 768px) 88vw, 400px" alt="{{ slide.alt }}" width="400" height="267" loading="lazy" decoding="async" draggable="false" class="hp-promo-img">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="slider-dots" id="hp-promo-dots"></div>
+    </div>
+</section>

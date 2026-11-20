@@ -1,0 +1,32 @@
+<section class="hp-section hp-mutual-services" id="hp-mutual-services">
+    <div class="container">
+        <h2 class="hp-section-title text-center mb-3">Mutual fund services</h2>
+        <div class="hp-pill-row" role="tablist" data-hp-mutual-tabs aria-label="Mutual fund service type">
+            {% for tab in mutual_fund_tabs %}
+            <button type="button"
+                    class="hp-pill {% if forloop.first %}active{% endif %}"
+                    data-mf-tab="{{ tab.id }}"
+                    data-mf-query="{{ tab.query }}"
+                    role="tab"
+                    aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ tab.label }}</button>
+            {% endfor %}
+        </div>
+        <div class="hp-category-grid" data-hp-mutual-cards>
+            {% for card in mutual_fund_cards %}
+            <button type="button"
+                    class="hp-category-card"
+                    data-mf-tabs="{{ card.tabs }}"
+                    data-mf-service="{{ card.service|default:card.label }}"
+                    aria-pressed="false"
+                    {% if card.tabs != 'sip' %}hidden{% endif %}>
+                <div class="hp-category-icon">{% include 'components/hero-icon.html' with name=card.icon sw='2' %}</div>
+                <span>{{ card.label }}</span>
+            </button>
+            {% endfor %}
+        </div>
+        <p class="hp-helper-text text-center">Select a fund type above</p>
+        <div class="text-center mt-3">
+            <a href="/find-agents?openFilter=1&InsuranceType=Mutual+Fund" class="hp-cta-btn hp-cta-btn--disabled" id="hp-mutual-cta" aria-disabled="true">Find mutual fund expert →</a>
+        </div>
+    </div>
+</section>

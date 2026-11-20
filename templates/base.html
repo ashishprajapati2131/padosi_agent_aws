@@ -417,8 +417,10 @@
 
             const hasSessionLocation = Boolean("{{ request.session.last_lat|default:'' }}" || "{{ request.session.last_pincode|default:'' }}");
             const permissionStatus = localStorage.getItem('padosi_location_status');
+            // Homepage owns GPS→PIN prompt UX in homepage-segments.js
+            var isHomePath = (window.location.pathname || '/') === '/' || (window.location.pathname || '') === '';
 
-            if (!hasSessionLocation && permissionStatus !== 'denied' && permissionStatus !== 'prompted') {
+            if (!isHomePath && !hasSessionLocation && permissionStatus !== 'denied' && permissionStatus !== 'prompted') {
                 localStorage.setItem('padosi_location_status', 'prompted');
                 navigator.geolocation.getCurrentPosition(
                     function (position) {
@@ -442,7 +444,9 @@
                             var reloadKey = 'padosi_location_reloaded';
                             var alreadyReloaded = false;
                             try { alreadyReloaded = sessionStorage.getItem(reloadKey) === '1'; } catch (e) {}
-                            if (res.ok && !alreadyReloaded && window.location.pathname.indexOf('/find-agents') !== -1) {
+                            var path = window.location.pathname || '/';
+                            var reloadHome = path === '/' || path === '';
+                            if (res.ok && !alreadyReloaded && (window.location.pathname.indexOf('/find-agents') !== -1 || reloadHome)) {
                                 try { sessionStorage.setItem(reloadKey, '1'); } catch (e) {}
                                 window.location.reload();
                             }

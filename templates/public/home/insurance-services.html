@@ -1,0 +1,22 @@
+<section class="hp-section hp-insurance-services" id="hp-insurance-services">
+    <div class="container">
+        <h2 class="hp-section-title text-center mb-3">Insurance services</h2>
+        <div class="hp-pill-row" role="tablist" data-hp-insurance-tabs>
+            {% for tab in insurance_service_tabs %}
+            <button type="button" class="hp-pill {% if forloop.first %}active{% endif %}" data-service-type="{{ tab.service_type }}" data-tab-id="{{ tab.id }}" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ tab.label }}</button>
+            {% endfor %}
+        </div>
+        <div class="hp-category-grid" data-hp-insurance-cards>
+            {% for cat in insurance_categories %}
+            <button type="button" class="hp-category-card" data-insurance-type="{{ cat.insurance_type }}" aria-pressed="false">
+                <div class="hp-category-icon">{% include 'components/hero-icon.html' with name=cat.icon sw='1.6' %}</div>
+                <span>{{ cat.label }}</span>
+            </button>
+            {% endfor %}
+        </div>
+        <p class="hp-helper-text text-center">Select one or more insurance types above</p>
+        <div class="text-center">
+            <a href="/find-agents?openFilter=1" class="hp-cta-btn hp-cta-btn--disabled" id="hp-insurance-cta" aria-disabled="true">Find Insurance Expert →</a>
+        </div>
+    </div>
+</section>

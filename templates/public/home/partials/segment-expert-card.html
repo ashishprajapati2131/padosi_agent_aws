@@ -1,0 +1,108 @@
+{% load static json_tags %}
+{% with key=slot.key agent=slot.agent services=slot.services agents=slot.agents %}
+{% if slot.mode == 'placeholder' %}
+<a href="{{ slot.url }}" class="hp-segment-card hp-segment-card-v hp-segment-card--premium {{ slot.theme_class }}" data-hp-open-pin>
+{% else %}
+<article class="hp-segment-stack {{ slot.theme_class }}{% if slot.mode == 'live' %} is-live{% endif %}"
+         data-hp-segment="{{ key }}"
+         data-hp-segment-url="{{ slot.url }}"
+         data-hp-segment-title="{{ slot.title }}"
+         {% if slot.mode == 'live' %}data-hp-segment-open="{{ key }}" tabindex="0" role="button" aria-label="View top {{ slot.title }} near you"{% endif %}>
+{% if slot.mode == 'live' and agents %}
+<script type="application/json" class="hp-segment-agents-data" data-hp-segment-json="{{ key }}">{{ agents|safe_json }}</script>
+{% endif %}
+{% endif %}
+
+{% if slot.mode == 'placeholder' %}
+    <p class="hp-seg-theme-bar" aria-hidden="true"></p>
+    <div class="hp-segment-card-head">
+        <span class="hp-segment-card-title">{{ slot.title }}</span>
+        <span class="hp-segment-card-arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+    </div>
+    <div class="hp-segment-card-main">
+        <div class="hp-segment-photo-col">
+            <img src="{% static slot.image %}" alt="" class="hp-segment-photo hp-segment-photo--dummy" width="72" height="88" loading="lazy" decoding="async">
+        </div>
+        <div class="hp-segment-services-col">
+            <ul class="hp-segment-services">
+                {% for item in services %}
+                <li>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                    <span>{{ item }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="hp-segment-card-foot">
+        <span class="hp-segment-stat"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> {{ slot.rating_display }}</span>
+        <span class="hp-segment-stat">{% include 'components/hero-icon.html' with name='briefcase' sw='1.75' %} {{ slot.experience_display }}</span>
+        <span class="hp-segment-stat">{% include 'components/hero-icon.html' with name='users' sw='1.75' %} {{ slot.customers_display }}</span>
+    </div>
+</a>
+
+{% elif slot.mode == 'live' and agent %}
+    <div class="hp-stack-layers" aria-hidden="true">
+        <span class="hp-stack-layer hp-stack-layer--2"></span>
+        <span class="hp-stack-layer hp-stack-layer--1"></span>
+    </div>
+    <div class="hp-live-card">
+        <div class="hp-live-card-header">{{ agent.segment_label }}</div>
+        <div class="hp-live-card-meta">
+            <span class="hp-live-match">{{ agent.match_percent }}% Match</span>
+            <span class="hp-live-rating">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {{ agent.rating }}
+            </span>
+        </div>
+        <div class="hp-live-profile">
+            <img src="{{ agent.photo|default:'' }}" alt="{{ agent.name }}" class="hp-live-photo" width="64" height="64" loading="lazy"
+                 onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
+            <div class="hp-live-profile-text">
+                <h3 class="hp-live-name">
+                    {{ agent.name }}
+                    {% if agent.is_verified %}<span class="hp-live-verified" title="Verified">✓</span>{% endif %}
+                </h3>
+                <p class="hp-live-location">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {{ agent.location_line }}
+                </p>
+            </div>
+        </div>
+        <div class="hp-live-stats">
+            <div><strong>{{ agent.experience_display }}</strong><span>Exp</span></div>
+            <div><strong>{{ agent.clients_display }}</strong><span>Clients</span></div>
+            <div><strong>{{ agent.claims_display }}</strong><span>Claims</span></div>
+        </div>
+        {% if agent.license_line %}
+        <p class="hp-live-license">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            {{ agent.license_line }}
+        </p>
+        {% endif %}
+        <div class="hp-live-actions">
+            {% if agent.phone_url %}
+            <a href="{{ agent.phone_url }}" class="hp-live-btn hp-live-btn--call" data-hp-stop-propagation>{% include 'components/hero-icon.html' with name='phone' sw='1.8' %} Call Now</a>
+            {% else %}
+            <a href="{{ agent.profile_url }}" class="hp-live-btn hp-live-btn--call" data-hp-stop-propagation>View Profile</a>
+            {% endif %}
+            {% if agent.whatsapp_url %}
+            <a href="{{ agent.whatsapp_url }}" class="hp-live-btn hp-live-btn--wa" rel="noopener noreferrer" target="_blank" data-hp-stop-propagation>WhatsApp</a>
+            {% endif %}
+        </div>
+    </div>
+</article>
+
+{% else %}
+<article class="hp-segment-card hp-segment-card-v hp-segment-card--premium {{ slot.theme_class }}">
+    <p class="hp-seg-theme-bar" aria-hidden="true"></p>
+    <div class="hp-segment-card-head">
+        <span class="hp-segment-card-title">{{ slot.title }}</span>
+    </div>
+    <p class="hp-segment-empty-copy">No expert near this PIN yet.</p>
+    <a href="{{ slot.url }}" class="hp-segment-btn hp-segment-btn--outline">Browse {{ slot.title }}</a>
+</article>
+{% endif %}
+{% endwith %}

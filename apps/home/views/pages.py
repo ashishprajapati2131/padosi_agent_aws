@@ -43,7 +43,7 @@ from django.db.models.expressions import RawSQL
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from .leads import CONTACT_MAX_PER_IP, CONTACT_WINDOW_SECONDS, QUICK_LEAD_MAX_PER_IP, QUICK_LEAD_WINDOW_SECONDS, _rate_limited, _is_honeypot_hit, contact_submit, quick_lead_capture  # noqa: F401
-from .homepage import _reviews_json_for_script, _organization_schema, home  # noqa: F401
+from .homepage import _reviews_json_for_script, _organization_schema, home, segment_compare  # noqa: F401
 from .agent_search import get_portfolio_companies_by_type, _find_closest_pincode, get_all_claim_companies, build_agent_query, serialize_agent_for_ai_picks, _html_escape_payload  # noqa: F401
 from .pincode import pincode_fetch, _get_or_create_pincode, _pincode_matching_agents, check_pincode, check_pincode_agents  # noqa: F401
 from .city_directory import _AREA_PINCODE_MAP, MIN_INDEXABLE_CITY_AGENTS, JUNK_CITY_SLUGS, _resolve_area_to_pincodes, CITY_CATEGORIES, SERVICE_PAGES, STATE_HUBS, _state_city_q, state_hub_agents, filter_agents_for_category, _directory_path, city_agents_directory  # noqa: F401
@@ -1018,6 +1018,8 @@ def save_user_location(request):
             request.session.modified = True
         except AttributeError:
             pass
+        from apps.home.services.home_location import invalidate_homepage_agent_caches
+        invalidate_homepage_agent_caches(request.session.get('last_pincode', ''))
         return JsonResponse({'success': True, 'message': 'Location saved', 'lat': lat, 'lng': lng})
 
     if pincode and re.match(r'^[1-9]\d{5}$', pincode):
@@ -1033,6 +1035,8 @@ def save_user_location(request):
             request.session.modified = True
         except AttributeError:
             pass
+        from apps.home.services.home_location import invalidate_homepage_agent_caches
+        invalidate_homepage_agent_caches(pincode)
         return JsonResponse({
             'success': True,
             'message': 'Pincode saved',

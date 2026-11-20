@@ -444,10 +444,30 @@ def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
     except (ValueError, TypeError):
         clients = 0
 
+    slug = profile.slug if profile else None
+    state = profile.state_code if profile else 'gj'
+    whatsapp = getattr(profile, 'whatsapp', '') if profile else ''
+    phone = (getattr(profile, 'phone', None) or getattr(profile, 'mobile', None) or '') if profile else ''
+    wa_digits = ''.join(c for c in str(whatsapp) if c.isdigit())
+    wa_link = ''
+    if len(wa_digits) >= 10:
+        if len(wa_digits) == 10:
+            wa_digits = '91' + wa_digits
+        wa_link = f"https://wa.me/{wa_digits}"
+    pd = ''.join(c for c in str(phone) if c.isdigit())
+    tel_link = ''
+    if len(pd) >= 10:
+        tel_link = f"tel:+{pd if pd.startswith('91') else '91' + pd[-10:]}"
+
     return {
         'id': agent.id,
         'name': agent.display_name,
         'profile_photo': agent.profile.profile_photo_url if profile else '/static/img/avatar-icon.jpg',
+        'profile_url': f"/{state}/{slug}/" if slug else '/find-agents?openFilter=1',
+        'license_number': (profile.license_number or '') if profile else '',
+        'arn_number': (profile.arn_number or '') if profile else '',
+        'phone_url': tel_link,
+        'whatsapp_url': wa_link,
         'is_verified': agent.is_verified_agent,
         'is_trusted': agent.is_trusted,
         'experience_years': agent.experience_years,

@@ -1,0 +1,18 @@
+<section class="hp-section hp-matching-experts" id="hp-matching-experts">
+    <div class="container">
+        <h2 class="hp-section-title text-center">
+            Top matching Experts near <span class="hp-location-highlight">{{ home_location_label|title }}</span>
+        </h2>
+        <p class="text-center text-muted hp-section-sub">Ranked by fit, services, rating and distance</p>
+        <div class="hp-hscroll no-scrollbar" data-hp-carousel="matching">
+            <div class="hp-match-track">
+                {% for expert in matching_experts %}
+                {% include 'public/home/partials/matching-expert-card.html' with expert=expert %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="/find-agents?openFilter=1" class="hp-cta-link">View all matching experts →</a>
+        </div>
+    </div>
+</section>

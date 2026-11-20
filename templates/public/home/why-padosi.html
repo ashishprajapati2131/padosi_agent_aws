@@ -1,0 +1,27 @@
+<section class="why-choose-section hp-why py-5 bg-transparent">
+    <div class="container">
+        <div class="row align-items-start">
+            <div class="col-lg-4 mb-4 mb-lg-5">
+                <h2 class="hp-why-title">Why PadosiAgent</h2>
+                <a href="{{ settings.why_choose_button_url|default:'/find-agents?openFilter=1' }}" class="hp-cta-btn find-agent-btn text-decoration-none">
+                    {{ settings.why_choose_button_text|default:"Find My PadosiAgent" }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="ml-2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+            </div>
+            <div class="col-lg-8">
+                <div class="hp-why-grid">
+                    {% for item in why_cards_zipped %}
+                    <div class="hp-why-stat-card">
+                        <div class="hp-why-stat-icon" style="color: {{ item.accent.color }};">
+                            {% include 'components/hero-icon.html' with name=item.card.icon|default:'shield-check' sw='2.2' %}
+                        </div>
+                        <p class="hp-why-stat-num">{{ item.card.stat_text }}</p>
+                        <p class="hp-why-stat-label">{{ item.card.caption|upper }}</p>
+                        <p class="hp-why-stat-desc">{{ item.card.title }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

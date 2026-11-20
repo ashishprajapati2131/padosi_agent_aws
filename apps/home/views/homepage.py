@@ -1,9 +1,19 @@
 """Public homepage view and its JSON-LD / reviews helpers."""
 from django.shortcuts import render
-import re
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 import logging
 import json
 from apps.home.services.homepage import build_homepage_cms_context
+from apps.home.services.home_location import get_homepage_location_label, has_homepage_location
+from apps.home.services.homepage_agents import (
+    SEGMENT_KEYS,
+    get_home_matching_experts,
+    get_home_segment_experts,
+    get_home_top_rated_experts,
+    get_segment_compare_agents,
+)
+from apps.home.views.agent_search import serialize_agent_for_ai_picks, _html_escape_payload
 from django.contrib.staticfiles.storage import staticfiles_storage
 from apps.home.services.avatar_thumbs import small_avatar_url
 from django.db.models import Q
@@ -182,17 +192,11 @@ def home(request):
         {'year': '2024', 'rejection': 34},
     ]
 
-    raw_heading = settings.hero_heading
-    # Clean braces first if any
-    cleaned_heading = raw_heading.replace('{', '').replace('}', '')
-    def replace_word(match):
-        word = match.group(0)
-        lower_word = word.lower()
-        if 'padosi' in lower_word:
-            return f'<span class="pa-heading-highlight">{word}</span>'
-        else:
-            return f'<span class="pa-heading-trusted">{word}</span>'
-    hero_heading_html = re.sub(r'\b(Trusted|Licensed|Licenced|Padosi|Agent)\b', replace_word, cleaned_heading, flags=re.IGNORECASE)
+    has_loc = has_homepage_location(request)
+    home_location_label, _home_pin = get_homepage_location_label(request)
+    segment_experts, segment_experts_mode = get_home_segment_experts(request)
+    matching_experts = get_home_matching_experts(request) if has_loc else []
+    top_rated_experts = get_home_top_rated_experts(request)
 
     return render(request, 'public/home.html', {
         'settings': settings,
@@ -200,15 +204,46 @@ def home(request):
         'reviews_json': _reviews_json_for_script(reviews),
         'has_reviews': bool(reviews),
         'org_schema': _organization_schema(request),
-        'hide_header': True,
-        'trust_badges': cms['trust_badges'],
+        'hide_header': False,
         'stats_data': cms['stats_data'],
-        'product_tiles': cms['product_tiles'],
         'facts_zipped': cms['facts_zipped'],
         'slides_zipped': cms['slides_zipped'],
         'quick_picks': cms['quick_picks'],
         'why_cards': cms['why_cards'],
-        'works_steps': cms['works_steps'],
         'chart_data': chart_data,
-        'hero_heading_html': hero_heading_html,
+        'home_location_label': home_location_label,
+        'has_homepage_location': has_loc,
+        'segment_experts': segment_experts,
+        'segment_experts_mode': segment_experts_mode,
+        'matching_experts': matching_experts,
+        'segment_showcase': cms.get('segment_showcase') or [],
+        'promo_slides': cms.get('promo_slides') or [],
+        'insurance_service_tabs': cms.get('insurance_service_tabs') or [],
+        'insurance_categories': cms.get('insurance_categories') or [],
+        'mutual_fund_tabs': cms.get('mutual_fund_tabs') or [],
+        'mutual_fund_cards': cms.get('mutual_fund_cards') or [],
+        'top_rated_experts': top_rated_experts,
     })
+
+
+@require_GET
+def segment_compare(request):
+    """Top 3 agents in one homepage segment for the compare modal."""
+    from apps.home.services.home_location import resolve_home_coordinates
+
+    segment = (request.GET.get('segment') or '').strip().lower()
+    if segment not in SEGMENT_KEYS:
+        return JsonResponse({'success': False, 'message': 'Invalid segment'}, status=400)
+    if not has_homepage_location(request):
+        return JsonResponse({'success': False, 'message': 'Set your PIN code first'}, status=400)
+
+    agents = get_segment_compare_agents(request, segment, limit=3)
+    if not agents:
+        return JsonResponse({'success': False, 'message': 'No experts found for this segment nearby'}, status=404)
+
+    user_lat, user_lng, _ = resolve_home_coordinates(request, allow_default=False)
+    serialized = []
+    for agent in agents:
+        row = serialize_agent_for_ai_picks(agent, user_lat, user_lng)
+        serialized.append(_html_escape_payload(row))
+    return JsonResponse({'success': True, 'segment': segment, 'agents': serialized})

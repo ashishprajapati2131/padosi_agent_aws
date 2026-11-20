@@ -18,12 +18,12 @@ def assign_match_percents(agents, claim_company_lower=''):
     if not agents:
         return agents
 
-    max_smart_rank = max([_as_float(a.padosi_smart_rank, 0) for a in agents]) if agents else 165
+    max_smart_rank = max([_as_float(getattr(a, 'padosi_smart_rank', 0), 0) for a in agents]) if agents else 165
     if max_smart_rank <= 0:
         max_smart_rank = 165
 
     for agent in agents:
-        rank = _as_float(agent.padosi_smart_rank, 0)
+        rank = _as_float(getattr(agent, 'padosi_smart_rank', 0), 0)
         match_flag = getattr(agent, 'has_claim_company_match', None)
         if match_flag is True:
             agent.match_percent = int(min(99.0, max(88.0, 88.0 + (rank / max_smart_rank) * 11.0)))

@@ -1,0 +1,40 @@
+{% load static %}
+<div class="hp-match-card">
+    <div class="hp-match-card-head">
+        <div class="hp-match-tags hp-match-tags--top">
+            {% for tag in expert.service_tags %}
+            <span class="hp-match-tag">{{ tag }}</span>
+            {% empty %}
+            <span class="hp-match-tag">Insurance</span>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="hp-match-profile">
+        <img src="{{ expert.photo|default:'' }}" alt="{{ expert.name }}" class="hp-match-photo" width="72" height="72" loading="lazy" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
+        <div class="hp-match-info">
+            <h3 class="hp-match-name">{{ expert.name }}</h3>
+            <p class="hp-match-city">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                {{ expert.city }}
+            </p>
+            <span class="hp-match-badge">{{ expert.match_percent }}% Match</span>
+        </div>
+    </div>
+    <div class="hp-match-stats">
+        <div><strong>{{ expert.rating }}</strong><span>Rating</span></div>
+        <div><strong>{{ expert.experience_display }}</strong><span>Experience</span></div>
+        <div><strong>{{ expert.clients_display }}</strong><span>Clients</span></div>
+    </div>
+    <div class="hp-match-actions">
+        {% if expert.phone_url %}
+        <a href="{{ expert.phone_url }}" class="hp-match-btn hp-match-btn--outline">Call Now</a>
+        {% else %}
+        <a href="{{ expert.profile_url }}" class="hp-match-btn hp-match-btn--outline">View Profile</a>
+        {% endif %}
+        {% if expert.whatsapp_url %}
+        <a href="{{ expert.whatsapp_url }}" class="hp-match-btn hp-match-btn--wa" rel="noopener noreferrer" target="_blank">WhatsApp Now</a>
+        {% else %}
+        <a href="{{ expert.profile_url }}" class="hp-match-btn hp-match-btn--wa">Contact</a>
+        {% endif %}
+    </div>
+</div>

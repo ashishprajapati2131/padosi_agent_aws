@@ -2,7 +2,7 @@ from django.db import models
 
 class HomePageSettings(models.Model):
     """Singleton model for overall homepage settings."""
-    show_dyk = models.BooleanField(default=True, verbose_name="Show Did You Know Section")
+    show_dyk = models.BooleanField(default=False, verbose_name="Show Did You Know Section")
     show_quickpicks = models.BooleanField(default=True, verbose_name="Show Quick Picks Section")
     show_why_choose = models.BooleanField(default=True, verbose_name="Show Why Choose Section")
     show_how_it_works = models.BooleanField(default=True, verbose_name="Show How It Works Section")

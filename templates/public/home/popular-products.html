@@ -1,0 +1,23 @@
+<section class="quick-picks-section hp-popular-products py-5">
+    <div class="qp-container">
+        <div class="d-flex align-items-end justify-content-between mb-4 mb-sm-5">
+            <h2 class="hp-section-title mb-0">Popular products</h2>
+            <a href="{{ settings.quickpicks_view_all_url|default:'/find-agents?ServiceType=New%20Policy&openFilter=1' }}" class="d-none d-sm-inline hp-cta-link">
+                View all products →
+            </a>
+        </div>
+        <div class="hp-popular-grid no-scrollbar">
+            {% for qpItem in quick_picks %}
+            <a href="{{ qpItem.url|default:'#' }}" class="hp-product-card qp-btn">
+                <div class="hp-product-icon">
+                    {% include 'components/hero-icon.html' with name=qpItem.icon|default:'heart' sw='1.65' %}
+                </div>
+                <span class="hp-product-label">{{ qpItem.label }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        <div class="d-block d-sm-none text-center mt-3">
+            <a href="{{ settings.quickpicks_view_all_url|default:'/find-agents?ServiceType=New%20Policy&openFilter=1' }}" class="hp-cta-link">View all products →</a>
+        </div>
+    </div>
+</section>
