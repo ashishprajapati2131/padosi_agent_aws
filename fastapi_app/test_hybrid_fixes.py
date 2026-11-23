@@ -73,11 +73,22 @@ class TestHybridFixes(unittest.TestCase):
         # Confirm sensitive bucket has 0 entries
         self.assertEqual(len(mw.client_records.get((ip, "sensitive"), [])), 0)
 
-    def test_auth_token_expires_in_matches_config(self):
-        """HIGH-04: Ensure auth service expires_in matches ACCESS_TOKEN_EXPIRE_MINUTES in seconds."""
-        expected_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-        self.assertEqual(expected_seconds, 120 * 60)
-        self.assertEqual(expected_seconds, 7200)
+    def test_auth_session_token_has_no_expiry(self):
+        """Agent login JWTs omit exp; expires_in is null until logout revokes jti."""
+        from jose import jwt as jose_jwt
+        from fastapi_app.utils.auth import create_access_token, decode_access_token
+
+        token = create_access_token(
+            {"sub": "agent@test.com", "role": "agent"},
+            never_expire=True,
+        )
+        payload = decode_access_token(token)
+        self.assertNotIn("exp", payload)
+        self.assertEqual(payload.get("sub"), "agent@test.com")
+        # Timed tokens still work when explicitly requested
+        timed = create_access_token({"sub": "x@y.com", "role": "agent"})
+        timed_payload = jose_jwt.get_unverified_claims(timed)
+        self.assertIn("exp", timed_payload)
 
 
 if __name__ == "__main__":

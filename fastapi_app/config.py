@@ -57,8 +57,10 @@ class Settings(BaseSettings):
     # Auth & Security
     SECRET_KEY: str = "v2f6yt8&oq&%^=mh^1=w5y8v0-q3ks^s__$!2+&@5kcyn)wsd5"
     ALGORITHM: str = "HS256"
+    # Timed JWT fallback only (tests / explicit expires_delta). Agent login sessions
+    # omit exp and stay valid until logout revokes the registered jti.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 0  # unused; agent sessions are non-expiring until logout
 
     # Profile JWT Auth
     JWT_SECRET_KEY: str = "v2f6yt8&oq&%^=mh^1=w5y8v0-q3ks^s__$!2+&@5kcyn)wsd5"

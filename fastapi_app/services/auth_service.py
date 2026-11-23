@@ -347,7 +347,8 @@ class AuthService:
                 "message": "Login successful.",
                 "access_token": access_token,
                 "token_type": "bearer",
-                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                # null = session JWT never times out; invalid only after logout (jti revoke).
+                "expires_in": None,
                 "agent_status": agent.status,
             },
         )
