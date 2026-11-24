@@ -35,6 +35,8 @@
                     {% endif %}
                 </div>
 
+                {% include 'partials/agent-card-license.html' %}
+
                 {% if card_theme.show_rating and profile.show_ratings %}
                 <div class="rac-rating">
                     <div class="rac-stars">
@@ -224,6 +226,8 @@
                         {% endif %}
                     {% endif %}
                 </div>
+
+                {% include 'partials/agent-card-license.html' %}
 
                 {% if card_theme.show_rating and profile.show_ratings %}
                 <div class="rac-d-rating">

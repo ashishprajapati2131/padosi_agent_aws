@@ -1041,7 +1041,6 @@ class AgentProfile(models.Model):
         return clean_investment_types(self.investment_types)
 
     @property
-    @property
     def irdai_license_active(self):
         from apps.agents.services.license_status import is_irdai_license_active
 

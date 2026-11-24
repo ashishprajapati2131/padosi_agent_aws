@@ -53,34 +53,6 @@
             }
         }
 
-        /* ── Shared badge styles ───────────────────────────────── */
-        .rac-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            line-height: 1;
-            white-space: nowrap;
-        }
-
-        .rac-badge--trusted {
-            background: #1e3a8a;
-            color: #fff;
-        }
-
-        .rac-badge--licensed {
-            background: #059669;
-            color: #fff;
-        }
-
-        .rac-badge svg {
-            flex-shrink: 0;
-        }
-
         /* ── Premium Agent Recognition Badges ─────────────────── */
         .agent-recognition-badge {
             display: inline-flex !important;
@@ -334,24 +306,88 @@
             font-size: 10px;
         }
 
-        .rac-location {
+        /* Licence number — identity line under the name, both layouts */
+        .rac-license {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            margin: 0;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .rac-license-item {
             display: inline-flex;
             align-items: center;
-            gap: 3px;
-            color: #6b7280;
-            font-size: 11px;
-            flex-wrap: nowrap;
+            gap: 4px;
+            max-width: 100%;
             min-width: 0;
+            padding: 1px 7px 1px 5px;
+            border-radius: 999px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            color: #1e3a8a;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.45;
+            letter-spacing: 0.01em;
+            user-select: text;
         }
 
-        .rac-location svg {
+        .rac-license-item svg {
             flex-shrink: 0;
+            color: #2563eb;
         }
 
-        .rac-location span {
-            white-space: nowrap;
+        .rac-license-k {
+            flex-shrink: 0;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #1d4ed8;
+        }
+
+        .rac-license-no {
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.01em;
+            color: #0f172a;
+        }
+
+        .rac-license-exp {
+            flex-shrink: 0;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: #b91c1c;
+        }
+
+        .rac-license-item--expired {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .rac-license-item--expired svg,
+        .rac-license-item--expired .rac-license-k,
+        .rac-license-item--expired .rac-license-no {
+            color: #991b1b;
+        }
+
+        .rac-license-item--arn {
+            background: #f0fdfa;
+            border-color: #ccfbf1;
+            color: #115e59;
+        }
+
+        .rac-license-item--arn .rac-license-k {
+            color: #0f766e;
         }
 
         /* ── Distance pill (mobile) ── */
@@ -792,6 +828,15 @@
             font-size: 12px;
             font-weight: 400;
             color: #6b7280;
+        }
+
+        .rac-desktop-card .rac-license-item {
+            font-size: 12px;
+            padding: 2px 8px 2px 6px;
+        }
+
+        .rac-desktop-card .rac-license-k {
+            font-size: 10px;
         }
 
         /* Desktop location */
