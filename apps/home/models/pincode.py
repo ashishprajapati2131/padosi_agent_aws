@@ -93,14 +93,16 @@ class PincodeCache(models.Model):
     @classmethod
     def store_coordinates(cls, pincode, lat, lng, display_name=None):
         try:
-            obj, created = cls.objects.get_or_create(
+            defaults = {
+                'latitude': lat,
+                'longitude': lng,
+                'created_at': timezone.now(),
+            }
+            if display_name:
+                defaults['display_name'] = display_name
+            obj, _created = cls.objects.update_or_create(
                 pincode=pincode,
-                defaults={
-                    'latitude': lat,
-                    'longitude': lng,
-                    'display_name': display_name,
-                    'created_at': timezone.now()
-                }
+                defaults=defaults,
             )
             return obj
         except Exception:

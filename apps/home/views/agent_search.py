@@ -258,46 +258,7 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     
     if invalid_pincode:
         query = query.none()
-    
-    # Proximity reverse-geocoding for detectedArea area name
-    needs_area_res = (
-        not detected_area or
-        bool(re.match(r'^(Area|Region)\s+\d', detected_area, re.IGNORECASE)) or
-        detected_area.startswith('PIN:') or
-        bool(re.match(r'^\d{6}$', detected_area))
-    )
-    if user_lat and user_lng and needs_area_res:
-        try:
-            pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
-            
-            resolved_from_db = False
-            if pincode_match and pincode_match.distance < 50:
-                candidate = pincode_match.office_name or pincode_match.district
-                if candidate and not re.match(r'^(Area|Region)\s+\d', candidate, re.IGNORECASE):
-                    detected_area = pincode_match.formatted_location
-                    resolved_from_db = True
-            
-            if not resolved_from_db:
-                geo_svc = GeocodingService()
-                detected_area = geo_svc.reverse_geocode(user_lat, user_lng)
-        except Exception as e:
-            logger.warning(f"find_agents: reverse geocoding failed: {e}")
-            
-        if detected_area and request:
-            request.session['detected_area'] = detected_area
-    
-    if not detected_area and pincode:
-        try:
-            pincode_row = Pincode.objects.filter(pincode=pincode).first()
-            if pincode_row:
-                detected_area = pincode_row.formatted_location
-            else:
-                detected_area = f"PIN: {pincode}"
-        except Exception:
-            detected_area = f"PIN: {pincode}"
-        if request:
-            request.session['detected_area'] = detected_area
-    
+
     if user_lat and user_lng and request:
         request.session['lat'] = str(user_lat)
         request.session['lng'] = str(user_lng)

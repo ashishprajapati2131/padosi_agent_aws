@@ -34,7 +34,7 @@ from apps.home.services.distance import (
     DistanceService,
     rank_directory_agents,
 )
-from apps.home.services.geocoding import GeocodingService
+from apps.home.services.geocoding import GeocodingService, office_label_unusable
 from apps.home.services.ai_picks import AIPicksService
 from apps.home.services.matching import assign_match_percents
 from apps.home.services.avatar_thumbs import small_avatar_url
@@ -45,7 +45,7 @@ from django.core.cache import cache
 from .leads import CONTACT_MAX_PER_IP, CONTACT_WINDOW_SECONDS, QUICK_LEAD_MAX_PER_IP, QUICK_LEAD_WINDOW_SECONDS, _rate_limited, _is_honeypot_hit, contact_submit, quick_lead_capture  # noqa: F401
 from .homepage import _reviews_json_for_script, _organization_schema, home  # noqa: F401
 from .agent_search import get_portfolio_companies_by_type, _find_closest_pincode, get_all_claim_companies, build_agent_query, serialize_agent_for_ai_picks, _html_escape_payload  # noqa: F401
-from .pincode import pincode_fetch, _get_or_create_pincode, _pincode_matching_agents, check_pincode, check_pincode_agents  # noqa: F401
+from .pincode import pincode_fetch, _get_or_create_pincode, _pincode_matching_agents, check_pincode, check_pincode_agents, resolve_entered_pincode_area  # noqa: F401
 from .city_directory import _AREA_PINCODE_MAP, MIN_INDEXABLE_CITY_AGENTS, JUNK_CITY_SLUGS, _resolve_area_to_pincodes, CITY_CATEGORIES, SERVICE_PAGES, STATE_HUBS, _state_city_q, state_hub_agents, filter_agents_for_category, _directory_path, city_agents_directory  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -211,19 +211,23 @@ def fetch_filtered_agents_list(request):
             exact = DistanceService.get_precise_pincode_coordinates(pincode) if pincode else None
             if exact and exact.get('office_name'):
                 detected_area = f"{exact['office_name']}, {exact.get('district', '')}".strip(', ')
+            elif pincode:
+                # A typed pin is named from its own office, never a neighbouring taluka.
+                own = Pincode.objects.filter(pincode=pincode).first()
+                if own and not office_label_unusable(own.office_name):
+                    detected_area = own.formatted_location
+                else:
+                    detected_area = GeocodingService().reverse_geocode(user_lat, user_lng)
             else:
                 pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
-                
                 resolved_from_db = False
                 if pincode_match and pincode_match.distance < 50:
                     candidate = pincode_match.office_name or pincode_match.district
-                    if candidate and not re.match(r'^(Area|Region)\s+\d', candidate, re.IGNORECASE):
+                    if candidate and not office_label_unusable(candidate):
                         detected_area = pincode_match.formatted_location
                         resolved_from_db = True
-                
                 if not resolved_from_db:
-                    geo_svc = GeocodingService()
-                    detected_area = geo_svc.reverse_geocode(user_lat, user_lng)
+                    detected_area = GeocodingService().reverse_geocode(user_lat, user_lng)
         except Exception as e:
             logger.warning(f"find_agents: reverse geocoding failed: {e}")
             
@@ -237,7 +241,7 @@ def fetch_filtered_agents_list(request):
                 detected_area = f"{exact['office_name']}, {exact.get('district', '')}".strip(', ')
             else:
                 pincode_row = Pincode.objects.filter(pincode=pincode).first()
-                if pincode_row:
+                if pincode_row and not office_label_unusable(pincode_row.office_name):
                     detected_area = pincode_row.formatted_location
                 else:
                     detected_area = f"PIN: {pincode}"
@@ -438,28 +442,7 @@ def find_agents(request):
                 request.session.pop('last_pincode', None)
             request.session.pop('last_location', None)
             detected_area = pincode_param
-            
-            # Resolve pincode to area name immediately (before redirect)
-            if pincode_ok:
-                try:
-                    pincode_row = Pincode.objects.filter(pincode=pincode_param).first()
-                    is_placeholder = False
-                    if pincode_row:
-                        office_name = pincode_row.office_name or ''
-                        is_placeholder = bool(re.match(r'^(Area|Region)\s+\d', office_name, re.IGNORECASE))
-                        if not is_placeholder and office_name:
-                            detected_area = pincode_row.formatted_location
-                        elif pincode_row.state:
-                            detected_area = f"{pincode_row.state} - {pincode_param}"
-                    
-                    if not pincode_row or is_placeholder:
-                        geo_svc = GeocodingService()
-                        resolved = geo_svc.resolve_coordinates(pincode_param)
-                        if resolved and resolved.get('display_name'):
-                            detected_area = resolved['display_name']
-                except Exception as e:
-                    logger.warning(f"find_agents: Failed to resolve area for pincode {pincode_param}: {e}")
-            
+
             if pincode_ok:
                 _set_session_if_changed(request.session, 'detected_area', detected_area)
             else:
@@ -491,6 +474,17 @@ def find_agents(request):
     lat = (lat_param or request.session.get('last_lat', '')).strip()
     lng = (lng_param or request.session.get('last_lng', '')).strip()
     detected_area = detected_area or request.session.get('detected_area', '')
+
+    # Name the typed pincode from its Head Post Office. A stored taluka mashup
+    # (380009 → "Sabarmati taluka") is refreshed once and then overwritten.
+    if pincode and not location_param and re.fullmatch(r'[1-9]\d{5}', pincode):
+        try:
+            area = resolve_entered_pincode_area(pincode)
+            if area:
+                detected_area = area
+                _set_session_if_changed(request.session, 'detected_area', detected_area)
+        except Exception as e:
+            logger.warning(f"find_agents: Failed to resolve area for pincode {pincode}: {e}")
 
     should_gate_guest = False
     service_type_input = request.GET.getlist('ServiceType')

@@ -8,6 +8,45 @@ from apps.home.services.distance import DistanceService
 
 logger = logging.getLogger(__name__)
 
+# "SabarmatiTaluka" is a mashed import, not a post office. A real name with a
+# space ("Anand Taluka") is left alone.
+_GLUED_TALUK_RE = re.compile(r'(?i)[a-z]taluk')
+
+
+def office_label_unusable(office_name) -> bool:
+    """True when a stored office name must not be shown as the place label."""
+    office = (office_name or '').strip()
+    if not office:
+        return True
+    if re.match(r'^(Area|Region)\s+\d', office, re.IGNORECASE):
+        return True
+    if office.upper().startswith('PIN:') or re.fullmatch(r'\d{6}', office):
+        return True
+    return bool(_GLUED_TALUK_RE.search(office))
+
+
+# Empty, "Region 38", "Area 12" — not a real district name.
+_PLACEHOLDER_DISTRICT_RE = re.compile(r'^\s*(region|area|pin|zone)?\s*\d*\s*$', re.I)
+
+
+def _district_unusable(name) -> bool:
+    return bool(_PLACEHOLDER_DISTRICT_RE.match(name or ''))
+
+
+def row_needs_postal_refresh(record) -> bool:
+    """Re-read India Post when the saved row cannot name this pincode."""
+    if record is None:
+        return True
+    if office_label_unusable(getattr(record, 'office_name', '')):
+        return True
+    if _district_unusable(getattr(record, 'district', '') or ''):
+        return True
+    pin = str(getattr(record, 'pincode', '') or '')
+    return DistanceService.is_regional_fallback_coordinate(
+        pin, getattr(record, 'latitude', None), getattr(record, 'longitude', None)
+    )
+
+
 class GeocodingService:
     USER_AGENT = 'PadosiAgent/2.0 (padosiagent.com; contact@padosiagent.com)'
     NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
@@ -99,7 +138,7 @@ class GeocodingService:
             pincode, cached.get('lat'), cached.get('lng')
         ):
             dn = cached.get('display_name') or ''
-            if dn and not re.match(r'^(Area|Region)\s+\d', dn, re.IGNORECASE):
+            if dn and not office_label_unusable(dn):
                 return cached
 
         # ─── Step 4: Lookup via postalpincode.in and geocode place name ─────
@@ -109,10 +148,17 @@ class GeocodingService:
                 pincode, postal_result['lat'], postal_result['lng'], postal_result.get('display_name')
             )
             try:
-                Pincode.objects.filter(pincode=pincode).update(
-                    latitude=postal_result['lat'],
-                    longitude=postal_result['lng'],
-                )
+                updates = {
+                    'latitude': postal_result['lat'],
+                    'longitude': postal_result['lng'],
+                }
+                if postal_result.get('office_name'):
+                    updates['office_name'] = postal_result['office_name'][:150]
+                if postal_result.get('district'):
+                    updates['district'] = postal_result['district'][:100]
+                if postal_result.get('state'):
+                    updates['state'] = postal_result['state'][:50]
+                Pincode.objects.filter(pincode=pincode).update(**updates)
             except Exception:
                 pass
             return postal_result
@@ -267,68 +313,75 @@ class GeocodingService:
                 return None
 
             post_offices = data[0]['PostOffice']
-            post_office = self._pick_best_post_office(post_offices)
-            if not post_office:
-                post_office = post_offices[0]
+            post_office = self._pick_best_post_office(post_offices) or post_offices[0]
 
-            name = post_office.get('Name', '')
-            block = post_office.get('Block', '')
-            district = post_office.get('District', '')
-            state = post_office.get('State', '')
+            name = (post_office.get('Name') or '').strip()
+            block = (post_office.get('Block') or '').strip()
+            district = (post_office.get('District') or '').strip()
+            state = (post_office.get('State') or '').strip()
+            label = self.postal_place_label(post_office)
 
             if not name and not block:
                 return None
 
-            # Prefer geocoding by Block/Taluk name (main town) for better accuracy
-            geocode_name = block if block and block.lower() not in ('na', 'n/a', '') else name
-            query = f"{geocode_name}, {district}, {state}, India"
-            headers = {'User-Agent': self.USER_AGENT}
-            params = {
-                'q': query,
-                'format': 'json',
-                'limit': 1
+            # The visible place is the Head Post Office name. Block is only a
+            # coordinate fallback when that name cannot be geocoded.
+            coords = self.geocode_place_name(name, district, state) if name else None
+            if not coords and block and block.lower() not in ('na', 'n/a'):
+                coords = self.geocode_place_name(block, district, state)
+            if not coords:
+                return None
+            return {
+                'lat': coords['lat'],
+                'lng': coords['lng'],
+                'display_name': label or name,
+                'office_name': name[:150],
+                'district': district[:100],
+                'state': state[:50],
             }
-            nominatim_resp = requests.get(self.NOMINATIM_URL, params=params, headers=headers, timeout=self.TIMEOUT_SEC)
-            if nominatim_resp.status_code == 200:
-                res_data = nominatim_resp.json()
-                if res_data:
-                    item = res_data[0]
-                    lat = float(item.get('lat', 0))
-                    lng = float(item.get('lon', 0))
-                    if self.is_within_india(lat, lng):
-                        display_name = Pincode.format_location_name(
-                            geocode_name, district, post_office.get('Division')
-                        )
-                        return {
-                            'lat': round(lat, 7),
-                            'lng': round(lng, 7),
-                            'display_name': display_name
-                        }
-
-            # Fallback: try geocoding with the post office name if Block didn't work
-            if geocode_name != name and name:
-                query2 = f"{name}, {district}, {state}, India"
-                nominatim_resp2 = requests.get(
-                    self.NOMINATIM_URL, params={'q': query2, 'format': 'json', 'limit': 1},
-                    headers=headers, timeout=self.TIMEOUT_SEC
-                )
-                if nominatim_resp2.status_code == 200:
-                    res_data2 = nominatim_resp2.json()
-                    if res_data2:
-                        item2 = res_data2[0]
-                        lat2 = float(item2.get('lat', 0))
-                        lng2 = float(item2.get('lon', 0))
-                        if self.is_within_india(lat2, lng2):
-                            return {
-                                'lat': round(lat2, 7),
-                                'lng': round(lng2, 7),
-                                'display_name': Pincode.format_location_name(name, district, post_office.get('Division'))
-                            }
 
         except Exception as e:
             logger.error(f"GeocodingService: PostalPincode API failed: {e}")
 
         return None
+
+    @staticmethod
+    def postal_place_label(post_office):
+        """Head (or best) post office name plus district. Never the Block/Taluk."""
+        if not post_office:
+            return ''
+        return Pincode.format_location_name(
+            post_office.get('Name') or '',
+            post_office.get('District') or '',
+            post_office.get('Division') or '',
+        )
+
+    def geocode_place_name(self, name, district='', state=''):
+        """Nominatim point for a place name. None when the lookup fails."""
+        name = (name or '').strip()
+        if not name:
+            return None
+        parts = [p for p in (name, (district or '').strip(), (state or '').strip(), 'India') if p]
+        try:
+            response = requests.get(
+                self.NOMINATIM_URL,
+                params={'q': ', '.join(parts), 'format': 'json', 'limit': 1},
+                headers={'User-Agent': self.USER_AGENT},
+                timeout=self.TIMEOUT_SEC,
+            )
+            if response.status_code != 200:
+                return None
+            data = response.json()
+            if not data:
+                return None
+            lat = float(data[0].get('lat', 0))
+            lng = float(data[0].get('lon', 0))
+            if not self.is_within_india(lat, lng):
+                return None
+            return {'lat': round(lat, 7), 'lng': round(lng, 7)}
+        except Exception as e:
+            logger.warning(f"GeocodingService: place geocode failed for {name}: {e}")
+            return None
 
     @staticmethod
     def _pick_best_post_office(post_offices):

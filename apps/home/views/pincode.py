@@ -59,9 +59,11 @@ def pincode_fetch(request, pincode):
         _get_or_create_pincode(pincode)
         return JsonResponse(payload)
 
+    from apps.home.services.geocoding import row_needs_postal_refresh
+
     record = Pincode.objects.filter(pincode=pincode).first()
-    if not record:
-        record = _get_or_create_pincode(pincode)
+    if not record or row_needs_postal_refresh(record):
+        record = _get_or_create_pincode(pincode) or record
 
     if not record:
         cache.set(cache_key, {'success': False, 'message': 'Pincode not found.'}, timeout=86400)
@@ -115,21 +117,27 @@ def _get_or_create_pincode(pincode):
         except Exception as e:
             logger.warning(f"Error saving exact pincode {pincode}: {e}")
 
+    from apps.home.services.geocoding import GeocodingService, row_needs_postal_refresh
+
     existing = Pincode.objects.filter(pincode=pincode).first()
     if existing and existing.latitude and existing.longitude:
-        return existing
+        if not row_needs_postal_refresh(existing):
+            return existing
+        # Bad row (empty district, mashed taluka name, or city-center coordinates):
+        # retry India Post at most once a day.
+        if not cache.add(f'pincode_refresh_attempt_v2_{pincode}', 1, timeout=86400):
+            return existing
     try:
         resp = http_requests.get(
             f'https://api.postalpincode.in/pincode/{pincode}',
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-            timeout=(2.0, 3.0)
+            timeout=(3.0, 8.0)
         )
         resp.raise_for_status()
         body = resp.json()
         if not body or body[0].get('Status') != 'Success' or not body[0].get('PostOffice'):
-            return None
+            return existing
 
-        from apps.home.services.geocoding import GeocodingService
         post_offices = body[0]['PostOffice']
         po = GeocodingService._pick_best_post_office(post_offices) or post_offices[0]
         try:
@@ -140,13 +148,29 @@ def _get_or_create_pincode(pincode):
                 lng = float(lng_val) if lng_val and str(lng_val).lower() != 'na' else 0.0
             except ValueError:
                 lat, lng = 0.0, 0.0
+            geo = GeocodingService()
+            coords_unusable = (
+                not lat or not lng
+                or not geo.is_within_india(lat, lng)
+                or DistanceService.is_regional_fallback_coordinate(pincode, lat, lng)
+            )
+            if coords_unusable:
+                named = geo.geocode_place_name(
+                    po.get('Name') or '', po.get('District') or '', po.get('State') or ''
+                )
+                if named:
+                    lat, lng = named['lat'], named['lng']
+                elif existing and existing.latitude and existing.longitude:
+                    lat, lng = float(existing.latitude), float(existing.longitude)
 
+            office_name = (po.get('Name') or '')[:150]
+            district = (po.get('District') or '')[:100]
             taluk = po.get('Taluk') or po.get('Block') or ''
             record, _ = Pincode.objects.update_or_create(
                 pincode=pincode,
                 defaults={
-                    'office_name': (po.get('Name') or '')[:150],
-                    'district': (po.get('District') or '')[:100],
+                    'office_name': office_name,
+                    'district': district,
                     'state': (po.get('State') or '')[:50],
                     'latitude': lat,
                     'longitude': lng,
@@ -156,12 +180,36 @@ def _get_or_create_pincode(pincode):
                     'taluk': taluk[:100],
                 }
             )
+            label = GeocodingService.postal_place_label(po)
+            from apps.home.models import PincodeCache
+            if lat and lng and not DistanceService.is_regional_fallback_coordinate(pincode, lat, lng):
+                PincodeCache.store_coordinates(pincode, lat, lng, label)
+            elif label:
+                PincodeCache.objects.filter(pincode=pincode).update(display_name=label)
+            cache.delete(f'pincode_fetch_json_{pincode}')
             return record
         except Exception as e:
             logger.error(f"Error saving pincode {pincode}: {e}")
-            return None
+            return existing
     except Exception:
-        return None
+        return existing
+
+
+def resolve_entered_pincode_area(pincode):
+    """Place label for a pincode the user typed. Refreshes a bad stored row once."""
+    pincode = str(pincode or '').strip()
+    if not re.fullmatch(r'[1-9]\d{5}', pincode):
+        return ''
+    from apps.home.services.geocoding import office_label_unusable, row_needs_postal_refresh
+
+    row = Pincode.objects.filter(pincode=pincode).first()
+    if row is None or row_needs_postal_refresh(row):
+        refreshed = _get_or_create_pincode(pincode)
+        if refreshed:
+            row = refreshed
+    if row and not office_label_unusable(row.office_name):
+        return row.formatted_location
+    return ''
 
 
 def _pincode_matching_agents(pincode):
