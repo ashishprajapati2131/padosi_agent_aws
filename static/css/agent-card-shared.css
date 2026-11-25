@@ -325,9 +325,9 @@
             min-width: 0;
             padding: 1px 7px 1px 5px;
             border-radius: 999px;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
-            color: #1e3a8a;
+            background: #fff;
+            border: 1px solid #111;
+            color: #111;
             font-size: 11px;
             font-weight: 700;
             line-height: 1.45;
@@ -337,7 +337,7 @@
 
         .rac-license-item svg {
             flex-shrink: 0;
-            color: #2563eb;
+            color: #111;
         }
 
         .rac-license-k {
@@ -345,7 +345,7 @@
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 0.04em;
-            color: #1d4ed8;
+            color: #111;
         }
 
         .rac-license-no {
@@ -356,28 +356,7 @@
             font-weight: 800;
             font-variant-numeric: tabular-nums;
             letter-spacing: 0.01em;
-            color: #0f172a;
-        }
-
-        .rac-license-exp {
-            flex-shrink: 0;
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-            color: #b91c1c;
-        }
-
-        .rac-license-item--expired {
-            background: #fef2f2;
-            border-color: #fecaca;
-            color: #991b1b;
-        }
-
-        .rac-license-item--expired svg,
-        .rac-license-item--expired .rac-license-k,
-        .rac-license-item--expired .rac-license-no {
-            color: #991b1b;
+            color: #111;
         }
 
         .rac-license-item--arn {
