@@ -56,6 +56,7 @@ class SiteSetting(models.Model):
         cache.delete('homepage_cms_context')
         # Feature flags are computed from settings (apps/admin_panel/services/feature_flags.py).
         cache.delete('feature_flags_all_v1')
+        cache.delete('feature_flags_all_v2')
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver

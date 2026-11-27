@@ -207,3 +207,89 @@ def get_participant_roadmap(participant):
         'referrals_needed': referrals_needed,
     }
 
+
+# Payment-completed championship referrals. Once payment succeeds the
+# qualification service stores the row as paid (or later active).
+COMPLETED_PAYMENT_STATES = ('paid', 'active')
+SIMPLE_REFERRAL_STAGES = ('Invited', 'Registered', 'Payment', 'Completed')
+# Keys the Simple Referral road actually renders. The full roadmap also
+# carries slab and claim models, which this section never displays.
+_SIMPLE_ROAD_FIELDS = (
+    'index',
+    'is_unlocked',
+    'is_current_target',
+    'progress_percent',
+    'referrals_needed',
+    'threshold',
+    'title',
+    'can_request',
+    'status_label',
+    'image_path',
+)
+
+
+def build_simple_referral_dashboard(participant):
+    """
+    Read-only payload for the agent dashboard Simple Referral section.
+
+    The road uses the same milestone rules as the championship dashboard.
+    The list is only referrals whose payment is completed. One joined read
+    loads the name, phone, and stage dates. Nothing is written.
+    """
+    from apps.referral_championship.models import ChampionshipReferral
+
+    road = get_participant_roadmap(participant)
+    roadmap = [
+        {key: item.get(key) for key in _SIMPLE_ROAD_FIELDS}
+        for item in (road.get('roadmap') or [])
+    ]
+
+    rows = (
+        ChampionshipReferral.objects.filter(
+            referrer=participant,
+            registration_state__in=COMPLETED_PAYMENT_STATES,
+        )
+        .order_by('-qualified_at', '-updated_at', '-id')
+        .values(
+            'created_at',
+            'qualified_at',
+            'updated_at',
+            'referred_agent__fullname',
+            'referred_agent__mobile',
+            'referred_agent__created_at',
+            'referred_agent__payment_recorded_at',
+        )[:100]
+    )
+    referrals = []
+    for row in rows:
+        name = (row['referred_agent__fullname'] or '').strip() or 'Agent'
+        mobile = (row['referred_agent__mobile'] or '').strip()
+        invited_on = row['created_at']
+        registered_on = row['referred_agent__created_at'] or invited_on
+        paid_on = row['referred_agent__payment_recorded_at'] or row['qualified_at']
+        completed_on = row['qualified_at'] or paid_on or row['updated_at']
+        stage_times = (invited_on, registered_on, paid_on, completed_on)
+        referrals.append({
+            'name': name,
+            'initials': (name[:2] or 'AG').upper(),
+            'mobile': mobile,
+            'status_label': 'Completed',
+            'stages': [
+                {
+                    'label': label,
+                    'done': True,
+                    'current': index == len(SIMPLE_REFERRAL_STAGES) - 1,
+                    'when': stage_times[index],
+                }
+                for index, label in enumerate(SIMPLE_REFERRAL_STAGES)
+            ],
+        })
+
+    return {
+        'roadmap': roadmap,
+        'score': road.get('count') or 0,
+        'milestone_count': len(roadmap),
+        'referrals': referrals,
+        'referral_count': len(referrals),
+    }
+

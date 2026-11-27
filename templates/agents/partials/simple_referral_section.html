@@ -1,0 +1,305 @@
+{% load static %}
+<div class="srs">
+    <div class="srs-head">
+        <div>
+            <h5 class="card-section-title mb-1">Referral system</h5>
+            <p class="text-muted mb-0">Your championship rewards, and every referral whose payment is completed.</p>
+        </div>
+        <a href="{% url 'championship:agent_dashboard' %}" class="srs-open">Open full championship</a>
+    </div>
+
+    <section class="srs-road-card" aria-label="Championship Road">
+        <div class="srs-road-top">
+            <div class="srs-road-title">
+                <span class="srs-trophy"><i class="fas fa-trophy"></i></span>
+                <div>
+                    <div class="srs-road-name">
+                        Championship Road
+                        {% if simple_referral.milestone_count %}
+                        <span class="srs-pill">{{ simple_referral.milestone_count }} milestones</span>
+                        {% endif %}
+                    </div>
+                    <p class="srs-road-sub">Same rewards as the championship. Scroll sideways to see every step.</p>
+                </div>
+            </div>
+            <div class="srs-road-tools">
+                <div class="srs-score">Score <strong>{{ simple_referral.score }} refs</strong></div>
+                <button type="button" class="srs-scroll" onclick="scrollSimpleReferralRoad(-1)" aria-label="Scroll rewards left">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" class="srs-scroll" onclick="scrollSimpleReferralRoad(1)" aria-label="Scroll rewards right">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        {% if simple_referral.roadmap %}
+        <div class="srs-road" id="simpleReferralRoad">
+            <div class="srs-road-inner">
+                {% for item in simple_referral.roadmap %}
+                <div class="srs-step">
+                    <div class="srs-rail" aria-hidden="true">
+                        <span class="srs-line {% if forloop.first %}is-empty{% elif item.is_unlocked or item.is_current_target %}is-solid{% else %}is-dashed{% endif %}"></span>
+                        <span class="srs-dot {% if item.is_unlocked %}is-done{% elif item.is_current_target %}is-now{% else %}is-locked{% endif %}">
+                            {% if item.is_unlocked %}
+                            <i class="fas fa-check"></i>
+                            {% else %}
+                            {{ item.index }}
+                            {% endif %}
+                        </span>
+                        <span class="srs-line {% if forloop.last %}is-empty{% elif item.is_unlocked %}is-solid{% else %}is-dashed{% endif %}"></span>
+                    </div>
+
+                    <article class="srs-card {% if item.is_unlocked %}is-done{% elif item.is_current_target %}is-now{% else %}is-locked{% endif %}">
+                        <div class="srs-photo-wrap">
+                            <img src="{% if item.image_path %}{% static item.image_path %}{% else %}{% static 'championship/step-1-feeback.png' %}{% endif %}"
+                                 alt="{{ item.title }}"
+                                 class="srs-photo{% if not item.is_unlocked and not item.is_current_target %} is-mono{% endif %}"
+                                 loading="lazy">
+                            {% if item.is_unlocked %}
+                            <span class="srs-badge is-done"><i class="fas fa-check"></i></span>
+                            {% elif item.is_current_target %}
+                            <span class="srs-badge is-now"></span>
+                            {% else %}
+                            <span class="srs-badge is-locked"><i class="fas fa-lock"></i></span>
+                            {% endif %}
+                        </div>
+                        <h4 class="srs-card-title" title="{{ item.title }}">{{ item.title }}</h4>
+                        <div class="srs-card-foot">
+                            <p class="srs-threshold">
+                                {% if item.threshold >= 900 %}Top 3{% else %}{{ item.threshold }} refs{% endif %}
+                            </p>
+                            {% if item.is_unlocked %}
+                                {% if item.can_request %}
+                                <a class="srs-claim" href="{% url 'championship:agent_dashboard' %}">Claim reward</a>
+                                {% elif item.status_label %}
+                                <span class="srs-state">{{ item.status_label }}</span>
+                                {% else %}
+                                <span class="srs-state is-won">Won</span>
+                                {% endif %}
+                            {% elif item.is_current_target %}
+                                <div class="srs-bar"><span style="width: {{ item.progress_percent }}%;"></span></div>
+                                <span class="srs-away">{{ item.referrals_needed }} away</span>
+                            {% else %}
+                                <span class="srs-locked-label"><i class="fas fa-lock"></i> Locked</span>
+                            {% endif %}
+                        </div>
+                    </article>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="srs-empty">Reward milestones are not available yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="srs-list-card" aria-label="Completed referrals">
+        <div class="srs-list-top">
+            <div>
+                <h5 class="card-section-title mb-1">Completed referrals</h5>
+                <p class="text-muted mb-0">Name, phone, and final status. Open a card to see that referral’s stages.</p>
+            </div>
+            <span class="srs-count">{{ simple_referral.referral_count }}</span>
+        </div>
+
+        {% if simple_referral.referrals %}
+        <div class="srs-refs">
+            {% for ref in simple_referral.referrals %}
+            <article class="srs-ref">
+                <button type="button" class="srs-ref-top" aria-expanded="false" onclick="toggleSimpleReferralCard(this)">
+                    <span class="srs-avatar">{{ ref.initials }}</span>
+                    <div class="srs-ref-id">
+                        <strong>{{ ref.name }}</strong>
+                        <span>{{ ref.mobile|default:"—" }}</span>
+                    </div>
+                    <span class="srs-status">{{ ref.status_label }}</span>
+                    <i class="fas fa-chevron-down srs-chevron" aria-hidden="true"></i>
+                </button>
+                <div class="srs-ref-panel">
+                    <ol class="srs-stages">
+                        {% for stage in ref.stages %}
+                        <li class="{% if stage.done %}is-done{% endif %}{% if stage.current %} is-current{% endif %}">
+                            <span class="srs-stage-mark">{% if stage.done %}<i class="fas fa-check"></i>{% else %}{{ forloop.counter }}{% endif %}</span>
+                            <span class="srs-stage-label">{{ stage.label }}</span>
+                            {% if stage.when %}<span class="srs-stage-date">{{ stage.when|date:"d M Y" }}</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="srs-empty-list">
+            <i class="fas fa-user-friends"></i>
+            <p>No completed referrals yet. A referral appears here once their payment is completed.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+.srs { display: flex; flex-direction: column; gap: 18px; }
+.srs-head, .srs-road-top, .srs-list-top, .srs-ref-top, .srs-road-tools, .srs-road-name {
+    display: flex; align-items: center; gap: 12px;
+}
+.srs-head, .srs-list-top, .srs-road-top { justify-content: space-between; align-items: flex-start; }
+.srs-head p, .srs-road-sub, .srs-list-top p { font-size: 13px; }
+.srs-open {
+    flex: none; background: #0d9488; color: #fff !important; text-decoration: none !important;
+    font-weight: 700; font-size: 13px; border-radius: 12px; padding: 10px 14px;
+}
+.srs-open:hover { background: #0f766e; color: #fff !important; }
+.srs-road-card, .srs-list-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); padding: 18px 18px 16px;
+}
+.srs-trophy {
+    width: 40px; height: 40px; border-radius: 12px; background: #f5f3ff; color: #7c3aed;
+    display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 16px;
+}
+.srs-road-name { font-size: 16px; font-weight: 800; color: #0f172a; flex-wrap: wrap; }
+.srs-road-sub { margin: 2px 0 0; color: #64748b; }
+.srs-pill, .srs-score, .srs-count, .srs-status {
+    display: inline-flex; align-items: center; border-radius: 999px; font-weight: 700;
+}
+.srs-pill { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; font-size: 11px; padding: 2px 8px; text-transform: uppercase; letter-spacing: .04em; }
+.srs-score { background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; font-size: 12px; padding: 6px 10px; font-weight: 600; }
+.srs-score strong { color: #0f172a; margin-left: 4px; }
+.srs-road-tools { flex: none; }
+.srs-scroll {
+    width: 34px; height: 34px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; color: #334155;
+}
+.srs-scroll:hover { background: #f8fafc; }
+.srs-road { overflow-x: auto; padding: 8px 2px 4px; scroll-behavior: smooth; }
+.srs-road-inner { display: flex; align-items: stretch; min-width: max-content; }
+.srs-step { width: 176px; flex: 0 0 176px; display: flex; flex-direction: column; align-items: center; }
+.srs-rail { width: 100%; height: 44px; display: flex; align-items: center; }
+.srs-line { flex: 1; height: 3px; border-radius: 99px; }
+.srs-line.is-solid { background: #7c3aed; }
+.srs-line.is-dashed { background: repeating-linear-gradient(90deg, #cbd5e1 0 6px, transparent 6px 10px); height: 2px; }
+.srs-line.is-empty { background: transparent; }
+.srs-dot {
+    width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; flex: none; position: relative; z-index: 1;
+}
+.srs-dot.is-done { background: #10b981; color: #fff; box-shadow: 0 6px 14px rgba(16, 185, 129, .28); }
+.srs-dot.is-now { background: #7c3aed; color: #fff; box-shadow: 0 0 0 6px #ede9fe; }
+.srs-dot.is-locked { background: #f1f5f9; color: #94a3b8; border: 2px solid #e2e8f0; }
+.srs-card {
+    width: calc(100% - 14px); min-height: 286px; margin-top: 8px; border-radius: 16px; border: 1px solid #e2e8f0;
+    background: #fff; padding: 12px 10px 12px; display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.srs-card.is-done { background: #f0fdf4; border-color: #86efac; }
+.srs-card.is-now { background: #faf5ff; border-color: #d8b4fe; box-shadow: 0 8px 18px rgba(124, 58, 237, .08); }
+.srs-card.is-locked { filter: grayscale(100%); opacity: 0.65; }
+.srs-photo-wrap {
+    width: 108px; height: 136px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0;
+    display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+}
+.srs-card.is-done .srs-photo-wrap { border-color: #86efac; }
+.srs-card.is-now .srs-photo-wrap { border-color: #c4b5fd; }
+.srs-photo { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
+.srs-photo.is-mono { filter: grayscale(100%) contrast(0.75); opacity: 0.6; }
+.srs-badge {
+    position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #fff;
+}
+.srs-badge.is-done { background: #10b981; }
+.srs-badge.is-now { background: #7c3aed; box-shadow: 0 0 0 4px rgba(124, 58, 237, .2); }
+.srs-badge.is-locked { background: #94a3b8; }
+.srs-card-title {
+    margin: 10px 0 0; min-height: 34px; font-size: 13px; line-height: 1.25; font-weight: 800; color: #0f172a;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.srs-card.is-now .srs-card-title { color: #5b21b6; }
+.srs-card.is-done .srs-card-title { color: #065f46; }
+.srs-card-foot { margin-top: auto; width: 100%; padding-top: 8px; }
+.srs-threshold { margin: 0 0 6px; font-size: 12px; font-weight: 800; color: #7c3aed; }
+.srs-card.is-locked .srs-threshold { color: #94a3b8; }
+.srs-claim, .srs-state, .srs-away, .srs-locked-label {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    border-radius: 999px; font-size: 11px; font-weight: 800; padding: 4px 8px;
+}
+.srs-claim { background: #7c3aed; color: #fff !important; text-decoration: none !important; }
+.srs-claim:hover { background: #6d28d9; color: #fff !important; }
+.srs-state { background: #fef3c7; color: #92400e; }
+.srs-state.is-won { background: #d1fae5; color: #047857; }
+.srs-away { color: #7c3aed; background: transparent; padding: 0; }
+.srs-locked-label { color: #94a3b8; background: transparent; }
+.srs-bar { height: 6px; border-radius: 99px; background: #ede9fe; overflow: hidden; margin-bottom: 6px; }
+.srs-bar span { display: block; height: 100%; background: #7c3aed; border-radius: 99px; }
+.srs-count { background: #ecfdf5; color: #047857; min-width: 36px; height: 36px; justify-content: center; font-size: 15px; }
+.srs-refs { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.srs-ref { border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; background: #f8fafc; }
+.srs-ref-top {
+    width: 100%; border: 0; background: transparent; padding: 0; margin: 0;
+    text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+.srs-ref-top:hover .srs-ref-id strong { color: #5b21b6; }
+.srs-ref.is-open { background: #fff; border-color: #a7f3d0; }
+.srs-chevron { color: #94a3b8; font-size: 12px; transition: transform .2s ease; flex: none; }
+.srs-ref.is-open .srs-chevron { transform: rotate(180deg); color: #047857; }
+.srs-ref-panel { display: none; }
+.srs-ref.is-open .srs-ref-panel { display: block; }
+.srs-avatar {
+    width: 40px; height: 40px; border-radius: 12px; background: #1e1b4b; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex: none;
+}
+.srs-ref-id { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.srs-ref-id strong { color: #0f172a; font-size: 14px; line-height: 1.2; }
+.srs-ref-id span { color: #64748b; font-size: 12px; }
+.srs-status { background: #d1fae5; color: #047857; font-size: 11px; padding: 4px 8px; }
+.srs-stages { list-style: none; display: flex; margin: 14px 0 0; padding: 0; }
+.srs-stages li { flex: 1; text-align: center; position: relative; min-width: 0; }
+.srs-stages li:not(:last-child)::after {
+    content: ""; position: absolute; top: 11px; left: 50%; width: 100%; height: 2px; background: #e2e8f0; z-index: 0;
+}
+.srs-stages li.is-done:not(:last-child)::after { background: #10b981; }
+.srs-stage-mark {
+    width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 6px; position: relative; z-index: 1;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
+    background: #fff; border: 2px solid #cbd5e1; color: #94a3b8;
+}
+.srs-stages li.is-done .srs-stage-mark { background: #10b981; border-color: #10b981; color: #fff; }
+.srs-stages li.is-current .srs-stage-mark { box-shadow: 0 0 0 4px #d1fae5; }
+.srs-stage-label { display: block; font-size: 11px; font-weight: 700; color: #64748b; }
+.srs-stages li.is-done .srs-stage-label { color: #047857; }
+.srs-stage-date { display: block; margin-top: 2px; font-size: 10px; font-weight: 600; color: #94a3b8; }
+.srs-empty, .srs-empty-list { text-align: center; color: #64748b; padding: 18px 8px; }
+.srs-empty-list i { font-size: 22px; color: #94a3b8; display: block; margin-bottom: 8px; }
+.srs-empty-list p { margin: 0; }
+@media (max-width: 640px) {
+    .srs-head, .srs-road-top, .srs-list-top, .srs-ref-top { flex-wrap: wrap; }
+    .srs-open { width: 100%; text-align: center; }
+    .srs-step { width: 156px; flex-basis: 156px; }
+    .srs-card { min-height: 270px; }
+    .srs-stage-label { font-size: 10px; }
+}
+</style>
+<script>
+function scrollSimpleReferralRoad(direction) {
+    var road = document.getElementById('simpleReferralRoad');
+    if (!road) return;
+    road.scrollBy({ left: direction * 190, behavior: 'smooth' });
+}
+function toggleSimpleReferralCard(button) {
+    var card = button.closest('.srs-ref');
+    if (!card) return;
+    var willOpen = !card.classList.contains('is-open');
+    var list = card.parentNode;
+    if (list) {
+        var openCards = list.querySelectorAll('.srs-ref.is-open');
+        for (var i = 0; i < openCards.length; i++) {
+            openCards[i].classList.remove('is-open');
+            var other = openCards[i].querySelector('.srs-ref-top');
+            if (other) other.setAttribute('aria-expanded', 'false');
+        }
+    }
+    if (willOpen) {
+        card.classList.add('is-open');
+        button.setAttribute('aria-expanded', 'true');
+    }
+}
+</script>

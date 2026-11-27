@@ -695,8 +695,23 @@ def agent_dashboard(request):
         referral_championship_dashboard_enabled = _ff_check(
             "referral_championship_dashboard_enabled", default=True
         )
+        simple_referral_dashboard_enabled = _ff_check(
+            "simple_referral_dashboard_enabled", default=True
+        )
     except Exception:
         referral_championship_dashboard_enabled = True
+        simple_referral_dashboard_enabled = True
+
+    simple_referral = None
+    if simple_referral_dashboard_enabled and champ_participant:
+        try:
+            from apps.referral_championship.services.reward_engine import (
+                build_simple_referral_dashboard,
+            )
+
+            simple_referral = build_simple_referral_dashboard(champ_participant)
+        except Exception as e:
+            logger.warning("Simple referral section error: %s", e)
 
     auto_show_studio = bool(
         request.session.pop("auto_show_invite_studio", False)
@@ -746,6 +761,7 @@ def agent_dashboard(request):
         "champ_completion": champ_completion,
         "champ_reviews": champ_reviews,
         "referral_championship_dashboard_enabled": referral_championship_dashboard_enabled,
+        "simple_referral": simple_referral,
         "agent_plan": agent_plan,
         "agent": agent,
         "profile": profile,

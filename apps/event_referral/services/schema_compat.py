@@ -52,6 +52,12 @@ _METRIC_COLUMNS = (
         "VARCHAR(50) NOT NULL DEFAULT ''",
         "VARCHAR(50) NOT NULL DEFAULT ''",
     ),
+    (
+        'event_referral_participants',
+        'win_emailed_at',
+        'DATETIME NULL',
+        'DATETIME NULL',
+    ),
 )
 
 _BLOCKED_BY_ADMIN_INDEX = (
@@ -131,8 +137,9 @@ def _clear_campaign_cache():
 
 def ensure_event_referral_metrics_schema(*, log_errors=True):
     """
-    Add registration_link_open_count / page_active_seconds / blocked_by_admin
-    when migration 0005 has not been applied yet.
+    Add event-referral columns the models expect when migrations have not
+    been applied yet, including win_emailed_at. A missing column makes every
+    participant lookup fail, which bounces the agent championship page.
     """
     global _ensured, _ensure_failed_until
     if _ensured:

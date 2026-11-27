@@ -24,7 +24,7 @@ from apps.admin_panel.services.digital_card_studio import CACHE_KEY_STUDIO_CONFI
 logger = logging.getLogger(__name__)
 
 FEATURE_FLAGS_REGISTRY_KEY = 'admin_feature_flags_registry'
-FEATURE_FLAGS_CACHE_KEY = 'feature_flags_all_v1'
+FEATURE_FLAGS_CACHE_KEY = 'feature_flags_all_v2'
 # Custom flags store their state under this prefix so they can never overwrite a real
 # SiteSetting. Flags created before the prefix have no 'setting_key' and keep their bare key.
 CUSTOM_FLAG_SETTING_PREFIX = 'custom_flag_'
@@ -170,6 +170,16 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'redirect_url': '/agent/championship/',
         'default': True,
         'icon': 'fa-solid fa-trophy',
+        'is_system': True,
+    },
+    {
+        'key': 'simple_referral_dashboard_enabled',
+        'name': 'Agent Dashboard — Simple Referral Section',
+        'category': 'Growth & Marketing',
+        'description': 'Shows or hides the Simple Referral tab on the agent dashboard (/agent/dashboard/#referral), including the Championship Road and completed referrals. The Referral Championship section has its own switch and is not affected.',
+        'redirect_url': '/agent/dashboard/#referral',
+        'default': True,
+        'icon': 'fa-solid fa-gift',
         'is_system': True,
     },
 ]

@@ -1107,6 +1107,11 @@
                     <a class="nav-link" href="{% url 'championship:agent_dashboard' %}" style="color: #d97706; font-weight: 700;"><i class="fas fa-trophy mr-2 text-warning"></i>Referral Championship</a>
                 </li>
                 {% endif %}
+                {% if simple_referral %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#referral" data-tab="referral" style="color: #7c3aed; font-weight: 700;"><i class="fas fa-gift mr-2"></i>Referral system</a>
+                </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link"
                        href="{% if agent.agent_slug %}{% url 'agents:agent_review_card' slug=agent.agent_slug %}{% else %}#{% endif %}"
@@ -1395,6 +1400,14 @@
             </div>
             {% endif %}
         </div>
+
+        {% if simple_referral %}
+        <div id="referral-content" class="tab-panel" style="display: none;">
+            <div class="px-2 pb-5">
+                {% include "agents/partials/simple_referral_section.html" %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if wholesale_enabled %}
         <!-- Dedicated Wholesale Marketplace Tab Panel -->
@@ -2591,6 +2604,7 @@
                 profile: document.getElementById('profile-content'),
                 leads: document.getElementById('leads-content'),
                 // Review Card is an external link now (not an in-dashboard tab panel)
+                referral: document.getElementById('referral-content') || null,
                 digitalcard: document.getElementById('digitalcard-content') || null,
                 comingsoon: document.getElementById('comingsoon-content') || null,
                 googlereviews: document.getElementById('googlereviews-content') || null,
