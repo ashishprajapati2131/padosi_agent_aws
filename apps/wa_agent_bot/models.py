@@ -30,6 +30,7 @@ class WaBotSession(models.Model):
     STATE_CREATING_ACCOUNT = 'creating_account'
     STATE_REGISTRATION_DONE = 'registration_done'
     STATE_LOGGED_IN = 'logged_in'
+    STATE_LIAFI = 'liafi'  # LIAFI event flow; sub-step in session_context['liafi_step']
 
     STATE_CHOICES = [
         (STATE_WELCOME, 'Welcome'),
@@ -46,6 +47,7 @@ class WaBotSession(models.Model):
         (STATE_CREATING_ACCOUNT, 'Creating Account'),
         (STATE_REGISTRATION_DONE, 'Registration Done'),
         (STATE_LOGGED_IN, 'Logged In'),
+        (STATE_LIAFI, 'LIAFI Event Flow'),
     ]
 
     # ── Fields ──────────────────────────────────────────────────────────

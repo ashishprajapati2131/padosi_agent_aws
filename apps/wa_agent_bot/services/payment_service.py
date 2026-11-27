@@ -618,12 +618,24 @@ def activate_agent_subscription_after_payment(
                 plan=subscription.selected_plan,
             )
 
+            from .liafi_flow import activated_message
+
+            liafi_msg = activated_message(session, agent)
+
             # 6. Send the WhatsApp confirmation AFTER commit: each OpenWA send can take up to
             # 60s and ran while the subscription row lock was held (audit WA5).
-            def _deliver(session=session, agent=agent, welcome_msg=welcome_msg):
+            def _deliver(session=session, agent=agent, welcome_msg=welcome_msg, liafi_msg=liafi_msg):
                 send_res = send_text_message(
                     session.phone_number, welcome_msg, category="welcome", session=session
                 )
+                if liafi_msg:
+                    liafi_res = send_text_message(
+                        session.phone_number, liafi_msg, category="welcome", session=session
+                    )
+                    if not liafi_res.get("success"):
+                        logger.warning(
+                            f"[WA-Bot] LIAFI activation message failed: {liafi_res.get('error')}"
+                        )
                 if not send_res.get("success"):
                     logger.warning(
                         f"[WA-Bot] Failed to send credentials via OpenWA: {send_res.get('error')}. Setting retry flag."

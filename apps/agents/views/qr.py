@@ -160,6 +160,20 @@ def _hidden_from_public(agent):
     )
 
 
+def _liafi_profile_preview(agent):
+    """A LIAFI event signup may show its profile page before paying (the WhatsApp "Preview Your Profile"
+    link). Only the page: card, QR and lead capture stay behind _hidden_from_public."""
+    from apps.agents.services.account_auth import agent_account_is_active
+
+    draft = agent.registration_draft if isinstance(agent.registration_draft, dict) else {}
+    return (
+        agent.status == "pending_payment"
+        and "liafi" in draft
+        and agent_account_is_active(agent)
+        and not getattr(agent, "is_blacklisted", False)
+    )
+
+
 def _card_viewer_is_privileged(request, agent):
     """Owner of the card or a logged-in admin.
 

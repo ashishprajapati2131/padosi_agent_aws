@@ -142,6 +142,92 @@
     </div>
 </div>
 
+<!-- Bot flows: switch each WhatsApp conversation flow on or off -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" id="botFlows">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-1"><i class="fa-solid fa-toggle-on text-success me-2"></i>Bot flows</h5>
+        <div class="text-muted small mb-3">Turning a flow off stops new chats from starting it. Anyone already in the middle of it can still finish.</div>
+        <div class="list-group list-group-flush">
+            {% for flow in flows %}
+            <div class="list-group-item d-flex justify-content-between align-items-center gap-3 px-0">
+                <div>
+                    <label class="fw-bold mb-0" for="flow_{{ flow.key }}">{{ flow.label }}</label>
+                    <div class="small text-muted">{{ flow.help }}</div>
+                </div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" style="width: 3em; height: 1.5em;"
+                           id="flow_{{ flow.key }}" data-flow="{{ flow.key }}" {% if flow.enabled %}checked{% endif %}
+                           onchange="toggleFlow(this)" aria-describedby="flowState_{{ flow.key }}">
+                    <span class="visually-hidden" id="flowState_{{ flow.key }}">{% if flow.enabled %}On{% else %}Off{% endif %}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- LIAFI General Council Meeting: WhatsApp registration flow -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" id="liafiPanel">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-calendar-check text-success me-2"></i>LIAFI Event Flow</h5>
+                <div class="text-muted small">
+                    Agents send <strong class="font-monospace">LIAFI</strong> to this WhatsApp number to register. Turn the flow and event mode on or off in <a href="#botFlows">Bot flows</a>.
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-6 col-md">
+                <div class="border rounded-3 p-3"><div class="fs-4 fw-bold">{{ liafi_stats.registered }}</div><div class="small text-muted">Registered</div></div>
+            </div>
+            <div class="col-6 col-md">
+                <div class="border rounded-3 p-3"><div class="fs-4 fw-bold text-success">{{ liafi_stats.paid }}</div><div class="small text-muted">Paid</div></div>
+            </div>
+            <div class="col-6 col-md">
+                <div class="border rounded-3 p-3"><div class="fs-4 fw-bold">{{ liafi_stats.gifts_left }}</div><div class="small text-muted">Gifts left (first 150)</div></div>
+            </div>
+            <div class="col-6 col-md">
+                <div class="border rounded-3 p-3"><div class="fs-4 fw-bold">{{ liafi_stats.draws_due }}</div><div class="small text-muted">Lucky draws due</div></div>
+            </div>
+            <div class="col-12 col-md">
+                <div class="border rounded-3 p-3"><div class="fs-4 fw-bold">{{ liafi_stats.to_next_draw }}</div><div class="small text-muted">Registrations to next draw</div></div>
+            </div>
+        </div>
+
+        <form id="liafiForm" onsubmit="saveLiafi(event)">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold" for="liafiGroup">Contest WhatsApp group link</label>
+                    <input type="url" class="form-control" id="liafiGroup" placeholder="https://chat.whatsapp.com/..." value="{{ liafi.group_link }}">
+                    {% if not liafi.group_link %}<div class="form-text text-danger">Not set: the "Join Contest Group" option sends the contact numbers instead.</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold" for="liafiApp">App download link</label>
+                    <input type="url" class="form-control" id="liafiApp" placeholder="{{ liafi.app_link|default:'https://play.google.com/store/apps/details?id=...' }}" value="{{ liafi.app_link_override }}">
+                    <div class="form-text">Leave empty to use the Android store link from App Version{% if liafi.app_link %} ({{ liafi.app_link }}){% else %} (none set){% endif %}.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold" for="liafiSales">PadosiAgent Sales number</label>
+                    <input type="tel" class="form-control" id="liafiSales" placeholder="+91 98765 43210" value="{{ liafi.sales_number }}">
+                    <div class="form-text">Shown to agents: {{ liafi.sales_effective|default:"— (not set)" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold" for="liafiSupport">PadosiAgent Support number</label>
+                    <input type="tel" class="form-control" id="liafiSupport" placeholder="+91 98765 43210" value="{{ liafi.support_number }}">
+                    <div class="form-text">Shown to agents: {{ liafi.support_effective|default:"— (not set)" }}</div>
+                </div>
+                <div class="col-12 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success fw-bold px-4" id="btnSaveLiafi">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Save LIAFI settings
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Row 1: Live OpenWA Device Connection & QR Code Hub -->
 <div class="row g-4 mb-4">
     <!-- Server & Session Health Details -->
@@ -482,6 +568,46 @@
 </div>
 
 <script>
+    // ── Bot flows on/off ───────────────────────────────────────────
+    function toggleFlow(input) {
+        input.disabled = true;
+        fetch("{% url 'admin_wa_toggle_flow' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: input.dataset.flow, enabled: input.checked })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) { input.checked = !input.checked; alert('Error: ' + (d.error || 'Failed to switch')); }
+            else { document.getElementById('flowState_' + input.dataset.flow).textContent = input.checked ? 'On' : 'Off'; }
+            input.disabled = false;
+        })
+        .catch(err => { input.checked = !input.checked; input.disabled = false; alert('Request error: ' + err); });
+    }
+
+    // ── LIAFI event panel ──────────────────────────────────────────
+    function saveLiafi(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveLiafi');
+        btn.disabled = true;
+        fetch("{% url 'admin_wa_save_liafi' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                group_link: document.getElementById('liafiGroup').value,
+                app_link: document.getElementById('liafiApp').value,
+                sales_number: document.getElementById('liafiSales').value,
+                support_number: document.getElementById('liafiSupport').value,
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { location.reload(); }
+            else { alert('Error: ' + (d.error || 'Failed to save')); btn.disabled = false; }
+        })
+        .catch(err => { alert('Request error: ' + err); btn.disabled = false; });
+    }
+
     // ── Toggle Lead WhatsApp Alerts (feature flag) ─────────────────
     function toggleLeadAlerts() {
         const btn = document.getElementById('btnToggleLeadAlerts');

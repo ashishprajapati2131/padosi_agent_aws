@@ -8,6 +8,7 @@ real-time OpenWA connection status, QR code display, and audit logs.
 import json
 import logging
 import os
+import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
@@ -30,6 +31,7 @@ from apps.wa_agent_bot.services.openwa_admin_service import (
     list_openwa_sessions,
 )
 from apps.agents.models import AgentSubscription
+from apps.wa_agent_bot.services import flow_switches, liafi_flow
 from apps.agents.models import PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -194,8 +196,65 @@ def wa_bot_dashboard(request):
         "recent_logs": recent_logs,
         "openwa_config": get_openwa_config(),
         "current_webhook_url": request.build_absolute_uri("/wa-bot/webhook/"),
+        "flows": flow_switches.all_switches(),
+        "liafi": liafi_flow.get_settings(),
+        "liafi_stats": liafi_flow.stats(),
     }
     return render(request, "admin/whatsapp/dashboard.html", context)
+
+
+@require_POST
+def wa_bot_save_liafi(request):
+    """Save the LIAFI event panel: contest group link, sales/support numbers, app link."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+
+    try:
+        data = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
+    group_link = str(data.get("group_link", "")).strip()
+    app_link = str(data.get("app_link", "")).strip()
+    for link in (group_link, app_link):
+        if link and not link.startswith("https://"):
+            return JsonResponse({"success": False, "error": "Links must start with https://"})
+    numbers = {}
+    for field in ("sales_number", "support_number"):
+        value = str(data.get(field, "")).strip()
+        if value and not re.fullmatch(r"\+?[\d\s-]{8,20}", value):
+            return JsonResponse({"success": False, "error": "Enter phone numbers like +91 98765 43210"})
+        numbers[field] = value
+
+    SiteSetting.set_value(liafi_flow.SETTING_GROUP_LINK, group_link, group="whatsapp")
+    SiteSetting.set_value(liafi_flow.SETTING_APP_LINK, app_link, group="whatsapp")
+    SiteSetting.set_value(liafi_flow.SETTING_SALES, numbers["sales_number"], group="whatsapp")
+    SiteSetting.set_value(liafi_flow.SETTING_SUPPORT, numbers["support_number"], group="whatsapp")
+
+    _log_admin_action(request, "update_liafi_settings", "System", 0, "LIAFI links/numbers")
+    return JsonResponse({"success": True})
+
+
+@require_POST
+def wa_bot_toggle_flow(request):
+    """Switch one bot flow (registration, LIAFI, LIAFI event mode) on or off."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+
+    try:
+        data = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
+    key = str(data.get("key", ""))
+    enabled = data.get("enabled") is True
+    if not flow_switches.set_switch(key, enabled):
+        return JsonResponse({"success": False, "error": "Unknown flow"}, status=400)
+
+    _log_admin_action(request, "toggle_wa_flow", "System", 0, f"{key}={enabled}")
+    return JsonResponse({"success": True, "key": key, "enabled": enabled})
 
 
 def wa_bot_sessions_list(request):

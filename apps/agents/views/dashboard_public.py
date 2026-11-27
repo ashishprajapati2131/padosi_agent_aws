@@ -22,14 +22,22 @@ def agent_public_profile(request, slug, state_code=None):
     if not agent:
         raise Http404("Agent not found")
     # Suspended / deleted / unpaid agents have no public page, as on the card views (audit AG3).
-    from apps.agents.views.qr import _card_viewer_is_privileged, _hidden_from_public
+    from apps.agents.views.qr import (
+        _card_viewer_is_privileged,
+        _hidden_from_public,
+        _liafi_profile_preview,
+    )
 
     from apps.agents.services.account_auth import (
         public_agent_is_hidden,
         render_public_profile_unavailable,
     )
 
-    if _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent):
+    if (
+        _hidden_from_public(agent)
+        and not _card_viewer_is_privileged(request, agent)
+        and not _liafi_profile_preview(agent)
+    ):
         return render_public_profile_unavailable(request, agent)
 
     if public_agent_is_hidden(request, agent):

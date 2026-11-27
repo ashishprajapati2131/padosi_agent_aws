@@ -28,6 +28,7 @@ from .validators import (
     format_segments_list,
 )
 from .post_login_handler import process_post_login_message
+from . import flow_switches, liafi_flow
 from .payment_service import (
     get_available_plans,
     format_plan_selection_message,
@@ -85,6 +86,21 @@ def _build_welcome_message():
         "I'm your registration assistant. I'll help you set up your agent account in just a few steps.\n\n"
         "To get started, type *register* or *start*.\n\n"
         "_Already registered? Type your command (e.g., *help*) to continue._"
+    )
+
+
+def _build_registration_paused_message():
+    """New chat while the admin has normal registration switched off."""
+    if flow_switches.is_on(flow_switches.LIAFI):
+        return (
+            "🙏 *Welcome to Padosi Agent!*\n\n"
+            "Attending the LIAFI General Council Meeting? Type *LIAFI* to register."
+        )
+    sales, _ = liafi_flow.contact_numbers()
+    return (
+        "🙏 *Welcome to Padosi Agent!*\n\n"
+        "WhatsApp registration is paused right now. "
+        f"Please call PadosiAgent Sales on {sales} and we'll help you."
     )
 
 
@@ -284,7 +300,9 @@ def process_message(session, user_text):
         reg_data = session.registration_data or {}
         if isinstance(reg_data, dict) and reg_data.get("pending_credentials_delivery"):
             reg_data.pop("pending_credentials_delivery", None)
-            reg_data.pop("temp_password", None)  # the retry sends a reset link, never the password (WA3)
+            reg_data.pop(
+                "temp_password", None
+            )  # the retry sends a reset link, never the password (WA3)
             session.registration_data = reg_data
             session.generated_password = ""
             session.save()
@@ -354,6 +372,8 @@ def process_message(session, user_text):
         return _handle_awaiting_payment(session, text, text_lower)
     elif current_state == WaBotSession.STATE_LOGGED_IN:
         return _handle_logged_in(session, text)
+    elif current_state == WaBotSession.STATE_LIAFI:
+        return liafi_flow.handle(session, text, text_lower)
     else:
         # Unknown state — reset to welcome
         logger.warning(
@@ -387,6 +407,14 @@ def _handle_welcome(session, text, text_lower):
         session.is_logged_in = True
         session.save()
         return process_post_login_message(session.agent, text)
+
+    # LIAFI event: the keyword starts it; while event mode is ON every new chat does.
+    if liafi_flow.wants_liafi(text_lower) or liafi_flow.event_mode_on():
+        return liafi_flow.start(session)
+
+    # Admin switched normal registration off (Hub → Bot flows).
+    if not flow_switches.is_on(flow_switches.REGISTRATION):
+        return _build_registration_paused_message()
 
     # New user — check for registration keywords or greetings
     is_start_intent = text_lower in REGISTER_KEYWORDS or any(

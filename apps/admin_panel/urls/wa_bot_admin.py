@@ -20,6 +20,8 @@ from ..views.wa_bot_admin import (
     wa_bot_reset_session,
     wa_bot_resend_credentials,
     wa_bot_save_config,
+    wa_bot_save_liafi,
+    wa_bot_toggle_flow,
     wa_bot_sync_webhook,
     wa_bot_list_remote_sessions,
 )
@@ -49,6 +51,8 @@ urlpatterns = [
     path("admin/whatsapp/reset-session/<int:session_id>/", wa_bot_reset_session, name="admin_wa_reset_session"),
     path("admin/whatsapp/resend-creds/<int:session_id>/", wa_bot_resend_credentials, name="admin_wa_resend_credentials"),
     path("admin/whatsapp/save-config/", wa_bot_save_config, name="admin_wa_save_config"),
+    path("admin/whatsapp/save-liafi/", wa_bot_save_liafi, name="admin_wa_save_liafi"),
+    path("admin/whatsapp/toggle-flow/", wa_bot_toggle_flow, name="admin_wa_toggle_flow"),
     path("admin/whatsapp/sync-webhook/", wa_bot_sync_webhook, name="admin_wa_sync_webhook"),
     path("admin/whatsapp/list-sessions/", wa_bot_list_remote_sessions, name="admin_wa_list_remote_sessions"),
 ]
