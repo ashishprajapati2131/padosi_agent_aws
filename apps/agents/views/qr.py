@@ -1379,6 +1379,18 @@ def public_review_page(request, slug):
         return render_public_profile_unavailable(request, agent)
 
     context = advisor_review_context(request, agent)
+    state_code = (
+        agent.state_code()
+        if callable(getattr(agent, "state_code", None))
+        else getattr(agent, "state_code", "gj")
+    ) or "gj"
+    try:
+        profile_path = reverse(
+            "agents:agent_public_profile_state_direct",
+            kwargs={"state_code": state_code, "slug": context["advisor_slug"]},
+        )
+    except Exception:
+        profile_path = f"/{state_code}/{context['advisor_slug']}/"
     context.update(
         {
             "hide_header": False,
@@ -1386,6 +1398,7 @@ def public_review_page(request, slug):
             "review_post_url": reverse(
                 "agents:agent_store_review", kwargs={"slug": context["advisor_slug"]}
             ),
+            "profile_reviews_url": profile_path + "?submitted=1#reviews-section",
             "is_guest": not request.user.is_authenticated,
         }
     )

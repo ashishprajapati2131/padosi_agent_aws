@@ -4,6 +4,7 @@
         #reviews-section {
             width: 100%;
             max-width: 100%;
+            scroll-margin-top: 88px;
         }
 
         #reviews-section .reviews-header {
@@ -1505,14 +1506,20 @@ function showGoogleReviewNudgePopup(nudge) {
 
     (function scrollToReviewsIfRequested() {
         var params = new URLSearchParams(window.location.search);
-        if (params.get('focus') !== 'reviews') return;
+        var hashReviews = window.location.hash === '#reviews-section';
+        if (params.get('focus') !== 'reviews' && !hashReviews) return;
+        function go() {
+            var el = document.getElementById('reviews-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (hashReviews) {
+            setTimeout(go, 120);
+            return;
+        }
         var delay = parseInt(document.getElementById('reviews-section') && document.getElementById('reviews-section').getAttribute('data-scroll-delay') || '3000', 10);
         if (isNaN(delay) || delay < 2000) delay = 3000;
         if (delay > 5000) delay = 5000;
-        setTimeout(function() {
-            var el = document.getElementById('reviews-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, delay);
+        setTimeout(go, delay);
     })();
 })();
 </script>

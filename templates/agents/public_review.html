@@ -370,10 +370,22 @@
         return temp.innerHTML;
     }
 
-    function showGoogleNudgePopup(nudge) {
-        if (!nudge || !nudge.google_review_url) return;
+    var profileReviewsUrl = '{{ profile_reviews_url|default:""|escapejs }}';
+
+    function goToProfileReviews() {
+        if (profileReviewsUrl) window.location.assign(profileReviewsUrl);
+    }
+
+    function showGoogleNudgePopup(nudge, onDone) {
+        if (!nudge || !nudge.google_review_url) {
+            if (typeof onDone === 'function') onDone();
+            return;
+        }
         var safeUrl = String(nudge.google_review_url).trim();
-        if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) return;
+        if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) {
+            if (typeof onDone === 'function') onDone();
+            return;
+        }
 
         var safeTitle = sanitizeHtml(nudge.title || 'Help Grow!');
         var safeMessage = sanitizeHtml(nudge.message || 'Your review matters! Would you also leave a quick review on Google?');
@@ -402,6 +414,7 @@
                 }
                 window.open(safeUrl, '_blank', 'noopener,noreferrer');
             }
+            if (typeof onDone === 'function') onDone();
         });
     }
 
@@ -435,14 +448,10 @@
                 }
                 var nudge = result.body.google_nudge;
                 if (nudge && nudge.enabled && nudge.google_review_url) {
-                    showGoogleNudgePopup(nudge);
+                    showGoogleNudgePopup(nudge, goToProfileReviews);
                 } else {
-                    notifySuccess('Thank you!', result.body.message || 'Your review has been submitted successfully.');
+                    goToProfileReviews();
                 }
-                form.reset();
-                ratingInput.value = '0';
-                paint(0);
-                if (charCounter) charCounter.textContent = '0/500';
             } else {
                 var msg = 'Could not submit review.';
                 if (result.body && result.body.message) {
