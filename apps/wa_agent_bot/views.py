@@ -115,6 +115,18 @@ def _extract_message_data(payload):
     if not phone:
         return None, None, None
 
+    # WhatsApp now often names the sender by a privacy id (@lid). OpenWA adds the real number as
+    # senderPhone when RESOLVE_LID_TO_PHONE=true is set on the OpenWA server.
+    if str(phone).endswith("@lid"):
+        resolved = "".join(c for c in str(data.get("senderPhone") or "") if c.isdigit())
+        if not resolved:
+            logger.warning(
+                "[WA-Bot] Ignored a message from a WhatsApp @lid sender with no phone number: "
+                "set RESOLVE_LID_TO_PHONE=true on the OpenWA server"
+            )
+            return None, None, None
+        phone = resolved
+
     # Group (@g.us), @lid and broadcast chat ids are not a sender phone number.
     if "@" in str(phone) and not str(phone).endswith(("@c.us", "@s.whatsapp.net")):
         return None, None, None

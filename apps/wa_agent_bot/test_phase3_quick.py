@@ -60,6 +60,29 @@ class ExtractMessageChatIdTests(SimpleTestCase):
             payload = {"data": {"from": chat, "body": "hi"}}
             self.assertEqual(views._extract_message_data(payload)[0], None, chat)
 
+    def test_lid_sender_uses_the_phone_openwa_resolved(self):
+        payload = {
+            "data": {
+                "from": "123456789012345@lid",
+                "senderPhone": "919876543210",
+                "body": "LIAFI",
+            }
+        }
+        self.assertEqual(
+            views._extract_message_data(payload)[:2], ("919876543210", "LIAFI")
+        )
+
+    def test_lid_group_member_is_still_ignored(self):
+        payload = {
+            "data": {
+                "from": "120363012345678901@g.us",
+                "author": "1234@lid",
+                "senderPhone": "919876543210",
+                "body": "hi",
+            }
+        }
+        self.assertEqual(views._extract_message_data(payload)[0], None)
+
     def test_personal_chats_accepted(self):
         for chat in ("919876543210@c.us", "919876543210@s.whatsapp.net"):
             payload = {"data": {"from": chat, "body": "hi"}}
