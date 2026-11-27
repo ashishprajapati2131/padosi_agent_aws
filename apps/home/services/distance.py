@@ -2,7 +2,7 @@ import math
 import re
 import json
 import logging
-from apps.home.models import Pincode
+from apps.home.models import Pincode, PincodeCache
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +359,88 @@ def directory_result_window(total, page=1, shown=1, is_partial=False, page_size=
 
 
 NEARBY_RADIUS_KM = 50
+# Saved agent coordinates farther than this from their own pincode are an old or wrong point.
+STALE_AGENT_POINT_KM = 50
+
+
+def _pin_coordinate_map(pins):
+    """Real coordinates for pins: exact table, pincodes, then pincode_cache. No regional guesses."""
+    found = {}
+    missing = []
+    for pin in pins:
+        exact = EXACT_PINCODE_COORDS.get(pin)
+        if exact:
+            found[pin] = (float(exact['lat']), float(exact['lng']))
+        else:
+            missing.append(pin)
+    if not missing:
+        return found
+
+    def take(rows):
+        for pin, lat, lng in rows:
+            pin = str(pin or '').strip()
+            if pin in found or lat is None or lng is None:
+                continue
+            if DistanceService.is_regional_fallback_coordinate(pin, lat, lng):
+                continue
+            try:
+                found[pin] = (float(lat), float(lng))
+            except (TypeError, ValueError):
+                continue
+
+    try:
+        take(Pincode.objects.filter(pincode__in=missing).values_list('pincode', 'latitude', 'longitude'))
+    except Exception as e:
+        logger.warning(f"Pincode batch lookup failed: {e}")
+    rest = [pin for pin in missing if pin not in found]
+    if rest:
+        try:
+            take(PincodeCache.objects.filter(pincode__in=rest).values_list('pincode', 'latitude', 'longitude'))
+        except Exception as e:
+            logger.warning(f"PincodeCache batch lookup failed: {e}")
+    return found
+
+
+def _service_row_coordinates(agent, pin):
+    try:
+        rows = agent.servicePincodes.all()
+    except Exception:
+        return None
+    for row in rows:
+        if str(getattr(row, 'service_pincode', '') or '').strip() != pin:
+            continue
+        data = getattr(row, 'postal_data_json', None)
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except (TypeError, ValueError):
+                data = None
+        if not isinstance(data, dict):
+            return None
+        try:
+            return float(data['lat']), float(data['lng'])
+        except (KeyError, TypeError, ValueError):
+            return None
+    return None
+
+
+def _pin_point(agent, pin, pin_points):
+    return pin_points.get(pin) or _service_row_coordinates(agent, pin)
+
+
+def _agent_saved_point(agent, home_point):
+    """The agent's saved latitude/longitude, unless it contradicts their own pincode."""
+    try:
+        if not agent.latitude or not agent.longitude:
+            return None
+        point = (float(agent.latitude), float(agent.longitude))
+    except (TypeError, ValueError):
+        return None
+    if home_point:
+        gap = DistanceService.calculate(point[0], point[1], home_point[0], home_point[1])
+        if gap is not None and gap > STALE_AGENT_POINT_KM:
+            return None
+    return point
 
 
 def apply_search_proximity(
@@ -380,8 +462,14 @@ def apply_search_proximity(
     search_pin = _normalize_pin(search_pincode)
     filtered = []
 
-    for agent in agents:
-        serves = bool(search_pin) and agent_serves_pincode(agent, search_pin)
+    agents = list(agents)
+    agent_pins = [iter_agent_service_pincodes(agent) for agent in agents]
+    pin_points = {}
+    if user_lat is not None and user_lng is not None:
+        pin_points = _pin_coordinate_map({pin for pins in agent_pins for pin in pins})
+
+    for agent, pins in zip(agents, agent_pins):
+        serves = bool(search_pin) and search_pin in pins
         agent.serves_search_pincode = serves
         agent.distance = None
         agent.is_nearby = False
@@ -397,20 +485,18 @@ def apply_search_proximity(
             filtered.append(agent)
             continue
 
+        home_pin = _normalize_pin(getattr(agent, 'agent_pincode', None))
+        home_point = _pin_point(agent, home_pin, pin_points) if home_pin else None
+
         best = None
-        if agent.latitude and agent.longitude:
-            best = DistanceService.calculate(user_lat, user_lng, agent.latitude, agent.longitude)
+        saved = _agent_saved_point(agent, home_point)
+        if saved:
+            best = DistanceService.calculate(user_lat, user_lng, saved[0], saved[1])
 
         if best is None:
-            for pin in iter_agent_service_pincodes(agent):
-                coords = DistanceService.get_pincode_coordinates(pin)
-                if not coords:
-                    continue
-                dist = DistanceService.calculate(user_lat, user_lng, coords['lat'], coords['lng'])
-                if dist is None:
-                    continue
-                if best is None or dist < best:
-                    best = dist
+            points = [p for p in (_pin_point(agent, pin, pin_points) for pin in pins) if p]
+            if points:
+                best = min(DistanceService.calculate(user_lat, user_lng, lat, lng) for lat, lng in points)
 
         if best is None:
             getter = getattr(agent, 'get_primary_profile', None)

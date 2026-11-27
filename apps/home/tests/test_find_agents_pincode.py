@@ -106,6 +106,56 @@ class SearchProximityTests(SimpleTestCase):
         self.assertFalse(kept[0].is_nearby)
 
 
+BARDOLI = (21.1729229, 73.1338281)
+AHMEDABAD_POINT = (23.0300, 72.5800)
+
+
+class StaleAgentPointTests(SimpleTestCase):
+    def _bardoli_agent_with_ahmedabad_point(self, **kwargs):
+        return make_agent(
+            agent_pincode='394355',
+            latitude=AHMEDABAD_POINT[0],
+            longitude=AHMEDABAD_POINT[1],
+            **kwargs,
+        )
+
+    def test_bardoli_agent_with_ahmedabad_point_is_not_near_380001(self):
+        agent = self._bardoli_agent_with_ahmedabad_point()
+        with patch('apps.home.services.distance._pin_coordinate_map', return_value={'394355': BARDOLI}):
+            ranked = rank_directory_agents([agent], 23.0225, 72.5714, search_pincode='380001')
+        self.assertEqual(ranked, [])
+        self.assertGreater(agent.distance, 200)
+
+    def test_service_row_coordinates_are_used_when_pin_table_has_none(self):
+        agent = self._bardoli_agent_with_ahmedabad_point()
+        agent.servicePincodes = FakeRelated([
+            SimpleNamespace(
+                service_pincode='394355',
+                postal_data_json={'lat': BARDOLI[0], 'lng': BARDOLI[1]},
+            ),
+        ])
+        with patch('apps.home.services.distance._pin_coordinate_map', return_value={}):
+            kept = apply_search_proximity([agent], 23.0225, 72.5714, search_pincode='380001')
+        self.assertEqual(kept, [])
+
+    def test_agent_who_lists_the_searched_pin_stays_at_zero(self):
+        agent = self._bardoli_agent_with_ahmedabad_point(table_pins=['380001'])
+        with patch('apps.home.services.distance._pin_coordinate_map', return_value={'394355': BARDOLI}):
+            kept = apply_search_proximity([agent], 23.0225, 72.5714, search_pincode='380001')
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(kept[0].distance, 0)
+
+    def test_saved_point_close_to_own_pin_is_still_used(self):
+        agent = make_agent(agent_pincode='380015', latitude=23.0305, longitude=72.5066)
+        with patch('apps.home.services.distance._pin_coordinate_map', return_value={'380015': (23.0200, 72.5100)}):
+            kept = apply_search_proximity([agent], 23.0225, 72.5714, search_pincode='380001')
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(
+            kept[0].distance,
+            DistanceService.calculate(23.0225, 72.5714, 23.0305, 72.5066),
+        )
+
+
 class DirectoryRankingTests(SimpleTestCase):
     def test_nearby_search_only_returns_within_radius(self):
         nearby = make_agent(profile_pins=['384285'], latitude=23.85, longitude=72.12)
