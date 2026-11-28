@@ -1264,10 +1264,12 @@ def payment_complete(request):
     redirect_url = _post_payment_redirect_url(request, agent)
     request.session.pop("app_upgrade_handoff_plan", None)
     request.session.pop("post_payment_landing", None)
+    meta_purchase = request.session.pop("meta_purchase", None)
     return render(
         request,
         "agents/payment_complete.html",
         {
+            "meta_purchase": meta_purchase,
             "agent_name": (getattr(agent, "fullname", "") or "").strip(),
             "redirect_url": redirect_url,
             "is_plan_upgrade": bool(handoff_plan),

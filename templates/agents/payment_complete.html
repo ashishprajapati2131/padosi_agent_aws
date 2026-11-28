@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static json_tags %}
 {% block pwa_manifest %}{% endblock %}
 
 {% block title %}Payment Successful — PadosiAgent{% endblock %}
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 agentName: agentName,
                 redirectUrl: redirectUrl,
                 duration: 3000,
+                metaPurchase: {{ meta_purchase|safe_json }},
                 {% if is_plan_upgrade %}
                 title: 'Plan upgraded successfully',
                 lead: 'Your new plan is active. Opening your dashboard…'

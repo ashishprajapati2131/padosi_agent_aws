@@ -211,3 +211,9 @@ def multilingual_context(request):
     }
 
 
+def meta_pixel(request):
+    """Meta Pixel ID for templates/partials/meta_pixel.html (digits only, so safe inside <script>)."""
+    from django.conf import settings
+
+    pixel_id = getattr(settings, "META_PIXEL_ID", "") or ""
+    return {"META_PIXEL_ID": pixel_id if pixel_id.isdigit() else ""}

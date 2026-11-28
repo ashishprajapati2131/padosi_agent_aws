@@ -2664,7 +2664,7 @@
         var agentName = (data && data.agent_name) || '';
 
         if (typeof window.showPaymentSuccessPopup === 'function') {
-            window.showPaymentSuccessPopup({ agentName: agentName, redirectUrl: redirectUrl, duration: 3000 });
+            window.showPaymentSuccessPopup({ agentName: agentName, redirectUrl: redirectUrl, duration: 3000, metaPurchase: data && data.meta_purchase });
             return;
         }
 

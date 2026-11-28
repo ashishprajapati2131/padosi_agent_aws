@@ -346,6 +346,28 @@ def _post_payment_redirect_url(request, agent=None):
     return reverse("agents:agent_edit_profile") + "?welcome=1"
 
 
+def _meta_purchase_event(agent):
+    """Meta Pixel Purchase data for the agent's latest paid subscription, or None (free / nothing paid).
+
+    Only an ID and the amount: no personal data leaves the server here.
+    """
+    from apps.agents.models import AgentSubscription
+
+    sub = (
+        AgentSubscription.objects.filter(agent=agent, payment_status="completed")
+        .order_by("-created_at", "-pk")
+        .first()
+    )
+    if not sub or not sub.registration_amount or sub.registration_amount <= 0:
+        return None
+    return {
+        "event_id": f"PAY_{sub.pk}",
+        "value": float(sub.registration_amount),
+        "currency": "INR",
+        "content_name": sub.selected_plan or "Agent Plan",
+    }
+
+
 def _activation_success_payload(
     request, agent, message="Payment successful and account activated."
 ):
@@ -357,6 +379,7 @@ def _activation_success_payload(
         "redirect_url": redirect_url,
         "agent_name": (getattr(agent, "fullname", "") or "").strip(),
         "profile_url": request.build_absolute_uri(profile_path),
+        "meta_purchase": _meta_purchase_event(agent),
     }
 
 

@@ -51,8 +51,21 @@
             + '</div>';
     }
 
+    // Meta Pixel Purchase, once per verified payment (eventID lets Meta drop duplicates).
+    function trackMetaPurchase(p) {
+        if (!p || !p.event_id || typeof window.fbq !== 'function') return;
+        try {
+            window.fbq('track', 'Purchase', {
+                value: Number(p.value) || 0,
+                currency: p.currency || 'INR',
+                content_name: String(p.content_name || '')
+            }, { eventID: String(p.event_id) });
+        } catch (e) { /* tracking must never block the redirect */ }
+    }
+
     function showPaymentSuccessPopup(options) {
         options = options || {};
+        trackMetaPurchase(options.metaPurchase);
         var redirectUrl = options.redirectUrl || '/agent/edit-profile/?welcome=1';
         var toProfile = (redirectUrl || '').indexOf('edit-profile') !== -1;
         var agentName = options.agentName || '';

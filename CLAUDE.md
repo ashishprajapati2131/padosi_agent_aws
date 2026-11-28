@@ -613,6 +613,7 @@ GOOGLE_CLIENT_ID=  GOOGLE_CLIENT_SECRET=  GOOGLE_REDIRECT_URI=  GBP_REDIRECT_URI
 
 # Facebook
 FACEBOOK_APP_ID=  FACEBOOK_APP_SECRET=
+META_PIXEL_ID=   # Meta Pixel (templates/partials/meta_pixel.html); empty = off
 
 # Auth
 JWT_SECRET_KEY=

@@ -2859,6 +2859,24 @@
                     }
                 },
 
+                // Meta Pixel CompleteRegistration: fired only after the server saved step 1 (never on errors or reloads).
+                // Advanced-matching values are the user's own form input; the pixel hashes them in the browser.
+                trackMetaRegistration(eventId) {
+                    if (!eventId || typeof window.fbq !== 'function' || !window.PADOSI_META_PIXEL_ID) return false;
+                    try {
+                        const userData = { country: 'in' };
+                        const em = String(this.email || '').trim().toLowerCase();
+                        const ph = String(this.phone || '').replace(/\D/g, '').slice(-10);
+                        const zp = String(this.pincode || '').replace(/\D/g, '');
+                        if (em) userData.em = em;
+                        if (ph.length === 10) userData.ph = '91' + ph;
+                        if (zp.length === 6) userData.zp = zp;
+                        window.fbq('init', window.PADOSI_META_PIXEL_ID, userData);
+                        window.fbq('track', 'CompleteRegistration', { content_name: 'Agent Registration' }, { eventID: String(eventId) });
+                        return true;
+                    } catch (e) { console.warn('Meta pixel registration event failed', e); return false; }
+                },
+
                 async submitStep1() {
                     if (this.registrationClosed) {
                         return Swal.fire('Closed', 'Event registration is currently closed.', 'info');
@@ -2899,6 +2917,7 @@
                             this.showPreviewModal = false;
                             this.isSubmitting = false;
                             const target = data.redirect || this.postSubmitRedirect;
+                            const pixelFired = this.trackMetaRegistration(data.meta_event_id);
                             if (this.eventReferralMode && typeof Swal !== 'undefined') {
                                 Swal.fire({
                                     icon: 'success',
@@ -2911,7 +2930,8 @@
                                 });
                                 setTimeout(function() { window.location.href = target; }, 1900);
                             } else {
-                                window.location.href = target;
+                                // Short pause so the pixel request leaves before the page unloads.
+                                setTimeout(function () { window.location.href = target; }, pixelFired ? 400 : 0);
                             }
                         } else {
                             this.isSubmitting = false;

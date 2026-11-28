@@ -738,6 +738,7 @@ def register_step1(request):
                 "success": True,
                 "message": "Basic information updated!",
                 "redirect": "/chooseplan/",
+                "meta_event_id": f"REG_{draft.pk}",
             }
         )
 
@@ -851,6 +852,7 @@ def register_step1(request):
             "success": True,
             "message": "Basic information saved!",
             "redirect": "/chooseplan/",
+            "meta_event_id": f"REG_{draft.pk}",
         }
     )
 
@@ -2550,6 +2552,8 @@ def payment_callback(request):
             if result.get("success"):
                 if result.get("redirect_url") == login_url:
                     return redirect(login_url)
+                if result.get("meta_purchase"):
+                    request.session["meta_purchase"] = result["meta_purchase"]
                 return redirect("agents:payment_complete")
             if attempt < attempts - 1:
                 time.sleep(1.5)

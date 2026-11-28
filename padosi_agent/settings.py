@@ -184,6 +184,7 @@ TEMPLATES = [
                 "apps.admin_panel.context_processors.admin_badge_counts",
                 "apps.home.context_processors.footer_settings",
                 "apps.home.context_processors.seo_context",
+                "apps.home.context_processors.meta_pixel",
                 "apps.home.context_processors.calculator_nav",
                 "apps.home.context_processors.multilingual_context",
                 "apps.wholesale.context_processors.wholesale_context",
@@ -420,6 +421,8 @@ GBP_REDIRECT_URI = os.environ.get("GBP_REDIRECT_URI", "")
 
 # ─── Facebook (participant auto-post module) ─────────────────────────────────
 FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "759405373797845")
+# Meta (Facebook) Pixel for ads tracking; set to empty to switch the pixel off.
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "2012064996398259").strip()
 FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
 
 # ─── Cloudflare CDN & Caching ───────────────────────────────────────────────
