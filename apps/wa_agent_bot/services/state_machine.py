@@ -313,6 +313,11 @@ def process_message(session, user_text):
                 + handle_credentials(session.agent)
             )
 
+    # ── LIAFI keyword restarts the event flow from any step, so an old unfinished registration
+    # (e.g. stuck at a payment link) can't swallow it. Registered agents keep their account flow.
+    if not session.is_registered and liafi_flow.wants_liafi(text_lower):
+        return liafi_flow.start(session)
+
     # ── Admin keyword auto-replies (Admin > WhatsApp > Messages) ─────
     # Only outside the registration flow, so a keyword can't swallow an answer like a name or pincode.
     if current_state in (WaBotSession.STATE_WELCOME, WaBotSession.STATE_LOGGED_IN):

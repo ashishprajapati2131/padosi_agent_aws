@@ -140,6 +140,22 @@ class LiafiFlowTests(unittest.TestCase):
         self.values[flow_switches.LIAFI] = False
         self.assertIn("Full Name", self.say("1"))
 
+    def test_liafi_restarts_from_an_unfinished_normal_registration(self):
+        self.session.state = WaBotSession.STATE_AWAITING_PAYMENT
+        self.session.registration_data = {"fullname": "Old", "payment_link": "https://rzp.io/old"}
+        reply = self.say("LIAFI")
+        self.assertEqual(self.session.state, WaBotSession.STATE_LIAFI)
+        self.assertIn("LIAFI General Council Meeting", reply)
+        self.assertNotIn("payment_link", self.session.registration_data)
+
+    def test_registered_agent_is_not_pulled_into_liafi(self):
+        self.session.is_registered = True
+        self.session.agent = MagicMock()
+        self.session.state = WaBotSession.STATE_LOGGED_IN
+        with patch("apps.wa_agent_bot.services.state_machine._handle_logged_in", return_value="menu"):
+            self.assertEqual(self.say("LIAFI"), "menu")
+        self.assertEqual(self.session.state, WaBotSession.STATE_LOGGED_IN)
+
     def test_cancel_leaves_the_flow(self):
         self.say("LIAFI")
         self.say("cancel")
