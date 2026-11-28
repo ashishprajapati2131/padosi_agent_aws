@@ -28,6 +28,7 @@ from apps.wa_agent_bot.services.openwa_admin_service import (
     send_admin_test_whatsapp,
     get_openwa_config,
     sync_openwa_webhook,
+    run_pipeline_test,
     list_openwa_sessions,
 )
 from apps.agents.models import AgentSubscription
@@ -784,7 +785,7 @@ def wa_bot_sync_webhook(request):
     if not webhook_url:
         webhook_url = request.build_absolute_uri("/wa-bot/webhook/")
 
-    success, message = sync_openwa_webhook(webhook_url)
+    success, message, _ = sync_openwa_webhook(webhook_url)
     _log_admin_action(
         request,
         "sync_openwa_webhook",
@@ -795,6 +796,20 @@ def wa_bot_sync_webhook(request):
     return JsonResponse(
         {"success": success, "message": message, "webhook_url": webhook_url}
     )
+
+
+@require_POST
+def wa_bot_pipeline_test(request):
+    """Check and repair every link WhatsApp → OpenWA → this server, and report the broken one."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+
+    result = run_pipeline_test(request.build_absolute_uri("/wa-bot/webhook/"))
+    _log_admin_action(
+        request, "wa_pipeline_test", "OpenWA_Webhook", 0, f"ok={result['ok']} — {result['verdict'][:150]}"
+    )
+    return JsonResponse({"success": True, **result})
 
 
 @require_GET

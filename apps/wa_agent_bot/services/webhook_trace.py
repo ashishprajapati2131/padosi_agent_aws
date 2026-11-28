@@ -7,6 +7,7 @@ plain-language reason, plus when OpenWA last delivered anything at all. Phones a
 
 import datetime
 import logging
+import time
 
 from django.core.cache import cache
 
@@ -33,7 +34,9 @@ def seen(event):
     """Any request that reached the webhook, message or not."""
     try:
         cache.set(
-            LAST_SEEN_KEY, {"at": _now(), "event": str(event or "")[:40]}, timeout=TTL
+            LAST_SEEN_KEY,
+            {"at": _now(), "ts": time.time(), "event": str(event or "")[:40]},
+            timeout=TTL,
         )
     except Exception as e:  # diagnostics must never break message handling
         logger.warning(f"[WA-Bot] webhook trace unavailable: {e}")

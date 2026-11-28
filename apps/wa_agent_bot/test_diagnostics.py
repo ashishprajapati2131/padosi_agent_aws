@@ -133,3 +133,81 @@ class WebhookFirewallTests(SimpleTestCase):
         with patch("apps.admin_panel.middleware.security.is_ip_blocked", return_value=True):
             response = self._middleware()(self._post("/contact/"))
         self.assertEqual(response.status_code, 403)
+
+
+class _Resp:
+    def __init__(self, status=200, data=None):
+        self.status_code, self._data = status, data
+
+    def json(self):
+        return self._data
+
+
+HOOK = "https://padosiagent.com/wa-bot/webhook/"
+
+
+@override_settings(CACHES=LOCMEM)
+@patch.dict("os.environ", {"WA_BOT_WEBHOOK_SECRET": "s3cret"})
+class WebhookSyncAndPipelineTests(SimpleTestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        from apps.wa_agent_bot.services import openwa_admin_service as svc
+
+        self.svc = svc
+        cfg = patch.object(svc, "get_openwa_config", return_value={"base_url": "https://wa.example", "session_id": "S1", "api_key": "k"})
+        cfg.start()
+        self.addCleanup(cfg.stop)
+
+    def test_sync_repairs_stale_webhook_and_deletes_duplicates_only_of_ours(self):
+        existing = [
+            {"id": "a", "url": HOOK, "active": True, "events": ["message.received"]},  # no token
+            {"id": "b", "url": HOOK + "?token=old", "active": True, "events": ["*"]},
+            {"id": "c", "url": "https://other.example/hook", "active": True, "events": ["*"]},
+        ]
+        with patch.object(self.svc.requests, "get", return_value=_Resp(200, existing)), patch.object(
+            self.svc.requests, "delete", return_value=_Resp(204)
+        ) as delete, patch.object(self.svc.requests, "patch", return_value=_Resp(200, {})) as patch_call:
+            ok, message, webhook_id = self.svc.sync_openwa_webhook(HOOK)
+        self.assertTrue(ok)
+        self.assertEqual(webhook_id, "a")
+        self.assertEqual([c.args[0].rsplit("/", 1)[1] for c in delete.call_args_list], ["b"])
+        self.assertEqual(patch_call.call_args.kwargs["json"]["url"], HOOK + "?token=s3cret")
+        self.assertIn("Removed 1 duplicate", message)
+
+    def _run(self, test_result, arrived, reason=""):
+        def fake_post(url, **kw):
+            if arrived:
+                webhook_trace.seen("test")
+                if reason:
+                    webhook_trace.record(webhook_trace.REJECTED, reason)
+            return _Resp(200, test_result)
+
+        status = {"online": True, "is_connected": True, "phone": "919000000001", "latency_ms": 5, "status": "ready"}
+        with patch("apps.wa_agent_bot.views.is_wa_bot_enabled", return_value=True), patch.object(
+            self.svc, "get_openwa_session_status", return_value=status
+        ), patch.object(self.svc, "sync_openwa_webhook", return_value=(True, "ok", "w1")), patch.object(
+            self.svc.requests, "post", side_effect=fake_post
+        ):
+            return self.svc.run_pipeline_test(HOOK)
+
+    def test_all_green_names_the_bot_number(self):
+        result = self._run({"success": True, "statusCode": 200}, arrived=True)
+        self.assertTrue(result["ok"])
+        self.assertIn("+919000000001", result["verdict"])
+
+    def test_403_that_never_arrived_blames_cloudflare(self):
+        result = self._run({"success": False, "statusCode": 403}, arrived=False)
+        self.assertFalse(result["ok"])
+        self.assertIn("Cloudflare", result["verdict"])
+
+    def test_403_that_arrived_reports_our_own_reason(self):
+        result = self._run({"success": False, "statusCode": 403}, arrived=True, reason="Wrong or missing webhook token")
+        self.assertIn("Wrong or missing webhook token", result["verdict"])
+
+    def test_stops_early_when_bot_is_off(self):
+        with patch("apps.wa_agent_bot.views.is_wa_bot_enabled", return_value=False):
+            result = self.svc.run_pipeline_test(HOOK)
+        self.assertEqual(len(result["steps"]), 1)
+        self.assertIn("Turn the bot ON", result["verdict"])

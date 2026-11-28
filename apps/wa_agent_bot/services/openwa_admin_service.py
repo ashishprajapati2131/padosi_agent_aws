@@ -36,44 +36,133 @@ def get_openwa_config():
     }
 
 
-def sync_openwa_webhook(target_webhook_url):
-    """
-    Ensure the remote OpenWA session delivers inbound messages to target_webhook_url.
-    Checks existing webhooks and creates or updates automatically across servers.
-    """
+def _webhooks_api():
     cfg = get_openwa_config()
-    session_id = cfg['session_id']
     base = cfg['base_url'].rstrip('/')
     if not base.endswith('/api'):
         base = f"{base}/api"
-    url = f"{base}/sessions/{session_id}/webhooks"
+    return f"{base}/sessions/{cfg['session_id']}/webhooks"
 
-    # OpenWA can't sign requests, so the shared secret rides in the URL; messages below show the URL without it.
+
+def _delivery_url(target_webhook_url):
+    # OpenWA can't sign requests, so the shared secret rides in the URL.
     secret = os.environ.get('WA_BOT_WEBHOOK_SECRET', '')
-    delivery_url = f"{target_webhook_url}{'&' if '?' in target_webhook_url else '?'}{urlencode({'token': secret})}" if secret else target_webhook_url
+    if not secret:
+        return target_webhook_url
+    return f"{target_webhook_url}{'&' if '?' in target_webhook_url else '?'}{urlencode({'token': secret})}"
 
+
+def sync_openwa_webhook(target_webhook_url):
+    """
+    Make the OpenWA session deliver inbound messages to target_webhook_url, with the secret token.
+    Repairs the webhook already pointing here and removes duplicates of it (an old copy without
+    the token keeps failing with 403). Webhooks pointing anywhere else are left alone.
+    Returns (ok, message, webhook_id).
+    """
+    url = _webhooks_api()
+    delivery_url = _delivery_url(target_webhook_url)
     headers = _get_headers()
     try:
-        # 1. Check existing webhooks
         res = requests.get(url, headers=headers, timeout=8)
-        if res.status_code == 200:
-            existing = res.json()
-            for wh in existing:
-                if wh.get('url') == delivery_url and wh.get('active'):
-                    return True, f"Webhook already active and delivering to: {target_webhook_url}"
-                wh_id = wh.get('id')
-                if wh_id:
-                    up = requests.patch(f"{url}/{wh_id}", json={'url': delivery_url, 'active': True, 'events': ['*']}, headers=headers, timeout=8)
-                    if up.status_code in (200, 204):
-                        return True, f"Updated existing OpenWA webhook to: {target_webhook_url}"
+        if res.status_code != 200:
+            return False, f"OpenWA refused to list webhooks: HTTP {res.status_code} (check Server URL, Session ID and API key)", None
+        ours = [w for w in res.json() if str(w.get('url', '')).split('?')[0] == target_webhook_url and w.get('id')]
 
-        # 2. Register new webhook
+        removed = 0
+        for extra in ours[1:]:
+            if requests.delete(f"{url}/{extra['id']}", headers=headers, timeout=8).status_code in (200, 204):
+                removed += 1
+        note = f" Removed {removed} duplicate webhook(s)." if removed else ""
+
+        if ours:
+            keep = ours[0]
+            events = keep.get('events') or []
+            healthy = keep.get('url') == delivery_url and keep.get('active') and ('*' in events or 'message.received' in events)
+            if healthy:
+                return True, f"Webhook already active and delivering to: {target_webhook_url}.{note}", keep['id']
+            up = requests.patch(f"{url}/{keep['id']}", json={'url': delivery_url, 'active': True, 'events': ['*']}, headers=headers, timeout=8)
+            if up.status_code in (200, 204):
+                return True, f"Repaired the OpenWA webhook (URL/token/events) for: {target_webhook_url}.{note}", keep['id']
+            return False, f"OpenWA refused to update the webhook: HTTP {up.status_code}", keep['id']
+
         create_res = requests.post(url, json={'url': delivery_url, 'events': ['*']}, headers=headers, timeout=8)
         if create_res.status_code in (200, 201):
-            return True, f"Successfully registered new webhook pointing to: {target_webhook_url}"
-        return False, f"Failed to register webhook on OpenWA: HTTP {create_res.status_code}"
+            return True, f"Successfully registered new webhook pointing to: {target_webhook_url}", (create_res.json() or {}).get('id')
+        return False, f"Failed to register webhook on OpenWA: HTTP {create_res.status_code}", None
     except Exception as e:
-        return False, f"Network error connecting to OpenWA: {e}"
+        return False, f"Network error connecting to OpenWA: {e}", None
+
+
+def run_pipeline_test(target_webhook_url):
+    """
+    Check every link WhatsApp → OpenWA → this server, repair the webhook, then have OpenWA fire a
+    real test delivery at us. Returns {"ok": bool, "steps": [{"name", "ok", "detail"}], "verdict": str}.
+    """
+    from apps.wa_agent_bot.services import webhook_trace
+    from apps.wa_agent_bot.views import is_wa_bot_enabled
+
+    steps = []
+
+    def step(name, ok, detail):
+        steps.append({"name": name, "ok": bool(ok), "detail": detail})
+        return ok
+
+    def done(verdict):
+        return {"ok": all(s["ok"] for s in steps), "steps": steps, "verdict": verdict}
+
+    if not step("Bot master switch", is_wa_bot_enabled(), "ON" if is_wa_bot_enabled() else "OFF"):
+        return done("Turn the bot ON with the Bot button at the top of this page, then run the test again.")
+
+    secret = os.environ.get('WA_BOT_WEBHOOK_SECRET', '').strip()
+    if not step("Webhook secret on this server", secret, "set" if secret else "WA_BOT_WEBHOOK_SECRET is missing"):
+        return done("Add WA_BOT_WEBHOOK_SECRET to this server's .env, restart the app, then run the test again.")
+
+    status = get_openwa_session_status()
+    if not step("OpenWA server reachable", status.get('online'), status.get('error') or f"{status.get('latency_ms')} ms"):
+        return done("This server cannot reach OpenWA. Check Server URL / API key in Server Settings, and that the OpenWA service is running.")
+    connected = status.get('is_connected')
+    step(
+        "WhatsApp session connected",
+        connected,
+        f"+{status.get('phone')}" if connected and status.get('phone') else f"status: {status.get('status')}",
+    )
+
+    ok, message, webhook_id = sync_openwa_webhook(target_webhook_url)
+    if not step("Webhook registered in OpenWA", ok, message) or not webhook_id:
+        return done("OpenWA would not accept the webhook. Check the Session ID and API key in Server Settings.")
+
+    started = time.time()
+    try:
+        res = requests.post(f"{_webhooks_api()}/{webhook_id}/test", headers=_get_headers(), timeout=25)
+        result = res.json() if res.status_code in (200, 201) else {"success": False, "error": f"OpenWA test call failed: HTTP {res.status_code}"}
+    except Exception as e:
+        result = {"success": False, "error": f"OpenWA test call failed: {e}"}
+
+    seen = webhook_trace.last_seen() or {}
+    arrived = float(seen.get("ts") or 0) >= started
+    code = result.get("statusCode")
+    if result.get("success"):
+        step("OpenWA → this server (test delivery)", True, f"delivered, HTTP {code or 200}")
+        if not connected:
+            return done("The link works, but the WhatsApp session is not connected: open OpenWA and scan the QR code.")
+        return done(
+            f"Everything is connected. Send LIAFI from another phone to +{status.get('phone')} "
+            "and it will appear under Recent WhatsApp messages."
+        )
+
+    detail = f"HTTP {code}" if code else str(result.get("error") or "failed")
+    step("OpenWA → this server (test delivery)", False, detail)
+    if arrived:
+        events = webhook_trace.recent()
+        why = events[0]["detail"] if events else "rejected"
+        return done(f"The test reached this server but was refused: {why}")
+    if code in (403, 429, 503):
+        return done(
+            f"The test was blocked with HTTP {code} BEFORE it reached this server. That is Cloudflare (or the host firewall) "
+            "blocking the OpenWA server. In Cloudflare: Security → WAF → Custom rules → add a rule "
+            "'URI Path equals /wa-bot/webhook/' with action Skip (all security features), then run this test again."
+        )
+    return done(f"OpenWA could not deliver the test ({detail}) and nothing reached this server. Check that OpenWA can reach {target_webhook_url}.")
 
 
 def _get_headers():

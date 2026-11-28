@@ -1845,6 +1845,10 @@
   "access": "super_only",
   "name": "admin_wa_messages"
  },
+ "admin/whatsapp/pipeline-test/": {
+  "access": "super_only",
+  "name": "admin_wa_pipeline_test"
+ },
  "admin/whatsapp/resend-creds/<int:session_id>/": {
   "access": "super_only",
   "name": "admin_wa_resend_credentials"

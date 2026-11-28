@@ -150,7 +150,14 @@
                 <h5 class="fw-bold mb-1"><i class="fa-solid fa-stethoscope text-primary me-2"></i>Live diagnostics</h5>
                 <div class="text-muted small">Send a WhatsApp message to the bot number, then press Refresh to see what happened to it.</div>
             </div>
-            <a href="#liveDiagnostics" onclick="location.reload(); return false;" class="btn btn-sm btn-outline-primary fw-bold"><i class="fa-solid fa-rotate me-1"></i> Refresh</a>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-primary fw-bold" id="btnPipelineTest" onclick="runPipelineTest()"><i class="fa-solid fa-vial me-1"></i> Run full connection test</button>
+                <a href="#liveDiagnostics" onclick="location.reload(); return false;" class="btn btn-sm btn-outline-primary fw-bold"><i class="fa-solid fa-rotate me-1"></i> Refresh</a>
+            </div>
+        </div>
+        <div id="pipelineResult" class="mb-3" role="status" aria-live="polite" hidden>
+            <ul class="list-group mb-2" id="pipelineSteps"></ul>
+            <div class="alert mb-0 fw-bold" id="pipelineVerdict"></div>
         </div>
 
         <ul class="list-group list-group-flush mb-3">
@@ -635,6 +642,46 @@
 </div>
 
 <script>
+    // ── Full connection test (checks + repairs the webhook, then OpenWA fires a test at us) ──
+    function runPipelineTest() {
+        const btn = document.getElementById('btnPipelineTest');
+        const box = document.getElementById('pipelineResult');
+        const list = document.getElementById('pipelineSteps');
+        const verdict = document.getElementById('pipelineVerdict');
+        btn.disabled = true;
+        btn.textContent = 'Testing… (up to 30 seconds)';
+        fetch("{% url 'admin_wa_pipeline_test' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(d => {
+            list.replaceChildren();
+            (d.steps || []).forEach(s => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex gap-2';
+                const mark = document.createElement('span');
+                mark.className = s.ok ? 'text-success' : 'text-danger';
+                mark.textContent = s.ok ? '✔' : '✘';
+                const text = document.createElement('span');
+                const name = document.createElement('strong');
+                name.textContent = s.name + ': ';
+                text.append(name, s.detail);
+                li.append(mark, text);
+                list.append(li);
+            });
+            verdict.className = 'alert mb-0 fw-bold ' + (d.ok ? 'alert-success' : 'alert-danger');
+            verdict.textContent = d.verdict || d.error || 'Test failed';
+            box.hidden = false;
+        })
+        .catch(err => {
+            verdict.className = 'alert mb-0 fw-bold alert-danger';
+            verdict.textContent = 'Request error: ' + err;
+            box.hidden = false;
+        })
+        .finally(() => { btn.disabled = false; btn.textContent = 'Run full connection test'; });
+    }
+
     // ── Bot flows on/off ───────────────────────────────────────────
     function toggleFlow(input) {
         input.disabled = true;

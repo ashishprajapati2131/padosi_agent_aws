@@ -345,7 +345,7 @@ class WaBotAdminTests(TestCase):
 
     @patch("apps.admin_panel.views.wa_bot_admin.sync_openwa_webhook")
     def test_sync_webhook(self, mock_sync):
-        mock_sync.return_value = (True, "Webhook synced successfully")
+        mock_sync.return_value = (True, "Webhook synced successfully", "wh_1")
         req = self._auth_request(
             self.factory.post(
                 "/admin/whatsapp/sync-webhook/",

@@ -22,6 +22,7 @@ from ..views.wa_bot_admin import (
     wa_bot_save_config,
     wa_bot_save_liafi,
     wa_bot_toggle_flow,
+    wa_bot_pipeline_test,
     wa_bot_sync_webhook,
     wa_bot_list_remote_sessions,
 )
@@ -53,6 +54,7 @@ urlpatterns = [
     path("admin/whatsapp/save-config/", wa_bot_save_config, name="admin_wa_save_config"),
     path("admin/whatsapp/save-liafi/", wa_bot_save_liafi, name="admin_wa_save_liafi"),
     path("admin/whatsapp/toggle-flow/", wa_bot_toggle_flow, name="admin_wa_toggle_flow"),
+    path("admin/whatsapp/pipeline-test/", wa_bot_pipeline_test, name="admin_wa_pipeline_test"),
     path("admin/whatsapp/sync-webhook/", wa_bot_sync_webhook, name="admin_wa_sync_webhook"),
     path("admin/whatsapp/list-sessions/", wa_bot_list_remote_sessions, name="admin_wa_list_remote_sessions"),
 ]

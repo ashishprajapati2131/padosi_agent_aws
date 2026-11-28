@@ -261,6 +261,10 @@ def webhook_receiver(request):
         "chat",
     ):
         # Not a message event — acknowledge and ignore
+        if event == "test":
+            webhook_trace.record(
+                webhook_trace.PROCESSED, "Connection test from OpenWA received: the link works"
+            )
         return JsonResponse(
             {"status": "ignored", "reason": f"event type: {event}"}, status=200
         )
