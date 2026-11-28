@@ -163,8 +163,16 @@ class VisitingCardStudioAdminTestCase(TestCase):
         self.profile.card_config = {'whatsapp_msg': ''}
         self.profile.save()
         self.client.cookies['padosi_lang'] = 'gu'
+        # The card no longer carries the WhatsApp link: it is handed out by /connect/ once the
+        # visitor leaves a name and number, in the visitor's language.
         res = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': self.profile.slug}))
-        self.assertIn(quote('નમસ્તે'), res.content.decode())
+        self.assertNotIn(quote('નમસ્તે'), res.content.decode())
+        opened = self.client.post(
+            reverse('agents:agent_card_connect', kwargs={'slug': self.profile.slug}),
+            {'customer_name': 'Ramesh Bhai', 'customer_mobile': '9898989898', 'interaction_type': 'whatsapp'},
+        )
+        self.assertEqual(opened.status_code, 200, opened.content)
+        self.assertIn(quote('નમસ્તે'), opened.json().get('url', ''))
 
     def test_admin_agent_override_saves_whatsapp_i18n(self):
         self._login_admin(self.admin)
