@@ -155,6 +155,11 @@ class ThreatMonitorMiddleware:
             "/robots.txt",
         ]:
             return self.get_response(request)
+        # The WhatsApp webhook carries other people's chat text and authenticates with its own
+        # secret token. Scanning it let three odd customer messages auto-ban the OpenWA server's
+        # IP for 24 h, which silently stopped the bot for everyone.
+        if request.path == "/wa-bot/webhook/":
+            return self.get_response(request)
         # 1. Get Client IP Address safely
         remote_addr = request.META.get("REMOTE_ADDR", "")
         ip = self.get_client_ip(request)

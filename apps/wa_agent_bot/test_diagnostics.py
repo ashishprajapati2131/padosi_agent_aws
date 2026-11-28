@@ -106,3 +106,30 @@ class SimulatorProductionGateTests(SimpleTestCase):
             response = simulator_views.simulator_payment(self._request())
         self.assertEqual(response.status_code, 403)
         self.assertIn("disabled in production", json.loads(response.content)["message"])
+
+
+class WebhookFirewallTests(SimpleTestCase):
+    """Customer chat text must not let the firewall ban the OpenWA server and silence the bot."""
+
+    def _middleware(self):
+        from django.http import HttpResponse
+
+        from apps.admin_panel.middleware.security import ThreatMonitorMiddleware
+
+        return ThreatMonitorMiddleware(lambda request: HttpResponse("reached"))
+
+    def _post(self, path):
+        body = {"event": "message.received", "data": {"from": "91999@c.us", "body": "javascript: ../../ x"}}
+        request = RequestFactory().post(path, data=json.dumps(body), content_type="application/json")
+        request.META["REMOTE_ADDR"] = "203.0.113.7"
+        return request
+
+    def test_webhook_skips_ip_ban_and_content_scan(self):
+        with patch("apps.admin_panel.middleware.security.is_ip_blocked", return_value=True):
+            response = self._middleware()(self._post("/wa-bot/webhook/"))
+        self.assertEqual(response.content, b"reached")
+
+    def test_other_paths_stay_protected(self):
+        with patch("apps.admin_panel.middleware.security.is_ip_blocked", return_value=True):
+            response = self._middleware()(self._post("/contact/"))
+        self.assertEqual(response.status_code, 403)
