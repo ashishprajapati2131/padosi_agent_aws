@@ -55,6 +55,7 @@ urlpatterns = [
     path('card/<str:slug>/qr.png', qr_views.agent_card_pure_qr_image, name='agent_card_pure_qr'),
     path('card/<str:slug>/vcard/', qr_views.agent_card_vcf_download, name='agent_card_vcf'),
     path('card/<str:slug>/lead/',  qr_views.agent_card_lead_submit, name='agent_card_lead_submit'),
+    path('card/<str:slug>/connect/', qr_views.agent_card_connect, name='agent_card_connect'),
     path('agent/card/customize/', qr_views.agent_save_card_customization, name='agent_save_card_customization'),
     re_path(r'^qr/(?P<slug>[^/]+)/(?P<qr_type>profile|card|reviews)\.png$', qr_views.public_qr_image, name='agent_public_qr_image'),
     path('agent/edit-profile/', dashboard.edit_profile,         name='agent_edit_profile'),

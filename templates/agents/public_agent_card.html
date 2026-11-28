@@ -1208,6 +1208,126 @@
             transition-duration: 0.01ms !important;
         }
     }
+    .swal2-popup.pa-connect-popup {
+        width: min(420px, calc(100vw - 28px)) !important;
+        border-radius: 24px !important;
+        padding: 18px 22px 16px !important;
+        font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+        box-shadow: 0 18px 50px rgba(37, 99, 235, 0.16), 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+    }
+    .swal2-popup.pa-connect-popup .swal2-image {
+        width: 148px !important;
+        height: 40px !important;
+        margin: 2px auto 8px !important;
+        object-fit: contain;
+    }
+    .swal2-popup.pa-connect-popup .swal2-title {
+        margin: 0 8px 12px !important;
+        padding: 0 !important;
+        color: #1d4ed8 !important;
+        font-size: 20px !important;
+        line-height: 1.3 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
+    }
+    .swal2-popup.pa-connect-popup .swal2-html-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        text-align: left !important;
+        overflow: visible !important;
+    }
+    .pa-connect-field { margin-bottom: 12px; }
+    .pa-connect-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 0 6px;
+        color: #1f2937;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .pa-connect-label svg { width: 14px; height: 14px; fill: #6b7280; flex: 0 0 auto; }
+    .pa-connect-req { color: #ef4444; }
+    .pa-connect-input {
+        width: 100%;
+        height: 44px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        padding: 0 14px;
+        font-size: 15px;
+        color: #111827;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+    .pa-connect-input::placeholder { color: #9ca3af; }
+    .pa-connect-input:focus { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+    .pa-connect-phone {
+        display: flex;
+        align-items: stretch;
+        height: 44px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        overflow: hidden;
+    }
+    .pa-connect-phone:focus-within { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+    .pa-connect-cc {
+        flex: 0 0 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 700;
+        border-right: 1.5px solid #e5e7eb;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+    }
+    .pa-connect-input--phone {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .pa-connect-input--phone:focus { box-shadow: none; }
+    .pa-connect-error {
+        display: none;
+        margin: 0 0 10px;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    .swal2-popup.pa-connect-popup .swal2-actions {
+        width: 100%;
+        display: flex !important;
+        flex-direction: column;
+        gap: 8px;
+        margin: 6px 0 0 !important;
+        padding: 0;
+    }
+    .swal2-popup.pa-connect-popup .pa-connect-confirm {
+        width: 100%;
+        height: 46px;
+        margin: 0;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #3b82f6, #2563eb);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+        font-family: inherit;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
+    }
+    .swal2-popup.pa-connect-popup .pa-connect-confirm:hover { filter: brightness(1.05); }
 </style>
 {% endblock %}
 
@@ -1307,7 +1427,7 @@
                         <!-- Primary Actions (1-Tap Save Contact, QR, Share in 1 Line) -->
                         <div class="advisor-action-strip" aria-label="Quick Actions">
                             {% if show_save_contact %}
-                            <a href="{{ vcard_url }}" class="btn-action-primary" id="saveContactHeaderBtn" aria-label="Save {{ agentDisplayName }}'s Contact">
+                            <a href="javascript:void(0)" class="btn-action-primary" id="saveContactHeaderBtn" aria-label="Save {{ agentDisplayName }}'s Contact" onclick="return window.handleCardContactClick(event, this, 'save', {{ agent.id }});">
                                 <i class="fas fa-address-card" aria-hidden="true"></i>
                                 <span>Save Contact</span>
                             </a>
@@ -1324,8 +1444,8 @@
 
                         <!-- Direct Contact Quick Action Tiles -->
                         <div class="advisor-quick-tiles-grid" aria-label="Direct Quick Contact Options">
-                            {% if show_call and call_url %}
-                            <a href="{{ call_url }}" class="quick-contact-tile tile-phone" aria-label="Call {{ agentDisplayName }}">
+                            {% if show_call %}
+                            <a href="javascript:void(0)" class="quick-contact-tile tile-phone" aria-label="Call {{ agentDisplayName }}" onclick="return window.handleCardContactClick(event, this, 'call', {{ agent.id }});">
                                 <div class="quick-contact-icon">
                                     <i class="fas fa-phone" aria-hidden="true"></i>
                                 </div>
@@ -1333,8 +1453,8 @@
                             </a>
                             {% endif %}
 
-                            {% if show_whatsapp and whatsapp_url %}
-                            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-whatsapp" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
+                            {% if show_whatsapp %}
+                            <a href="javascript:void(0)" class="quick-contact-tile tile-whatsapp" aria-label="Chat with {{ agentDisplayName }} on WhatsApp" onclick="return window.handleCardContactClick(event, this, 'whatsapp', {{ agent.id }});">
                                 <div class="quick-contact-icon"><i class="fab fa-whatsapp" aria-hidden="true"></i></div>
                                 <span class="quick-contact-label">WhatsApp</span>
                             </a>
@@ -1596,31 +1716,6 @@
                         </span>
                     </h2>
 
-                    <!-- Direct Advisor Phone Box -->
-                    <div class="direct-call-card">
-                        <div class="direct-call-header">
-                            <div class="direct-call-icon" aria-hidden="true"><i class="fas fa-phone"></i></div>
-                            <div>
-                                <div class="direct-call-sub">Direct Advisor Contact</div>
-                                <div class="direct-call-phone">
-                                    {% if mobile_number %}+91 {{ mobile_number }}{% else %}Online Consultation{% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="direct-call-btn-row">
-                            {% if show_call and call_url %}
-                            <a href="{{ call_url }}" class="btn-direct-contact btn-direct-call" aria-label="Call {{ agentDisplayName }} now">
-                                <i class="fas fa-phone me-1" aria-hidden="true"></i> Call Now
-                            </a>
-                            {% endif %}
-                            {% if show_whatsapp and whatsapp_url %}
-                            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn-direct-contact btn-direct-wa" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
-                                <i class="fab fa-whatsapp" aria-hidden="true"></i> Chat on WhatsApp
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-
                     <!-- Direct Lead Enquiry Form -->
                     <div class="lead-form-box">
                         <form id="advisorLeadEnquiryForm" novalidate>
@@ -1744,21 +1839,23 @@
     </div>
 </div>
 
+<form id="cardContactCsrfForm" style="display:none;">{% csrf_token %}</form>
+
 <!-- Floating Bottom Sticky Bar for Mobile Touch Targets -->
 <aside class="advisor-sticky-mobile-bar" aria-label="Quick Mobile Actions">
     {% if show_save_contact %}
-    <a href="{{ vcard_url }}" class="sm-btn-save" aria-label="Save {{ agentDisplayName }}'s Contact to Phone">
+    <a href="javascript:void(0)" class="sm-btn-save" aria-label="Save {{ agentDisplayName }}'s Contact to Phone" onclick="return window.handleCardContactClick(event, this, 'save', {{ agent.id }});">
         <i class="fas fa-address-card" aria-hidden="true"></i>
         <span>Save Contact</span>
     </a>
     {% endif %}
-    {% if show_call and call_url %}
-    <a href="{{ call_url }}" class="sm-btn-icon-touch sm-call-bg" aria-label="Call {{ agentDisplayName }}">
+    {% if show_call %}
+    <a href="javascript:void(0)" class="sm-btn-icon-touch sm-call-bg" aria-label="Call {{ agentDisplayName }}" onclick="return window.handleCardContactClick(event, this, 'call', {{ agent.id }});">
         <i class="fas fa-phone" aria-hidden="true"></i>
     </a>
     {% endif %}
-    {% if show_whatsapp and whatsapp_url %}
-    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="sm-btn-icon-touch sm-wa-bg" aria-label="Chat on WhatsApp">
+    {% if show_whatsapp %}
+    <a href="javascript:void(0)" class="sm-btn-icon-touch sm-wa-bg" aria-label="Chat on WhatsApp" onclick="return window.handleCardContactClick(event, this, 'whatsapp', {{ agent.id }});">
         <i class="fab fa-whatsapp" aria-hidden="true"></i>
     </a>
     {% endif %}
@@ -2029,6 +2126,195 @@
             alert(msg);
         }
     }
+    window.handleCardContactClick = function(event, element, interactionType, agentId) {
+        event.preventDefault();
+        if (element.getAttribute('data-submitting') === 'true') return false;
+        element.setAttribute('data-submitting', 'true');
+
+        var VISITOR_KEY = 'pa_card_visitor';
+        var connectUrl = "{{ connect_url|escapejs }}";
+        var labels = { call: 'Call', whatsapp: 'WhatsApp', save: 'Save contact' };
+        var actionLabel = labels[interactionType] || 'Continue';
+
+        var readVisitor = function() {
+            try {
+                var saved = JSON.parse(sessionStorage.getItem(VISITOR_KEY) || 'null');
+                return (saved && saved.fullname && saved.mobile) ? saved : null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        var getCsrfToken = function() {
+            var el = document.querySelector('[name=csrfmiddlewaretoken]');
+            return el ? el.value : '';
+        };
+
+        var release = function() {
+            element.removeAttribute('data-submitting');
+        };
+
+        var openDestination = function(url) {
+            if (window.trackGaEvent && interactionType !== 'save') {
+                window.trackGaEvent(
+                    interactionType === 'whatsapp' ? 'click_to_whatsapp' : 'click_to_call',
+                    {
+                        event_category: 'lead_action',
+                        event_label: interactionType,
+                        agent_id: agentId,
+                        page_path: window.location.pathname
+                    }
+                );
+            }
+            if (interactionType === 'whatsapp') {
+                var win = window.open(url, '_blank', 'noopener');
+                if (!win) window.location.href = url;
+            } else {
+                window.location.href = url;
+            }
+        };
+
+        var postLeadAndGo = function(visitor) {
+            var body = new FormData();
+            body.append('csrfmiddlewaretoken', getCsrfToken());
+            body.append('customer_name', visitor.fullname);
+            body.append('customer_mobile', visitor.mobile);
+            body.append('interaction_type', interactionType);
+            body.append('company_website', '');
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Connecting you...',
+                    allowOutsideClick: false,
+                    didOpen: function() { Swal.showLoading(); }
+                });
+            }
+
+            fetch(connectUrl, {
+                method: 'POST',
+                body: body,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                return response.json().then(function(data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function(result) {
+                if (typeof Swal !== 'undefined') Swal.close();
+                release();
+                var data = result.data || {};
+                if (result.ok && data.success && data.url) {
+                    openDestination(data.url);
+                    return;
+                }
+                var message = data.message || 'Something went wrong. Please try again.';
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'info', title: 'Notice', text: message, confirmButtonColor: '#0B1F3A' });
+                } else {
+                    alert(message);
+                }
+            })
+            .catch(function() {
+                if (typeof Swal !== 'undefined') Swal.close();
+                release();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Network issue', text: 'Please try again.', confirmButtonColor: '#0B1F3A' });
+                } else {
+                    alert('Please try again.');
+                }
+            });
+        };
+
+        var askVisitor = function() {
+            if (typeof Swal === 'undefined') {
+                release();
+                alert('Please enter your name and mobile number to continue.');
+                return;
+            }
+            var formHtml = [
+                '<div id="swal-error-box" class="pa-connect-error" role="alert"></div>',
+                '<div style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">',
+                '<label for="swal-company">Company</label><input id="swal-company" tabindex="-1" autocomplete="off">',
+                '</div>',
+                '<div class="pa-connect-field">',
+                '<label class="pa-connect-label" for="swal-fullname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>Name <span class="pa-connect-req">*</span></label>',
+                '<input class="pa-connect-input" type="text" id="swal-fullname" autocomplete="name" maxlength="80" placeholder="Enter your full name">',
+                '</div>',
+                '<div class="pa-connect-field">',
+                '<label class="pa-connect-label" for="swal-mobile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8c.4-.4 1-.5 1.5-.3l2.2.9c.5.2.8.7.8 1.2l-.2 2.4c0 .4-.2.8-.6 1l-1.3.7a12.6 12.6 0 0 0 5.9 5.9l.7-1.3c.2-.4.6-.6 1-.6l2.4-.2c.5 0 1 .3 1.2.8l.9 2.2c.2.5.1 1.1-.3 1.5l-1.6 1.6c-.4.4-1 .6-1.6.5C10.2 19.4 4.6 13.8 4 7c-.1-.6.1-1.2.5-1.6l2.1-1.6z"/></svg>Mobile Number <span class="pa-connect-req">*</span></label>',
+                '<div class="pa-connect-phone">',
+                '<span class="pa-connect-cc">+91</span>',
+                '<input class="pa-connect-input pa-connect-input--phone" type="tel" id="swal-mobile" maxlength="10" inputmode="numeric" autocomplete="tel" placeholder="98765 43210">',
+                '</div></div>'
+            ].join('');
+            Swal.fire({
+                imageUrl: "{% static 'img/logo-400.webp' %}",
+                imageAlt: 'PadosiAgent',
+                title: 'Please enter your name and number',
+                html: formHtml,
+                showCancelButton: false,
+                confirmButtonText: actionLabel,
+                focusConfirm: false,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'pa-connect-popup',
+                    confirmButton: 'pa-connect-confirm'
+                },
+                didOpen: function() {
+                    var mobileInput = document.getElementById('swal-mobile');
+                    if (mobileInput) {
+                        mobileInput.addEventListener('input', function() {
+                            mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '');
+                        });
+                    }
+                },
+                preConfirm: function() {
+                    var fullname = document.getElementById('swal-fullname').value.trim();
+                    var mobile = document.getElementById('swal-mobile').value.trim();
+                    var company = document.getElementById('swal-company').value.trim();
+                    var errBox = document.getElementById('swal-error-box');
+                    errBox.style.display = 'none';
+                    errBox.textContent = '';
+                    if (company) {
+                        errBox.textContent = 'Could not continue. Please try again.';
+                        errBox.style.display = 'block';
+                        return false;
+                    }
+                    if (fullname.length < 2) {
+                        errBox.textContent = 'Please enter your name.';
+                        errBox.style.display = 'block';
+                        return false;
+                    }
+                    if (!/^[6-9][0-9]{9}$/.test(mobile)) {
+                        errBox.textContent = 'Please enter a valid 10-digit mobile number.';
+                        errBox.style.display = 'block';
+                        return false;
+                    }
+                    return { fullname: fullname, mobile: mobile };
+                }
+            }).then(function(result) {
+                if (!result.isConfirmed || !result.value) {
+                    release();
+                    return;
+                }
+                try {
+                    sessionStorage.setItem(VISITOR_KEY, JSON.stringify(result.value));
+                } catch (e) {}
+                postLeadAndGo(result.value);
+            });
+        };
+
+        var knownVisitor = readVisitor();
+        if (knownVisitor) {
+            postLeadAndGo(knownVisitor);
+        } else {
+            askVisitor();
+        }
+        return false;
+    };
+
 })();
 </script>
 {% endblock %}

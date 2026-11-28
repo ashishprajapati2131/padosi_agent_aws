@@ -108,7 +108,11 @@ def digital_card_studio_index(request):
     page_num = request.GET.get('page', 1)
 
     agents_qs = Agent.objects.select_related('profile', 'user').annotate(
-        card_leads_count=Count('leads', filter=Q(leads__interaction_type='digital_card_enquiry'), distinct=True)
+        card_leads_count=Count(
+            'leads',
+            filter=Q(leads__interaction_type='digital_card_enquiry') | Q(leads__source_page='digital-card'),
+            distinct=True,
+        )
     ).order_by('-id')
 
     if search_q:

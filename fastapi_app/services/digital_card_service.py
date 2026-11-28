@@ -632,23 +632,8 @@ class DigitalCardService:
         if not re.match(r"^#[A-Fa-f0-9]{6}$", str(theme)):
             theme = "#0B1F3A"
 
-        mobile_raw = str(getattr(agent, "mobile", "") or profile.whatsapp or "").strip()
-        whatsapp_raw = str(profile.whatsapp or getattr(agent, "mobile", "") or "").strip()
-        mobile_digits = re.sub(r"[^0-9]", "", mobile_raw)
-        whatsapp_digits = re.sub(r"[^0-9]", "", whatsapp_raw)
-        if len(whatsapp_digits) == 10:
-            whatsapp_digits = "91" + whatsapp_digits
-        wa_msg = cfg.get("whatsapp_msg") or studio.get("default_whatsapp_msg") or ""
-        wa_msg = str(wa_msg).replace("{agent_name}", display)
-        whatsapp_url = (
-            f"https://api.whatsapp.com/send?phone={whatsapp_digits}&text={quote(wa_msg)}"
-            if whatsapp_digits and sections.get("whatsapp")
-            else None
-        )
-        call_url = None
-        if sections.get("call") and len(mobile_digits) >= 10:
-            call_url = f"tel:+91{mobile_digits[-10:]}"
-
+        # Phone and WhatsApp stay off the public payload. The website asks for the
+        # visitor's name and mobile before it opens Call or WhatsApp.
         address = (profile.office_address or profile.address or "").strip()
         maps = (
             f"https://www.google.com/maps/search/?api=1&query={quote(address)}"
@@ -696,10 +681,10 @@ class DigitalCardService:
             "card_banner_css": self.card_banner_css(profile, cfg),
             "agency_logo_url": self.media_url(profile.agency_logo_path),
             "profile_photo_url": self.media_url(profile.profile_photo_path),
-            "mobile": mobile_digits[-10:] if len(mobile_digits) >= 10 else mobile_digits or None,
+            "mobile": None,
             "email": agent.email if sections.get("email") else None,
-            "whatsapp_url": whatsapp_url,
-            "call_url": call_url,
+            "whatsapp_url": None,
+            "call_url": None,
             "address": address if sections.get("address") else None,
             "google_maps_url": maps,
             "effective_sections": sections,
@@ -732,8 +717,6 @@ class DigitalCardService:
         name = (profile.display_name or agent.fullname or "Insurance Advisor").strip()
         parts = name.split(" ", 1)
         first_name, last_name = parts[0], (parts[1] if len(parts) > 1 else "")
-        mobile = getattr(agent, "mobile", "") or profile.whatsapp or ""
-        email = agent.email or ""
         agency = profile.agency_name or "PadosiAgent"
         address = profile.office_address or profile.address or ""
         agent_slug = (profile.slug or "").strip() or str(slug)
@@ -748,10 +731,6 @@ class DigitalCardService:
             f"ORG;CHARSET=UTF-8:{agency}",
             "TITLE;CHARSET=UTF-8:Certified Insurance Advisor",
         ]
-        if mobile:
-            lines.append(f"TEL;TYPE=CELL,VOICE;CHARSET=UTF-8:{mobile}")
-        if email:
-            lines.append(f"EMAIL;TYPE=PREF,INTERNET:{email}")
         if profile_url:
             lines.append(f"URL;CHARSET=UTF-8:{profile_url}")
         if address:

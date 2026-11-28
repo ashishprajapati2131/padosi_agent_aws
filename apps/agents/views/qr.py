@@ -202,6 +202,98 @@ def _card_viewer_is_privileged(request, agent):
         return False
 
 
+_CARD_UNLOCK_SESSION_KEY = "card_phone_unlocked"
+
+
+def _card_phone_digits(value):
+    digits = re.sub(r"[^0-9]", "", str(value or ""))
+    if len(digits) > 10:
+        digits = digits[-10:]
+    return digits if len(digits) == 10 else ""
+
+
+def _card_call_digits(agent, profile):
+    return _card_phone_digits(getattr(agent, "mobile", "")) or _card_phone_digits(
+        getattr(profile, "whatsapp", "") if profile else ""
+    )
+
+
+def _card_whatsapp_digits(agent, profile):
+    return _card_phone_digits(
+        getattr(profile, "whatsapp", "") if profile else ""
+    ) or _card_phone_digits(getattr(agent, "mobile", ""))
+
+
+def _mark_card_phone_unlocked(request, agent_id):
+    unlocked = [int(item) for item in (request.session.get(_CARD_UNLOCK_SESSION_KEY) or [])]
+    agent_id = int(agent_id)
+    if agent_id not in unlocked:
+        unlocked.append(agent_id)
+    request.session[_CARD_UNLOCK_SESSION_KEY] = unlocked[-20:]
+    request.session.modified = True
+
+
+def _card_phone_unlocked(request, agent):
+    if _card_viewer_is_privileged(request, agent):
+        return True
+    unlocked = request.session.get(_CARD_UNLOCK_SESSION_KEY) or []
+    return int(agent.id) in {int(item) for item in unlocked}
+
+
+def _card_contact_url(request, agent, profile, interaction, customer_name):
+    """Destination opened only after a lead is stored. Never rendered on the public page."""
+    if interaction == "save":
+        slug = (
+            (getattr(profile, "slug", None) if profile else None)
+            or getattr(agent, "agent_slug", None)
+            or str(agent.id)
+        )
+        return reverse("agents:agent_card_vcf", kwargs={"slug": slug})
+
+    if interaction == "call":
+        digits = _card_call_digits(agent, profile)
+        return f"tel:+91{digits}" if digits else ""
+
+    digits = _card_whatsapp_digits(agent, profile)
+    if not digits:
+        return ""
+    import urllib.parse
+
+    agent_name = (
+        (getattr(profile, "display_name", "") if profile else "")
+        or getattr(agent, "fullname", "")
+        or "Advisor"
+    ).strip()
+    from apps.home.services.message_languages import pick, request_language
+    from apps.admin_panel.services.digital_card_studio import (
+        get_digital_card_studio_config,
+    )
+
+    card_cfg = profile.get_card_config() if profile and hasattr(profile, "get_card_config") else {}
+    wa_lang = request_language(request)
+    custom = (card_cfg.get("whatsapp_msg") or "").strip()
+    if custom:
+        custom = pick(custom, card_cfg.get("whatsapp_msg_i18n"), wa_lang)
+    else:
+        studio_cfg = get_digital_card_studio_config()
+        custom = (
+            studio_cfg.get("default_whatsapp_msg")
+            or "Hello {agent_name}, I saw your visiting card on PadosiAgent."
+        )
+        custom = pick(custom, studio_cfg.get("default_whatsapp_msg_i18n"), wa_lang)
+        custom = pick(custom, card_cfg.get("whatsapp_msg_i18n"), wa_lang)
+    message = (custom or "").replace("{agent_name}", agent_name)
+    if customer_name and customer_name not in message:
+        message += f"\n\nRegards,\n{customer_name}"
+    return (
+        "https://api.whatsapp.com/send/?phone=91"
+        + digits
+        + "&text="
+        + urllib.parse.quote(message)
+        + "&type=phone_number&app_absent=0"
+    )
+
+
 def _safe_card_link(url):
     """Allow only http(s), relative, tel: and mailto: links (browsers ignore tabs/newlines in schemes)."""
     url = (url or "").strip()
@@ -645,6 +737,9 @@ def public_agent_card(request, slug):
         "lead_submit_url": reverse(
             "agents:agent_card_lead_submit", kwargs={"slug": agent_slug}
         ),
+        "connect_url": reverse(
+            "agents:agent_card_connect", kwargs={"slug": agent_slug}
+        ),
         "card_qr_url": reverse(
             "agents:agent_card_pure_qr", kwargs={"slug": agent_slug}
         ),
@@ -680,6 +775,143 @@ def public_agent_card(request, slug):
             pass
 
     return render(request, "agents/public_agent_card.html", ctx)
+
+
+@require_POST
+def agent_card_connect(request, slug):
+    """Take the visitor's name and mobile, store the lead on this agent, then return Call or WhatsApp.
+
+    The public card never includes the agent's number. This is the only way to receive it.
+    """
+    from django.http import JsonResponse
+    from django.core.cache import cache
+    from django.utils import timezone
+    from apps.home.models import SiteSetting
+    from apps.agents.models import AgentLead
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware, is_ip_blocked
+
+    raw_flag = SiteSetting.get_value("agent_digital_card_enabled", True)
+    if raw_flag is not None and str(raw_flag).strip().lower() not in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        return JsonResponse(
+            {"success": False, "message": "This visiting card is not accepting contacts right now."},
+            status=403,
+        )
+
+    agent = _resolve_agent_by_slug(slug)
+    if not agent or (
+        _hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)
+    ):
+        return JsonResponse({"success": False, "message": "Agent not found."}, status=404)
+
+    client_ip = ThreatMonitorMiddleware.get_client_ip(request)
+    if is_ip_blocked(client_ip):
+        return JsonResponse({"success": False, "message": "Access denied."}, status=403)
+
+    # Filled only by bots. The field is not visible on the card.
+    if (request.POST.get("company_website") or "").strip():
+        return JsonResponse(
+            {"success": False, "message": "Could not continue. Please try again."},
+            status=400,
+        )
+
+    interaction = (request.POST.get("interaction_type") or "").strip()
+    if interaction not in ("call", "whatsapp", "save"):
+        return JsonResponse(
+            {"success": False, "message": "Choose Call or WhatsApp to continue."},
+            status=400,
+        )
+
+    customer_name = (
+        request.POST.get("customer_name") or request.POST.get("fullname") or ""
+    ).strip()
+    customer_name = re.sub(r"\s+", " ", customer_name)[:80]
+    if len(customer_name) < 2 or not re.search(r"[A-Za-z]", customer_name):
+        return JsonResponse(
+            {"success": False, "message": "Please enter your name."}, status=400
+        )
+
+    clean_mobile = re.sub(
+        r"[^0-9]",
+        "",
+        request.POST.get("customer_mobile") or request.POST.get("mobile") or "",
+    )
+    if len(clean_mobile) > 10 and clean_mobile.startswith("91"):
+        clean_mobile = clean_mobile[-10:]
+    if not re.fullmatch(r"[6-9][0-9]{9}", clean_mobile):
+        return JsonResponse(
+            {"success": False, "message": "Please enter a valid 10-digit mobile number."},
+            status=400,
+        )
+
+    rl_keys = (
+        (f"rl_card_connect_10m_{client_ip}", 8, 10 * 60),
+        (f"rl_card_connect_day_{client_ip}", 30, 24 * 60 * 60),
+    )
+    if any((cache.get(key, 0) or 0) >= limit for key, limit, _window in rl_keys):
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Too many attempts from your network. Please try again later.",
+            },
+            status=429,
+        )
+
+    profile = agent.get_primary_profile()
+    stored_type = "save_contact" if interaction == "save" else interaction
+    url = _card_contact_url(request, agent, profile, interaction, customer_name)
+    if not url:
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "This advisor has not added that contact method yet.",
+            },
+            status=404,
+        )
+
+    ten_mins_ago = timezone.now() - timezone.timedelta(minutes=10)
+    already = AgentLead.objects.filter(
+        agent=agent,
+        customer_mobile=clean_mobile,
+        interaction_type=stored_type,
+        created_at__gte=ten_mins_ago,
+    ).exists()
+    if not already:
+        notes = {
+            "call": "Asked to call you from your visiting card.",
+            "whatsapp": "Asked to WhatsApp you from your visiting card.",
+            "save_contact": "Saved your visiting card to their phone.",
+        }[stored_type]
+        lead = AgentLead.objects.create(
+            agent=agent,
+            customer_name=customer_name,
+            customer_mobile=clean_mobile,
+            interaction_type=stored_type,
+            lead_status="new",
+            service_type="Digital Visiting Card",
+            enquiry_requirements=notes,
+            source_page="digital-card",
+            ip_address=client_ip,
+        )
+        for key, _limit, window in rl_keys:
+            try:
+                if not cache.add(key, 1, timeout=window):
+                    cache.incr(key)
+            except Exception:
+                logger.warning("Card connect rate-limit counter update failed", exc_info=True)
+        try:
+            from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+
+            notify_agent_new_lead(lead)
+        except Exception:
+            logger.warning("Card connect lead alert failed", exc_info=True)
+
+    _mark_card_phone_unlocked(request, agent.id)
+    return JsonResponse({"success": True, "url": url})
 
 
 @require_GET
@@ -753,11 +985,11 @@ def agent_card_vcf_download(request, slug):
         f"ORG;CHARSET=UTF-8:{agency}",
         "TITLE;CHARSET=UTF-8:Certified Insurance Advisor",
     ]
-    if mobile:
-        lines.append(f"TEL;TYPE=CELL,VOICE;CHARSET=UTF-8:{mobile}")
-        lines.append(f"TEL;TYPE=WORK,VOICE;CHARSET=UTF-8:{mobile}")
-    if email:
-        lines.append(f"EMAIL;TYPE=PREF,INTERNET:{email}")
+    if _card_phone_unlocked(request, agent):
+        if mobile:
+            lines.append(f"TEL;TYPE=CELL,VOICE;CHARSET=UTF-8:{mobile}")
+        if email:
+            lines.append(f"EMAIL;TYPE=PREF,INTERNET:{email}")
     if profile_url:
         lines.append(f"URL;CHARSET=UTF-8:{profile_url}")
     if address or city or state or pincode:

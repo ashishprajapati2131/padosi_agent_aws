@@ -53,8 +53,12 @@ class AgentDigitalCardTestCase(TestCase):
         self.assertContains(response, 'Patel Insurance Care')
         self.assertContains(response, 'Save Contact')
         self.assertContains(response, 'Get in Touch')
+        self.assertContains(response, 'Please enter your name and number')
+        self.assertNotContains(response, 'Direct Advisor Contact')
+        self.assertNotContains(response, 'Call Now')
+        self.assertNotContains(response, '9876543210')
 
-    def test_vcard_download_returns_valid_vcf(self):
+    def test_vcard_hides_phone_until_visitor_leaves_details(self):
         url = reverse('agents:agent_card_vcf', kwargs={'slug': 'kishan-patel'})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -63,8 +67,41 @@ class AgentDigitalCardTestCase(TestCase):
         content = response.content.decode('utf-8')
         self.assertIn('BEGIN:VCARD', content)
         self.assertIn('FN;CHARSET=UTF-8:Kishan Patel', content)
-        self.assertIn('TEL;TYPE=CELL,VOICE;CHARSET=UTF-8:9876543210', content)
+        self.assertNotIn('TEL;', content)
+        self.assertNotIn('9876543210', content)
         self.assertIn('END:VCARD', content)
+
+        connect = self.client.post(
+            reverse('agents:agent_card_connect', kwargs={'slug': 'kishan-patel'}),
+            {
+                'customer_name': 'Ramesh Bhai',
+                'customer_mobile': '9898989898',
+                'interaction_type': 'save',
+            },
+        )
+        self.assertEqual(connect.status_code, 200)
+        self.assertTrue(connect.json().get('success'))
+        unlocked = self.client.get(url).content.decode('utf-8')
+        self.assertIn('TEL;TYPE=CELL,VOICE;CHARSET=UTF-8:9876543210', unlocked)
+
+    def test_call_and_whatsapp_require_name_and_phone_for_this_agent(self):
+        url = reverse('agents:agent_card_connect', kwargs={'slug': 'kishan-patel'})
+        blocked = self.client.post(url, {'interaction_type': 'call'})
+        self.assertEqual(blocked.status_code, 400)
+        self.assertNotIn('9876543210', blocked.content.decode())
+        self.assertFalse(AgentLead.objects.filter(agent=self.agent).exists())
+
+        call = self.client.post(url, {
+            'customer_name': 'Ramesh Bhai',
+            'customer_mobile': '9898989898',
+            'interaction_type': 'call',
+        })
+        self.assertEqual(call.status_code, 200)
+        self.assertEqual(call.json().get('url'), 'tel:+919876543210')
+        lead = AgentLead.objects.get(agent=self.agent, interaction_type='call')
+        self.assertEqual((lead.customer_name, lead.customer_mobile, lead.source_page), (
+            'Ramesh Bhai', '9898989898', 'digital-card',
+        ))
 
     def test_lead_submission_creates_agent_lead(self):
         url = reverse('agents:agent_card_lead_submit', kwargs={'slug': 'kishan-patel'})
@@ -193,9 +230,28 @@ class AgentDigitalCardTestCase(TestCase):
 
         card_url = reverse('agents:agent_public_card', kwargs={'slug': 'kishan-patel'})
         self.client.cookies['padosi_lang'] = 'gu'
-        self.assertIn(quote('નમસ્તે'), self.client.get(card_url).content.decode())
+        # The public page must not carry the WhatsApp link. The language is applied
+        # when the visitor leaves their name and number.
+        self.assertNotIn(quote('નમસ્તે'), self.client.get(card_url).content.decode())
+        opened = self.client.post(
+            reverse('agents:agent_card_connect', kwargs={'slug': 'kishan-patel'}),
+            {
+                'customer_name': 'Ramesh Bhai',
+                'customer_mobile': '9898989898',
+                'interaction_type': 'whatsapp',
+            },
+        )
+        self.assertIn(quote('નમસ્તે'), opened.json().get('url', ''))
         self.client.cookies['padosi_lang'] = 'ta'  # no Tamil text: falls back to base
-        self.assertIn(quote('Hello, need advice.'), self.client.get(card_url).content.decode())
+        fallback = self.client.post(
+            reverse('agents:agent_card_connect', kwargs={'slug': 'kishan-patel'}),
+            {
+                'customer_name': 'Meera Shah',
+                'customer_mobile': '9898989897',
+                'interaction_type': 'whatsapp',
+            },
+        )
+        self.assertIn(quote('Hello, need advice.'), fallback.json().get('url', ''))
 
     def test_pure_qr_code_endpoint(self):
         url = reverse('agents:agent_card_pure_qr', kwargs={'slug': 'kishan-patel'})
