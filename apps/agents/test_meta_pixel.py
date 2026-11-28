@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 
 from apps.agents.models import AgentDraft, AgentSubscription
 from apps.agents import test_payment_approval_flow as flow
+from apps.agents import test_popup_welcome_preview as popup
 from apps.agents.views.registration_common import _meta_purchase_event
 
 PIXEL = "2012064996398259"
@@ -123,3 +124,34 @@ class MetaPixelTests(TestCase):
             payment_status="completed", registration_amount=0
         )
         self.assertIsNone(_meta_purchase_event(sub.agent))
+
+
+@override_settings(META_PIXEL_ID=PIXEL)
+class MetaPixelWelcomePreviewTests(TestCase):
+    """Quick popup → /welcome-preview/ must fire CompleteRegistration once, with em/ph/zp."""
+
+    setUp = popup.PopupWelcomePreviewTests.setUp
+
+    @patch("apps.agents.views.registration._resolve_registration_pincode")
+    def test_welcome_preview_fires_once_with_user_data(self, resolve_pin):
+        from types import SimpleNamespace
+
+        resolve_pin.return_value = SimpleNamespace(state="Gujarat", pincode="380001")
+        r = self.client.post(
+            "/quick-registration/",
+            data=json.dumps(popup._popup_payload(email="Mahesh.Parmar@Example.com")),
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        draft = AgentDraft.objects.get(email__iexact="mahesh.parmar@example.com")
+
+        first = self.client.get(r.json()["redirect"]).content.decode()
+        self.assertIn("'CompleteRegistration'", first)
+        self.assertIn(f'"event_id": "REG_{draft.pk}"', first)
+        self.assertIn('"em": "mahesh.parmar@example.com"', first)
+        self.assertIn('"ph": "919876543210"', first)
+        self.assertIn('"zp": "380001"', first)
+        self.assertIn('"country": "in"', first)
+
+        reload = self.client.get(r.json()["redirect"]).content.decode()
+        self.assertNotIn(f'"event_id": "REG_{draft.pk}"', reload)

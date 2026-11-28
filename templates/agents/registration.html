@@ -1871,6 +1871,19 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if meta_registration %}
+<script>
+(function () {
+    // Meta Pixel CompleteRegistration after the quick popup saved the registration (one-shot, see welcome_preview).
+    var reg = {{ meta_registration|safe_json }};
+    if (!reg || typeof window.fbq !== 'function' || !window.PADOSI_META_PIXEL_ID) return;
+    try {
+        window.fbq('init', window.PADOSI_META_PIXEL_ID, reg.user_data || {});
+        window.fbq('track', 'CompleteRegistration', { content_name: 'Agent Registration' }, { eventID: String(reg.event_id) });
+    } catch (e) { console.warn('Meta pixel registration event failed', e); }
+})();
+</script>
+{% endif %}
 {% if not registration_popup_only %}
     <script>
         // === HTMX History Restore Protection ===

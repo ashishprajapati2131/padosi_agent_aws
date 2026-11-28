@@ -25,6 +25,7 @@ from .registration_common import (
     STEP1_REUSABLE_STATUSES,
     _RESERVED_PROFILE_SLUGS,
     _int_or_zero,
+    _meta_registration_event,
     _post_payment_redirect_url,
     logger,
 )
@@ -432,6 +433,9 @@ def welcome_preview(request):
     context["welcome_preview_mode"] = True
     context["require_quick_reg_gate"] = False
     context["hide_eligibility_popup"] = True
+    # Popped, so CompleteRegistration fires on the first landing only, never on reload.
+    if request.session.pop("meta_registration_draft", None) == context["draft"].pk:
+        context["meta_registration"] = _meta_registration_event(context["draft"])
     return render(request, "agents/registration.html", context)
 
 

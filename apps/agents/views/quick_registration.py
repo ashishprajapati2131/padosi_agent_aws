@@ -303,6 +303,7 @@ def quick_registration(request):
                     mark_form_completed(request, draft=draft)
                 except Exception:
                     pass
+                request.session["meta_registration_draft"] = draft.pk
                 target = _welcome_preview_url(ref)
                 if _wants_json(request):
                     payload = _success_payload(lead, name, phone, target)

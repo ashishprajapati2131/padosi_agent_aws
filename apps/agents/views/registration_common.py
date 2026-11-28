@@ -346,6 +346,26 @@ def _post_payment_redirect_url(request, agent=None):
     return reverse("agents:agent_edit_profile") + "?welcome=1"
 
 
+def _meta_registration_event(draft):
+    """Meta Pixel CompleteRegistration data for this browser's own saved draft.
+
+    em / ph / zp are normalised the way Meta expects (the pixel hashes them in the browser).
+    """
+    import re as _re
+
+    email = (getattr(draft, "email", "") or "").strip().lower()
+    phone = _re.sub(r"\D", "", getattr(draft, "mobile", "") or "")[-10:]
+    pincode = _re.sub(r"\D", "", str(getattr(draft, "agent_pincode", "") or ""))
+    user_data = {"country": "in"}
+    if email:
+        user_data["em"] = email
+    if len(phone) == 10:
+        user_data["ph"] = "91" + phone
+    if len(pincode) == 6:
+        user_data["zp"] = pincode
+    return {"event_id": f"REG_{draft.pk}", "user_data": user_data}
+
+
 def _meta_purchase_event(agent):
     """Meta Pixel Purchase data for the agent's latest paid subscription, or None (free / nothing paid).
 
