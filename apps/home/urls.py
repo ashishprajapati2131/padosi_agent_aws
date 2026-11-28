@@ -25,6 +25,7 @@ urlpatterns = [
     path('find-agents/ai-picks/', pages.ai_picks_comparison, name='ai_picks_comparison'),
     path('terms/',          pages.terms,          name='terms'),
     path('privacy/',        pages.privacy,        name='privacy'),
+    path('privacy-policy/', RedirectView.as_view(pattern_name='home:privacy', permanent=True), name='privacy_policy_redirect'),
     path('insurance/api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),
     path('api/pincode/check-agents/<str:pincode>', pages.check_pincode_agents, name='check_pincode_agents'),
     path('api/save-location/', pages.save_user_location, name='save_user_location'),

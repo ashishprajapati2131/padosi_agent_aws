@@ -73,10 +73,10 @@ def terms(request):
     return render(request, 'public/terms.html')
 
 
-@vary_on_cookie
-@cache_page(60 * 60 * 2)
 def privacy(request):
-    return render(request, 'public/privacy.html')
+    """Public privacy policy (website, Play Console, and in-app link). Not cached."""
+    from apps.home.privacy_content import published_policy
+    return render(request, 'public/privacy.html', {'policy': published_policy()})
 
 
 def faq(request):

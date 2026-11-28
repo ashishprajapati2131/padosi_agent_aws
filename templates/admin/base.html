@@ -299,6 +299,9 @@
                 <i class="fa-solid fa-address-book"></i> Contact Page
             </a>{% endif %}
 
+            {% if 'admin_privacy_policies' in nav_open %}<a href="{% url 'admin_privacy_policies' %}" class="menu-item {% if '/admin/privacy-policy/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-user-shield"></i> Privacy Policy
+            </a>{% endif %}
             {% if 'admin_pages_index' in nav_open %}<a href="/admin/pages/" class="menu-item {% if '/admin/pages/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-file-lines"></i> Pages &amp; CMS
             </a>{% endif %}

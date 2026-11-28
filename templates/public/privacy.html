@@ -1,3 +1,4 @@
+{% load static html_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
     <title>Privacy Policy — PadosiAgent</title>
-    <meta name="description" content="PadosiAgent Privacy Policy: free sign-up (name, mobile, email, pincode), Social Media Manager content sent to Artha, Meta, Google, X and Telegram, and AI writing.">
+    <meta name="description" content="Privacy Policy for the PadosiAgent website and app: account and lead data, social connections, Firebase analytics, retention, and how to delete your account.">
     <link rel="canonical" href="{{ public_site_base }}{% url 'home:privacy' %}">
     <style>
         :root {
@@ -16,8 +17,6 @@
             --text-color: #333;
             --light-bg: #f8f9fa;
             --border-color: #dee2e6;
-            --padosi-blue: #003AAD;
-            --agent-green: #06A441;
         }
         
         * {
@@ -108,27 +107,6 @@
             border-radius: 0 8px 8px 0;
         }
         
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        
-        .data-table th, .data-table td {
-            border: 1px solid var(--border-color);
-            padding: 12px;
-            text-align: left;
-        }
-        
-        .data-table th {
-            background-color: var(--light-bg);
-            font-weight: 600;
-        }
-        
-        .data-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        
         .consent-section {
             background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
             border-radius: 10px;
@@ -145,18 +123,14 @@
         }
         
         .logo {
-            font-size: 2rem;
-            font-weight: 700;
             text-align: center;
             margin-bottom: 20px;
         }
-        
-        .logo span.padosi {
-            color: #003AAD !important;
-        }
-        
-        .logo span.agent {
-            color: #06A441;
+
+        .logo img {
+            height: 64px;
+            width: auto;
+            max-width: 280px;
         }
         
         @media (max-width: 768px) {
@@ -175,14 +149,6 @@
             h2 {
                 font-size: 1.3rem;
             }
-            
-            .data-table {
-                font-size: 0.9rem;
-            }
-            
-            .data-table th, .data-table td {
-                padding: 8px;
-            }
         }
         
         .policy-header {
@@ -190,17 +156,6 @@
             border-radius: 10px;
             padding: 25px;
             margin: 0 0 30px 0;
-        }
-        
-        .definition-item {
-            margin-bottom: 15px;
-            padding-left: 10px;
-            border-left: 2px solid var(--border-color);
-        }
-        
-        .definition-term {
-            font-weight: bold;
-            color: var(--primary-color);
         }
         
         .no-list {
@@ -242,198 +197,41 @@
         }
     </style>
     {% include 'partials/clarity.html' %}
-    {% include "partials/meta_pixel.html" %}
 </head>
 <body>
     <div class="container">
-        
-        
         <div class="content-card">
-            <h1>Privacy Policy</h1>
-            
+            <div class="logo">
+                <img src="{% static 'img/logo-400.webp' %}" alt="PadosiAgent" width="280" height="64">
+            </div>
+            <h1>{{ policy.title }}</h1>
+
             <div class="policy-header">
-                <p><strong>PadosiAgent ServTech Private Limited</strong></p>
-                <p>Last Updated: <strong>27 November 2026</strong></p>
-                <p>Effective From: <strong>27 November 2026</strong></p>
-            </div>
-            
-            <div class="legal-compliance">
-                <h2>1. LEGAL BASIS</h2>
-                <p>This Privacy Policy complies with:</p>
-                <ul class="no-list">
-                    <li>Information Technology Act, 2000</li>
-                    <li>IT Rules, 2011</li>
-                    <li>Digital Personal Data Protection Act, 2023</li>
-                </ul>
-            </div>
-            
-            <h2>2. INFORMATION COLLECTED</h2>
-            
-            <div class="data-category">
-                <h3>A. Free sign-up</h3>
-                <p>Creating a free account collects only what is needed to open and contact that account:</p>
-                <ul class="no-list">
-                    <li><strong>Name</strong> — to identify the account holder</li>
-                    <li><strong>Mobile number</strong> — to verify the account and send service messages</li>
-                    <li><strong>Email address</strong> — to sign in, send account notices, and recover access</li>
-                    <li><strong>Pincode</strong> — to place the account in a service area and show relevant local results</li>
-                </ul>
-                <p>A pincode is an area code. It is not a precise GPS location unless you later choose to share your device location.</p>
+                <p><strong>{{ policy.company_name }}</strong> ("PadosiAgent", "we", "us")</p>
+                <p>App: PadosiAgent (Android package <strong>com.padosi.agent</strong>, and iOS) and the website at padosiagent.com</p>
+                <p>Registered place of business: <strong>{{ policy.address }}</strong></p>
+                <p>Effective date: <strong>{{ policy.effective_date|date:"j F Y" }}</strong></p>
+                <p>Contact: <strong><a href="mailto:{{ policy.contact_email }}">{{ policy.contact_email }}</a></strong></p>
+                <p>Privacy and grievance contact: <strong><a href="mailto:{{ policy.grievance_email }}">{{ policy.grievance_email }}</a></strong></p>
             </div>
 
-            <div class="data-category">
-                <h3>B. Other personal data</h3>
-                <ul class="no-list">
-                    <li>PAN, licences, and certifications, when you add them for verification</li>
-                    <li>Business details and profile content you choose to publish</li>
-                </ul>
-            </div>
-            
-            <div class="data-category">
-                <h3>C. Technical Data</h3>
-                <ul class="no-list">
-                    <li>IP address</li>
-                    <li>Device details</li>
-                    <li>Cookies</li>
-                    <li>Usage analytics</li>
-                </ul>
-            </div>
-            
-            <div class="data-category">
-                <h3>D. Social Media Manager</h3>
-                <p>If you use Social Media Manager, we process the content you create or ask us to send:</p>
-                <ul class="no-list">
-                    <li>Messages</li>
-                    <li>Posts</li>
-                    <li>Photos and videos</li>
-                </ul>
-                <p>On your instruction, that content is sent to these services so they can publish, schedule, or deliver it:</p>
-                <ul class="no-list">
-                    <li><strong>Artha</strong></li>
-                    <li><strong>Meta</strong> (including Facebook and Instagram)</li>
-                    <li><strong>Google</strong></li>
-                    <li><strong>X</strong></li>
-                    <li><strong>Telegram</strong></li>
-                </ul>
-                <p>We send only the content and the account details required to deliver what you asked for. After it reaches those services, they handle it under their own privacy policies. You must have the right to share the messages, posts, photos, and videos you submit.</p>
-            </div>
+            <article class="policy-body">
+                {{ policy.content|clean_html }}
+            </article>
 
-            <div class="data-category">
-                <h3>E. AI writing</h3>
-                <p>If you use AI writing, we process:</p>
-                <ul class="no-list">
-                    <li>The text you enter, including prompts, notes, and drafts</li>
-                    <li>The text the tool generates for you</li>
-                </ul>
-                <p>That text may be sent to an AI service provider solely to produce the draft you requested. Do not enter passwords, card numbers, or another person’s sensitive information. Review every draft before you publish or send it. AI writing can be incomplete or incorrect, and you remain responsible for what you use.</p>
-            </div>
-
-            <div class="data-category">
-                <h3>F. Payment Data</h3>
-                <div class="warning-box">
-                    <p><strong>Handled only by third-party gateways. We do not store card data.</strong></p>
-                </div>
-            </div>
-            
-            <h2>3. PURPOSE OF COLLECTION</h2>
-            <ul class="no-list">
-                <li>Creating and managing a free account from your name, mobile, email, and pincode</li>
-                <li>Verification and local matching</li>
-                <li>Lead facilitation</li>
-                <li>Sending the messages, posts, photos, and videos you submit in Social Media Manager to Artha, Meta, Google, X, and Telegram</li>
-                <li>Generating the written drafts you request with AI writing</li>
-                <li>Platform improvement, legal compliance, and support</li>
-            </ul>
-            
-            <h2>4. DATA SHARING</h2>
-            <p>Data may be shared with:</p>
-            <ul class="no-list">
-                <li>Payment processors</li>
-                <li>Technology partners who host or operate the platform</li>
-                <li><strong>Artha, Meta, Google, X, and Telegram</strong>, only when you use Social Media Manager to send messages, posts, photos, or videos</li>
-                <li>An AI service provider, only when you use AI writing</li>
-                <li>Legal authorities, when the law requires it</li>
-            </ul>
-            
-            <div class="warning-box">
-                <p><span class="prohibited-item">❌ No sale of personal data</span></p>
-            </div>
-            
-            <h2>5. DATA SECURITY</h2>
-            <ul class="no-list">
-                <li>Reasonable technical safeguards</li>
-                <li>Restricted access</li>
-                <li>Encrypted storage (where applicable)</li>
-            </ul>
-            
-            <div class="warning-box">
-                <p><strong>However, no system is 100% secure.</strong></p>
-            </div>
-            
-            <h2>6. DATA RETENTION</h2>
-            <p>Data is retained:</p>
-            <ul class="no-list">
-                <li>As long as the account exists</li>
-                <li>Social Media Manager content and AI writing drafts stay with the account until you delete them, or for as long as the connected service keeps its own copy</li>
-                <li>Or as required by law</li>
-                <li>Or until the legitimate business purpose ends</li>
-            </ul>
-            
-            <h2>7. USER RIGHTS</h2>
-            <p>User may:</p>
-            <ul class="no-list">
-                <li>Request correction</li>
-                <li>Request deletion (subject to law)</li>
-                <li>Withdraw consent</li>
-            </ul>
-            
-            <div class="warning-box">
-                <p><strong>Requests may be rejected if legally restricted.</strong></p>
-            </div>
-            
-            <h2>8. COOKIES</h2>
-            <p>Cookies are used for:</p>
-            <ul class="no-list">
-                <li>Session management</li>
-                <li>Analytics</li>
-                <li>Performance optimization</li>
-            </ul>
-            
-            <div class="warning-box">
-                <p><strong>Disabling cookies may limit functionality.</strong></p>
-            </div>
-            
-            <h2>9. CHILDREN'S DATA</h2>
+            <h2>13. Contact</h2>
             <div class="highlight-box">
-                <p><strong>Platform is strictly for 18+ users. No intentional data collection from minors.</strong></p>
-            </div>
-            
-            <h2>10. THIRD-PARTY LINKS</h2>
-            <div class="warning-box">
-                <p><strong>The Company is not responsible for external websites or services.</strong></p>
-            </div>
-            
-            <h2>11. CHANGES TO POLICY</h2>
-            <div class="warning-box">
-                <p><strong>Updates may occur without prior notice. Continued use implies acceptance.</strong></p>
-            </div>
-            
-            <h2>12. CONTACT – DATA PROTECTION</h2>
-            <div class="highlight-box">
-                <p><strong>📧 privacy@padosiagent.com</strong></p>
-                <p><strong>📍 Ahmedabad, Gujarat, India</strong></p>
-            </div>
-            
-            <div class="consent-section">
-                <h3>Your Consent</h3>
-                <p>By creating a free account or using PadosiAgent, you consent to the collection and use of your name, mobile number, email, and pincode as described in this Privacy Policy. By using Social Media Manager or AI writing, you also consent to the processing and sharing described for those tools. If you do not agree, do not use the platform or those tools.</p>
+                <p><strong>{{ policy.company_name }}</strong></p>
+                <p>{{ policy.address }}</p>
+                <p>Email: <a href="mailto:{{ policy.contact_email }}">{{ policy.contact_email }}</a></p>
+                <p>Privacy and grievance contact: <a href="mailto:{{ policy.grievance_email }}">{{ policy.grievance_email }}</a></p>
             </div>
         </div>
     </div>
-    
+
     <footer>
         <div class="container">
-            <p>© 2026 PadosiAgent ServTech Private Limited. All rights reserved. | <a href="http://127.0.0.1:8000/privacy" style="color: inherit; text-decoration: none;">Privacy Policy</a> | <a href="http://127.0.0.1:8000/terms" style="color: inherit; text-decoration: none;">Terms & Conditions</a></p>
+            <p>© 2026 PadosiAgent ServTech Private Limited. All rights reserved. | <a href="{% url 'home:privacy' %}" style="color: inherit; text-decoration: none;">Privacy Policy</a> | <a href="{% url 'home:terms' %}" style="color: inherit; text-decoration: none;">Terms &amp; Conditions</a></p>
         </div>
     </footer>
 </body>

@@ -223,6 +223,27 @@ class LegalPageMetaTests(TestCase):
             # Host comes from APP_URL (get_public_site_base), so only check shape.
             self.assertRegex(body, r'<link rel="canonical" href="https?://[^/"]+' + path + '">')
 
+    def test_privacy_policy_alias_redirects_to_canonical_page(self):
+        response = self.client.get('/privacy-policy/')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response['Location'], '/privacy/')
+
+    def test_privacy_page_publishes_merged_policy(self):
+        response = self.client.get('/privacy/')
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+        self.assertIn('support@padosiagent.com', body)
+        self.assertIn('padosiagent@gmail.com', body)
+        self.assertIn('alt="PadosiAgent"', body)
+        self.assertIn('class="logo"', body)
+        self.assertIn('com.padosi.agent', body)
+        self.assertIn('advertising ID', body)
+        self.assertIn('/delete-account/', body)
+        self.assertNotIn('privacy@padosiagent.com', body)
+        self.assertNotIn('[FILL IN]', body)
+        self.assertNotIn('127.0.0.1', body)
+        self.assertNotIn('max-age=7200', response.get('Cache-Control', ''))
+
 
 class NoindexPathTests(TestCase):
     # Middleware tested directly: /find-agents/ views use MySQL-only SQL that

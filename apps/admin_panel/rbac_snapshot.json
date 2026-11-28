@@ -1353,6 +1353,46 @@
   "access": "super_only",
   "name": "admin_plan_delete"
  },
+ "admin/privacy-policy/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policies"
+ },
+ "admin/privacy-policy/<int:policy_id>/delete/": {
+  "access": "super_only",
+  "name": "admin_privacy_policy_delete"
+ },
+ "admin/privacy-policy/<int:policy_id>/edit/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policy_edit"
+ },
+ "admin/privacy-policy/<int:policy_id>/publish/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policy_publish"
+ },
+ "admin/privacy-policy/<int:policy_id>/update/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policy_update"
+ },
+ "admin/privacy-policy/create/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policy_create"
+ },
+ "admin/privacy-policy/store/": {
+  "access": [
+   "content"
+  ],
+  "name": "admin_privacy_policy_store"
+ },
  "admin/profile-banners/": {
   "access": [
    "agents",

@@ -1,0 +1,114 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Privacy Policy — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Privacy Policy{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-1">Privacy Policy</h5>
+        <span style="font-size:13px;color:var(--text-muted);">The published version is the page at <a href="{% url 'home:privacy' %}" target="_blank">/privacy/</a>.</span>
+    </div>
+    <a href="{% url 'admin_privacy_policy_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-2"></i> Add policy
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not has_published %}
+<div class="alert alert-warning">No policy is published. Visitors currently see the built-in policy. Publish one to replace it.</div>
+{% endif %}
+
+{% if policies %}
+<div class="card" style="border-radius:14px; overflow:hidden; border:1px solid var(--border-color);">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" style="font-size:13px;">
+                <thead style="background: var(--bg-hover);">
+                    <tr>
+                        <th class="px-4 py-3">Title</th>
+                        <th class="py-3">Effective date</th>
+                        <th class="py-3">Grievance email</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Updated</th>
+                        <th class="py-3 text-end px-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for policy in policies %}
+                    <tr>
+                        <td class="px-4 py-3 fw-semibold">{{ policy.title }}</td>
+                        <td>{{ policy.effective_date|date:"j M Y" }}</td>
+                        <td>{{ policy.grievance_email }}</td>
+                        <td>
+                            {% if policy.is_published %}
+                            <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;">Published</span>
+                            {% else %}
+                            <span class="badge" style="background:#fef9c3;color:#92400e;border:1px solid #fde68a;">Draft</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ policy.updated_at|date:"d M Y, H:i" }}</td>
+                        <td class="text-end px-4">
+                            <div class="d-flex justify-content-end gap-2">
+                                {% if not policy.is_published %}
+                                <form method="post" action="{% url 'admin_privacy_policy_publish' policy.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">Publish</button>
+                                </form>
+                                {% else %}
+                                <a href="{% url 'home:privacy' %}" target="_blank" class="btn btn-sm btn-light border" title="View public page">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'admin_privacy_policy_edit' policy.id %}" class="btn btn-sm btn-light border" title="Edit">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                {% if is_super_admin %}
+                                <form method="post" action="{% url 'admin_privacy_policy_delete' policy.id %}" class="d-inline" onsubmit="return confirm('Delete this privacy policy?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-light border text-danger" title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card text-center py-5 border-0" style="border-radius:16px;">
+    <div class="card-body">
+        <h6 class="fw-bold mb-1">No privacy policies yet</h6>
+        <p class="text-muted mb-3" style="font-size:13px;">The public page is using the built-in policy until you add one.</p>
+        <a href="{% url 'admin_privacy_policy_create' %}" class="btn btn-primary">Add the first policy</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="card border-0 mt-4" style="background: linear-gradient(135deg,#eff6ff,#f0fdf4); border-radius:12px;">
+    <div class="card-body py-3 px-4">
+        <div class="fw-bold mb-1" style="font-size:14px;">How publishing works</div>
+        <ul class="mb-0 text-muted" style="font-size:13px; padding-left:16px;">
+            <li>Press <strong>Publish</strong> on a draft to make it the page at /privacy/. The previous live policy becomes a draft.</li>
+            <li>On the add and edit forms, Publish saves and goes live. Save as draft keeps the current live policy.</li>
+            <li>Deleting the live policy publishes the newest one that is left. If none are left, the built-in policy is shown so the public link never goes blank.</li>
+            <li>Scripts in the policy text are removed when you save.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
