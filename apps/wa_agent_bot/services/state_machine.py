@@ -318,6 +318,16 @@ def process_message(session, user_text):
     if not session.is_registered and liafi_flow.wants_liafi(text_lower):
         return liafi_flow.start(session)
 
+    # ── LIAFI event mode: a greeting from an unregistered number that is stuck in an unfinished
+    # normal registration (e.g. an old payment link) starts the event flow too, like a new chat.
+    if (
+        not session.is_registered
+        and current_state not in (WaBotSession.STATE_LIAFI, WaBotSession.STATE_LOGGED_IN)
+        and text_lower in REGISTER_KEYWORDS
+        and liafi_flow.event_mode_on()
+    ):
+        return liafi_flow.start(session)
+
     # ── Admin keyword auto-replies (Admin > WhatsApp > Messages) ─────
     # Only outside the registration flow, so a keyword can't swallow an answer like a name or pincode.
     if current_state in (WaBotSession.STATE_WELCOME, WaBotSession.STATE_LOGGED_IN):

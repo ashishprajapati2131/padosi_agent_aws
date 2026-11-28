@@ -14,6 +14,7 @@ registration_draft["liafi"] so the profile can be previewed before payment and t
 import json
 import logging
 import os
+import re
 
 from ..models import WaBotSession
 from .validators import validate_email, validate_fullname, validate_mobile
@@ -162,7 +163,8 @@ def _profile_url(agent):
 def wants_liafi(text_lower):
     if not flow_switches.is_on(flow_switches.LIAFI):
         return False
-    return text_lower == TRIGGER_KEYWORD or TRIGGER_KEYWORD in text_lower.split()
+    # Whole word, so "LIAFI.", "LIAFI!" and "hi liafi" count but "liafix" doesn't.
+    return re.search(r"\bliafi\b", text_lower) is not None
 
 
 def start(session):

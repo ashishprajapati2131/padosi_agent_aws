@@ -292,7 +292,8 @@ class BotFlowToggleTests(unittest.TestCase):
     def test_switches_a_known_flow(self):
         status, data, set_value = self._post({"key": flow_switches.LIAFI, "enabled": False})
         self.assertEqual((status, data["success"]), (200, True))
-        set_value.assert_called_once_with(flow_switches.LIAFI, False, group="whatsapp")
+        set_value.assert_any_call(flow_switches.LIAFI, False, group="whatsapp")
+        set_value.assert_any_call(flow_switches.LIAFI_EVENT_MODE, False, group="whatsapp")
 
     def test_rejects_unknown_keys(self):
         status, data, set_value = self._post({"key": "wa_bot_openwa_api_key", "enabled": True})
@@ -305,4 +306,70 @@ class BotFlowToggleTests(unittest.TestCase):
         self.assertEqual(
             states,
             {flow_switches.REGISTRATION: True, flow_switches.LIAFI: True, flow_switches.LIAFI_EVENT_MODE: False},
+        )
+
+
+class LiafiStuckPaymentSessionTests(unittest.TestCase):
+    """Live bug 2026-11-28: a number stuck at an old normal-registration payment link kept getting
+    that link for LIAFI / Hi while the LIAFI switch was off and event mode was on."""
+
+    def setUp(self):
+        self.session = MagicMock()
+        self.session.phone_number = "916352701839"
+        self.session.state = WaBotSession.STATE_AWAITING_PAYMENT
+        self.session.registration_data = {"payment_link": "https://rzp.io/rzp/OLD"}
+        self.session.session_context = {}
+        self.session.is_registered = False
+        self.session.is_logged_in = False
+        self.session.agent = None
+        self.session.agent_id = None
+        self.values = {flow_switches.REGISTRATION: False}
+        p = _settings(self.values)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_liafi_keyword_with_punctuation_leaves_the_old_payment(self):
+        reply = process_message(self.session, "LIAFI.")
+        self.assertEqual(self.session.state, WaBotSession.STATE_LIAFI)
+        self.assertIn("LIAFI General Council Meeting", reply)
+
+    def test_hi_in_event_mode_leaves_the_old_payment(self):
+        self.values[flow_switches.LIAFI_EVENT_MODE] = True
+        reply = process_message(self.session, "Hi")
+        self.assertEqual(self.session.state, WaBotSession.STATE_LIAFI)
+        self.assertNotIn("rzp.io", reply)
+
+    def test_hi_without_event_mode_keeps_the_payment_reminder(self):
+        with patch("apps.wa_agent_bot.services.state_machine._handle_awaiting_payment", return_value="PAY"):
+            self.assertEqual(process_message(self.session, "Hi"), "PAY")
+
+    def test_registered_agents_keep_their_account_flow(self):
+        self.session.is_registered = True
+        self.session.state = WaBotSession.STATE_LOGGED_IN
+        self.session.agent = MagicMock()
+        self.values[flow_switches.LIAFI_EVENT_MODE] = True
+        with patch(
+            "apps.wa_agent_bot.services.state_machine.process_post_login_message", return_value="MENU"
+        ):
+            self.assertEqual(process_message(self.session, "Hi"), "MENU")
+
+    def test_keyword_is_a_whole_word(self):
+        self.assertTrue(liafi_flow.wants_liafi("hi liafi!"))
+        self.assertFalse(liafi_flow.wants_liafi("liafix"))
+
+
+class FlowSwitchLinkTests(unittest.TestCase):
+    def test_event_mode_on_turns_liafi_on_and_liafi_off_turns_event_mode_off(self):
+        with patch("apps.home.models.site_setting.SiteSetting.set_value") as set_value:
+            flow_switches.set_switch(flow_switches.LIAFI_EVENT_MODE, True)
+            flow_switches.set_switch(flow_switches.LIAFI, False)
+        calls = [c.args[:2] for c in set_value.call_args_list]
+        self.assertEqual(
+            calls,
+            [
+                (flow_switches.LIAFI_EVENT_MODE, True),
+                (flow_switches.LIAFI, True),
+                (flow_switches.LIAFI, False),
+                (flow_switches.LIAFI_EVENT_MODE, False),
+            ],
         )

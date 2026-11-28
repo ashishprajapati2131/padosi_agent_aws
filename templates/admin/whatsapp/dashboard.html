@@ -693,7 +693,7 @@
         .then(r => r.json())
         .then(d => {
             if (!d.success) { input.checked = !input.checked; alert('Error: ' + (d.error || 'Failed to switch')); }
-            else { document.getElementById('flowState_' + input.dataset.flow).textContent = input.checked ? 'On' : 'Off'; }
+            else { location.reload(); return; }  // event mode and LIAFI flow switch each other
             input.disabled = false;
         })
         .catch(err => { input.checked = !input.checked; input.disabled = false; alert('Request error: ' + err); });
