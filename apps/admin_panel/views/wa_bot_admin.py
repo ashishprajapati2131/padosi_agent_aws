@@ -66,7 +66,10 @@ def wa_bot_dashboard(request):
             qr_data = qr_resp.get("qr_code")
 
     # 2. Master Bot Status
-    bot_enabled = SiteSetting.get_value("wa_agent_bot_enabled", True)
+    # Same reading as the webhook: the setting is stored as the text "True"/"False".
+    from apps.wa_agent_bot.views import is_wa_bot_enabled
+
+    bot_enabled = is_wa_bot_enabled()
     from apps.wa_agent_bot.services.notification_service import (
         lead_alerts_enabled,
         view_alert_settings,
