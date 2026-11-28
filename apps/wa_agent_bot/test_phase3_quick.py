@@ -90,7 +90,7 @@ class ExtractMessageChatIdTests(SimpleTestCase):
 
 
 class SimulatorProductionTests(SimpleTestCase):
-    """WA15: simulator endpoints do not exist outside DEBUG."""
+    """WA15: outside DEBUG the simulator does not exist for anyone but a Super Admin (test_diagnostics)."""
 
     @override_settings(DEBUG=False)
     def test_simulator_404_in_production(self):

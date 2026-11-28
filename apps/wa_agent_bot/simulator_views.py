@@ -23,14 +23,15 @@ SIMULATOR_PHONE = "919876543210"
 
 
 def _admin_required(view):
-    """Simulator is an admin-only tool: require a valid admin session."""
+    """Simulator is an admin-only tool. In production only a Super Admin may open it: a test chat
+    creates real users/agents/payment links. Simulated payment stays DEBUG-only (simulator_payment)."""
     @wraps(view)
     def wrapper(request, *args, **kwargs):
-        if not settings.DEBUG:
-            # Simulator creates real users/agents/payment links: never in production.
+        from apps.admin_panel.auth import _get_admin_from_session, is_super_admin
+        admin_id = _get_admin_from_session(request)
+        if not settings.DEBUG and not (admin_id and is_super_admin(admin_id)):
             raise Http404
-        from apps.admin_panel.auth import _get_admin_from_session
-        if not _get_admin_from_session(request):
+        if not admin_id:
             return JsonResponse({'error': 'Admin login required'}, status=403)
         return view(request, *args, **kwargs)
     return wrapper
@@ -67,6 +68,7 @@ def simulator_page(request):
             'phone': SIMULATOR_PHONE,
             'recent_logs': recent_logs,
             'max_log_id': max_log_id,
+            'allow_payment': settings.DEBUG,
         },
     )
     return HttpResponse(html, content_type='text/html')

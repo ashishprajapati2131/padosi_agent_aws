@@ -142,6 +142,73 @@
     </div>
 </div>
 
+<!-- Live diagnostics: every link between WhatsApp and the bot, and what happened to recent messages -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" id="liveDiagnostics">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-stethoscope text-primary me-2"></i>Live diagnostics</h5>
+                <div class="text-muted small">Send a WhatsApp message to the bot number, then press Refresh to see what happened to it.</div>
+            </div>
+            <a href="#liveDiagnostics" onclick="location.reload(); return false;" class="btn btn-sm btn-outline-primary fw-bold"><i class="fa-solid fa-rotate me-1"></i> Refresh</a>
+        </div>
+
+        <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.bot_on %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-danger" aria-hidden="true">✘</span>{% endif %}
+                <span><strong>Bot master switch:</strong> {% if diag.bot_on %}ON{% else %}OFF — press the Bot button above{% endif %}</span>
+            </li>
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.secret_set %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-danger" aria-hidden="true">✘</span>{% endif %}
+                <span><strong>Webhook secret on this server:</strong> {% if diag.secret_set %}set{% else %}NOT set — add WA_BOT_WEBHOOK_SECRET to the server .env and restart{% endif %}</span>
+            </li>
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.openwa_connected %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-danger" aria-hidden="true">✘</span>{% endif %}
+                <span><strong>OpenWA WhatsApp session:</strong> {{ diag.openwa_status }}{% if not diag.openwa_connected %} — open OpenWA and scan the QR{% endif %}</span>
+            </li>
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.bot_phone %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-danger" aria-hidden="true">✘</span>{% endif %}
+                <span><strong>Bot WhatsApp number:</strong> {% if diag.bot_phone %}<span class="font-monospace fs-6">+{{ diag.bot_phone }}</span> — test by messaging exactly this number{% else %}unknown (session not linked){% endif %}</span>
+            </li>
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.last_seen %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-warning" aria-hidden="true">!</span>{% endif %}
+                <span><strong>Last request from OpenWA:</strong> {% if diag.last_seen %}{{ diag.last_seen.at }}{% if diag.last_seen.event %} ({{ diag.last_seen.event }}){% endif %}{% else %}none recorded yet — if you just messaged the bot, OpenWA is not delivering: press 1-Click Sync Webhook{% endif %}</span>
+            </li>
+            <li class="list-group-item px-0 d-flex gap-2">
+                {% if diag.liafi_on %}<span class="text-success" aria-hidden="true">✔</span>{% else %}<span class="text-warning" aria-hidden="true">!</span>{% endif %}
+                <span><strong>LIAFI flow:</strong> {% if diag.liafi_on %}ON — send <span class="font-monospace">LIAFI</span> to start it{% else %}OFF — turn it on in Bot flows{% endif %}</span>
+            </li>
+        </ul>
+
+        <h6 class="fw-bold">Recent WhatsApp messages received</h6>
+        {% if diag.events %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle small mb-0">
+                <thead><tr><th scope="col">Time</th><th scope="col">From</th><th scope="col">Message</th><th scope="col">Result</th><th scope="col">Why</th></tr></thead>
+                <tbody>
+                {% for e in diag.events %}
+                <tr>
+                    <td class="text-nowrap">{{ e.at }}</td>
+                    <td class="font-monospace">{{ e.phone|default:"—" }}</td>
+                    <td>{{ e.text|default:"—" }}</td>
+                    <td>
+                        {% if e.outcome == "processed" %}<span class="badge bg-success">Replied</span>
+                        {% elif e.outcome == "reply_failed" %}<span class="badge bg-danger">Reply failed</span>
+                        {% elif e.outcome == "rejected" %}<span class="badge bg-danger">Rejected</span>
+                        {% else %}<span class="badge bg-secondary">Ignored</span>{% endif %}
+                    </td>
+                    <td>{{ e.detail }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted small">Nothing yet. Every WhatsApp message the bot receives will show here with what happened to it.</div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Bot flows: switch each WhatsApp conversation flow on or off -->
 <div class="card border-0 shadow-sm rounded-4 mb-4" id="botFlows">
     <div class="card-body p-4">

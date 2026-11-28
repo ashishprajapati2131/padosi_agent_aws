@@ -389,7 +389,8 @@
                 <button class="chip" onclick="sendQuick('yes')">✅ Confirm (yes)</button>
                 <button class="chip" onclick="sendQuick('1')">1️⃣ Plan 1 (Digital Presence)</button>
                 <button class="chip" onclick="sendQuick('2')">2️⃣ Plan 2 (Professional Presence)</button>
-                <button class="chip pay-action" onclick="simulatePaymentSuccess()"><i class="fa-solid fa-credit-card me-1"></i> Simulate Payment Success</button>
+                {% if allow_payment %}<button class="chip pay-action" onclick="simulatePaymentSuccess()"><i class="fa-solid fa-credit-card me-1"></i> Simulate Payment Success</button>{% endif %}
+                <button class="chip" onclick="sendQuick('LIAFI')">🎪 LIAFI</button>
                 <button class="chip" onclick="sendQuick('help')">📋 help</button>
                 <button class="chip" onclick="sendQuick('profile')">👤 profile</button>
                 <button class="chip" onclick="sendQuick('dashboard')">📊 dashboard</button>

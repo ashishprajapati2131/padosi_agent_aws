@@ -23,6 +23,7 @@ from django.db import transaction
 from .models import WaBotSession, WaBotMessageLog
 from .services.state_machine import process_message
 from .services.message_sender import mask_phone, send_text_message
+from .services import webhook_trace
 
 from apps.wa_agent_bot.services.site_url import bot_site_url
 
@@ -152,6 +153,21 @@ def _extract_message_data(payload):
     return phone, text, msg_type
 
 
+def _no_phone_reason(payload):
+    """Why _extract_message_data found no sender, for the Hub trace; None for routine noise."""
+    data = payload.get("data", payload)
+    if not isinstance(data, dict):
+        return "Unreadable message payload"
+    if data.get("fromMe") is True or (isinstance(data.get("id"), dict) and data["id"].get("fromMe") is True):
+        return None  # the bot's own replies echo back: not worth a trace line
+    sender = str(data.get("from") or data.get("chatId") or "")
+    if sender.endswith("@g.us") or sender.endswith("@broadcast"):
+        return None
+    if sender.endswith("@lid"):
+        return "WhatsApp hid the sender's number (@lid): set RESOLVE_LID_TO_PHONE=true on the OpenWA server"
+    return f"No sender number in the message (from={sender[-12:] or 'empty'})"
+
+
 MESSAGE_DEDUP_TTL = 24 * 60 * 60  # seconds a provider message id is remembered
 
 
@@ -206,8 +222,13 @@ def webhook_receiver(request):
         }
     }
     """
+    webhook_trace.seen("")  # proves OpenWA reaches padosi, even if the request is refused below
+
     # ── Check if bot is enabled ─────────────────────────────────────
     if not is_wa_bot_enabled():
+        webhook_trace.record(
+            webhook_trace.IGNORED, "Bot is paused: turn it on with the Bot button in the Hub"
+        )
         return JsonResponse(
             {"status": "disabled", "message": "WhatsApp Bot is paused via Admin Panel"},
             status=200,
@@ -216,6 +237,12 @@ def webhook_receiver(request):
     # ── Verify webhook signature ────────────────────────────────────
     if not _verify_webhook_signature(request):
         logger.warning("[WA-Bot] Invalid webhook signature — rejecting request")
+        webhook_trace.record(
+            webhook_trace.REJECTED,
+            "Wrong or missing webhook token: press 1-Click Sync Webhook in the Hub"
+            if os.environ.get("WA_BOT_WEBHOOK_SECRET", "").strip()
+            else "WA_BOT_WEBHOOK_SECRET is not set in the server .env",
+        )
         return JsonResponse({"error": "Invalid signature"}, status=403)
 
     # ── Parse payload ───────────────────────────────────────────────
@@ -226,6 +253,7 @@ def webhook_receiver(request):
 
     # Check event type — only process incoming messages
     event = payload.get("event", "")
+    webhook_trace.seen(event)
     if event and event not in (
         "message.received",
         "message:received",
@@ -242,11 +270,17 @@ def webhook_receiver(request):
 
     if not phone:
         logger.debug("[WA-Bot] Could not extract phone number from payload")
+        reason = _no_phone_reason(payload)
+        if reason:
+            webhook_trace.record(webhook_trace.IGNORED, reason)
         return JsonResponse({"error": "Missing phone number"}, status=400)
 
     if not text:
         # Non-text message (image, audio, etc.) — politely ignore
         logger.debug(f"[WA-Bot] Non-text message from {mask_phone(phone)} (type={msg_type})")
+        webhook_trace.record(
+            webhook_trace.IGNORED, f"Not a text message (type={msg_type})", phone
+        )
         return JsonResponse(
             {"status": "ignored", "reason": "non-text message"}, status=200
         )
@@ -262,6 +296,7 @@ def webhook_receiver(request):
     # ── Rate limiting ───────────────────────────────────────────────
     if not _check_rate_limit(phone):
         logger.warning(f"[WA-Bot] Rate limit exceeded for {mask_phone(phone)}")
+        webhook_trace.record(webhook_trace.IGNORED, "Too many messages in a minute", phone, text)
         send_text_message(
             phone,
             "⚠️ You're sending messages too quickly. Please wait a moment and try again.",
@@ -322,6 +357,16 @@ def webhook_receiver(request):
     if not send_result["success"]:
         logger.error(
             f"[WA-Bot] Failed to send reply to {mask_phone(phone)}: {send_result.get('error', 'unknown')}"
+        )
+        webhook_trace.record(
+            webhook_trace.FAILED,
+            f"Reply could not be sent through OpenWA: {send_result.get('error', 'unknown')}",
+            phone,
+            text,
+        )
+    else:
+        webhook_trace.record(
+            webhook_trace.PROCESSED, f"Replied (flow step: {session.state})", phone, text
         )
 
     return JsonResponse(

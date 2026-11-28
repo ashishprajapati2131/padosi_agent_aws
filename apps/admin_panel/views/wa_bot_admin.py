@@ -31,7 +31,7 @@ from apps.wa_agent_bot.services.openwa_admin_service import (
     list_openwa_sessions,
 )
 from apps.agents.models import AgentSubscription
-from apps.wa_agent_bot.services import flow_switches, liafi_flow
+from apps.wa_agent_bot.services import flow_switches, liafi_flow, webhook_trace
 from apps.agents.models import PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -200,6 +200,16 @@ def wa_bot_dashboard(request):
         "openwa_config": get_openwa_config(),
         "current_webhook_url": request.build_absolute_uri("/wa-bot/webhook/"),
         "flows": flow_switches.all_switches(),
+        "diag": {
+            "bot_on": bot_enabled,
+            "secret_set": bool(os.environ.get("WA_BOT_WEBHOOK_SECRET", "").strip()),
+            "openwa_connected": bool(openwa_status.get("online") and openwa_status.get("is_connected")),
+            "openwa_status": openwa_status.get("status") or "unknown",
+            "bot_phone": openwa_status.get("phone"),
+            "liafi_on": flow_switches.is_on(flow_switches.LIAFI),
+            "last_seen": webhook_trace.last_seen(),
+            "events": webhook_trace.recent()[:15],
+        },
         "liafi": liafi_flow.get_settings(),
         "liafi_stats": liafi_flow.stats(),
     }
